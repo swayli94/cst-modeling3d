@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from cst_modeling.foil import Section
-from cst_modeling.foil import cst_foil, transform, output_foil
+from cst_modeling.foil import cst_foil_fit, transform, rotate, output_foil
 
 class Surface:
     '''
@@ -31,14 +31,23 @@ class Surface:
         Data:
             secs:   list of [Section] class
             surfs:  list of [surf_x, surf_y, surf_z], they are [nn, ns] lists
+
+        Note:
+            + x:    flow direction (m)
+            + y:    upside (m)
+            + z:    spanwise (m) 
+            twist:  +z direction (deg)
+            chord:  chord length (m)
+            thick:  relative maximum thickness
+            tail:   absolute tail thickness (m)
         '''
-        self.n_sec = max(1, n_sec)
-        self.l2d   = self.n_sec == 1
+        n_ = max(1, n_sec)
+        self.l2d   = n_ == 1
         self.name  = name
         self.n_cst = n_cst
         self.nn    = nn
         self.ns    = ns
-        self.secs  = [ Section() for _ in range(n_sec) ]
+        self.secs  = [ Section() for _ in range(n_) ]
         self.surfs = []
 
         self.split = False
@@ -49,6 +58,10 @@ class Surface:
 
         if not fname is None:
             self.read_setting(fname, tail=tail)
+
+    @property
+    def n_sec(self):
+        return len(self.secs)
 
     def read_setting(self, fname, tail=0.0):
         '''
@@ -127,6 +140,27 @@ class Surface:
         self.center[1] = 0.5*(y_range[1]+y_range[0])
         self.center[2] = 0.5*(z_range[1]+z_range[0])
 
+    def copyfrom(self, other):
+        '''
+        Copy from another Surface class
+        '''
+        if not isinstance(other, Surface):
+            raise Exception('Can not copy from a non-surface object')
+
+        self.n_sec = other.n_sec
+        self.l2d   = other.l2d
+        self.name  = other.name
+        self.n_cst = other.n_cst
+        self.nn    = other.nn
+        self.ns    = other.ns
+        self.secs  = copy.deepcopy(other.secs)
+        self.surfs = copy.deepcopy(other.surfs)
+
+        self.split = other.split
+
+        self.half_s = other.half_s
+        self.center = copy.deepcopy(other.center)
+
     def geo(self, showfoil=False, split=False):
         '''
         Generate surface geometry
@@ -157,60 +191,119 @@ class Surface:
             if split:
                 self.surfs.append(surf_2)
 
-    def plot(self, fig_id=1, type='wireframe'):
+    def add_sec(self, z_location=None):
         '''
-        Plot surface
-            fig_id: ID of the figure
-            type:   wireframe, surface
-        '''
-        fig = plt.figure(fig_id)
-        ax = Axes3D(fig)
+        Add sections to the surface, the new sections are interploted from current ones
+            z_location: list of spanwise location (must within current sections)
 
-        n_plot = self.n_sec-1
+        Note: must run before geo() and flip()
+        '''
         if self.l2d:
-            n_plot += 1
+            print('Can not add sections in 2D case')
+            return
 
-        if self.split:
-            n_plot = n_plot * 2
+        # First update current sections
+        for i in range(self.n_sec):
+            self.secs[i].foil(nn=self.nn)
 
-        for i in range(n_plot):
-            X = np.array(self.surfs[i][0])
-            Y = np.array(self.surfs[i][1])
-            Z = np.array(self.surfs[i][2])
+        for zz in z_location:
+            for j in range(self.n_sec-1):
+                if (self.secs[j].zLE-zz)*(self.secs[j+1].zLE-zz)<0.0:
+                    rr = (zz - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
+                    sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
+                    self.secs.insert(j+1, sec_add)
+                    break
 
-            if type in 'wireframe':
-                ax.plot_wireframe(X, Y, Z)
-            else:
-                ax.plot_surface(X, Y, Z)
-
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_xlim3d(self.center[0]-self.half_s, self.center[0]+self.half_s)
-        ax.set_ylim3d(self.center[1]-self.half_s, self.center[1]+self.half_s)
-        ax.set_zlim3d(self.center[2]-self.half_s, self.center[2]+self.half_s)
-        plt.show()
-
-    def copyfrom(self, other):
+    def flip(self, axis='None', plane='None'):
         '''
-        Copy from another Surface class
+        For surfs, and center. (This should be the last action)
+            axis:  Turn 90 deg in axis, +X, -X, +Y, -Y, +Z, -Z
+            plane: get symmetry by plane, 'XY', 'YZ', 'ZX'
+            (can list multiple action in order, split with space)
         '''
-        if not isinstance(other, Surface):
-            raise Exception('Can not copy from a non-surface object')
+        for axis_ in axis.split():
+            if '+X' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][2], coef=-1.0)
+                    self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][1])
+                    self.surfs[isec][1] = copy.deepcopy(temp)
 
-        self.n_sec = other.n_sec
-        self.l2d   = other.l2d
-        self.name  = other.name
-        self.n_cst = other.n_cst
-        self.nn    = other.nn
-        self.ns    = other.ns
-        self.secs  = copy.deepcopy(other.secs)
-        self.surfs = copy.deepcopy(other.surfs)
+                temp = self.center[2]*1.0
+                self.center[2] = self.center[1]*1.0
+                self.center[1] = -temp
 
-        self.split = other.split
+            if '-X' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][1], coef=-1.0)
+                    self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][2])
+                    self.surfs[isec][2] = copy.deepcopy(temp)
 
-        self.half_s = other.half_s
-        self.center = copy.deepcopy(other.center)
+                temp = self.center[1]*1.0
+                self.center[1] = self.center[2]
+                self.center[2] = -temp
+
+            if '+Y' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][0], coef=-1.0)
+                    self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][2])
+                    self.surfs[isec][2] = copy.deepcopy(temp)
+
+                temp = self.center[0]
+                self.center[0] = self.center[2]
+                self.center[2] = -temp
+
+            if '-Y' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][2], coef=-1.0)
+                    self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][0])
+                    self.surfs[isec][0] = copy.deepcopy(temp)
+
+                temp = self.center[2]
+                self.center[2] = self.center[0]
+                self.center[0] = -temp
+
+            if '+Z' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][1], coef=-1.0)
+                    self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][0])
+                    self.surfs[isec][0] = copy.deepcopy(temp)
+
+                temp = self.center[1]
+                self.center[1] = self.center[0]
+                self.center[0] = -temp
+
+            if '-Z' in axis_:
+                for isec in range(len(self.surfs)):
+                    temp = list_mul(self.surfs[isec][0], coef=-1.0)
+                    self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][1])
+                    self.surfs[isec][1] = copy.deepcopy(temp)
+
+                temp = self.center[0]
+                self.center[0] = self.center[1]
+                self.center[1] = -temp
+
+        if 'XY' in plane:
+            for isec in range(len(self.surfs)):
+                self.surfs[isec][2] = list_mul(self.surfs[isec][2], coef=-1.0)
+            self.center[2] = - self.center[2]
+
+        if 'YZ' in plane:
+            for isec in range(len(self.surfs)):
+                self.surfs[isec][0] = list_mul(self.surfs[isec][0], coef=-1.0)
+            self.center[0] = - self.center[0]
+
+        if 'ZX' in plane:
+            for isec in range(len(self.surfs)):
+                self.surfs[isec][1] = list_mul(self.surfs[isec][1], coef=-1.0)
+            self.center[1] = - self.center[1]
+
+    def bend(self, start_angle=0.0, end_angle=0.0, leader=None):
+        '''
+        Bend the section by angle and leader curve. (Bent angle is of x-axis)
+            start_angle:    angle of 
+            end_angle:      
+
+        '''
 
     def output_tecplot(self, fname=None, one_piece=False):
         '''
@@ -330,83 +423,40 @@ class Surface:
                         if ii%3 == 0:
                             f.write(' \n ')
 
-    def flip(self, axis=None, plane=None):
+    def plot(self, fig_id=1, type='wireframe'):
         '''
-        For surfs, and center. (This should be the last action)
-        Turn 90 deg in axis '+X, -X, +Y, -Y, +Z, -Z'
-        or get symmetry by plane 'XY', 'YZ', 'ZX'
+        Plot surface
+            fig_id: ID of the figure
+            type:   wireframe, surface
         '''
-        for isec in range(len(self.surfs)):
+        fig = plt.figure(fig_id)
+        ax = Axes3D(fig)
 
-            if axis in '+X':
-                temp = list_mul(self.surfs[isec][2], coef=-1.0)
-                self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][1])
-                self.surfs[isec][1] = copy.deepcopy(temp)
-                temp = self.center[2]
-                self.center[2] = self.center[1]
-                self.center[1] = -temp
+        n_plot = self.n_sec-1
+        if self.l2d:
+            n_plot += 1
 
-            if axis in '-X':
-                temp = list_mul(self.surfs[isec][1], coef=-1.0)
-                self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][2])
-                self.surfs[isec][2] = copy.deepcopy(temp)
-                temp = self.center[1]
-                self.center[1] = self.center[2]
-                self.center[2] = -temp
+        if self.split:
+            n_plot = n_plot * 2
 
-            if axis in '+Y':
-                temp = list_mul(self.surfs[isec][0], coef=-1.0)
-                self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][2])
-                self.surfs[isec][2] = copy.deepcopy(temp)
-                temp = self.center[0]
-                self.center[0] = self.center[2]
-                self.center[2] = -temp
+        for i in range(n_plot):
+            X = np.array(self.surfs[i][0])
+            Y = np.array(self.surfs[i][1])
+            Z = np.array(self.surfs[i][2])
 
-            if axis in '-Y':
-                temp = list_mul(self.surfs[isec][2], coef=-1.0)
-                self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][0])
-                self.surfs[isec][0] = copy.deepcopy(temp)
-                temp = self.center[2]
-                self.center[2] = self.center[0]
-                self.center[0] = -temp
+            if type in 'wireframe':
+                ax.plot_wireframe(X, Y, Z)
+            else:
+                ax.plot_surface(X, Y, Z)
 
-            if axis in '+Z':
-                temp = list_mul(self.surfs[isec][1], coef=-1.0)
-                self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][0])
-                self.surfs[isec][0] = copy.deepcopy(temp)
-                temp = self.center[1]
-                self.center[1] = self.center[0]
-                self.center[0] = -temp
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim3d(self.center[0]-self.half_s, self.center[0]+self.half_s)
+        ax.set_ylim3d(self.center[1]-self.half_s, self.center[1]+self.half_s)
+        ax.set_zlim3d(self.center[2]-self.half_s, self.center[2]+self.half_s)
+        plt.show()
 
-            if axis in '-Z':
-                temp = list_mul(self.surfs[isec][0], coef=-1.0)
-                self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][1])
-                self.surfs[isec][1] = copy.deepcopy(temp)
-                temp = self.center[0]
-                self.center[0] = self.center[1]
-                self.center[1] = -temp
-
-            if plane in 'XY':
-                self.surfs[isec][2] = list_mul(self.surfs[isec][2], coef=-1.0)
-                self.center[2] = - self.center[2]
-
-            if plane in 'YZ':
-                self.surfs[isec][0] = list_mul(self.surfs[isec][0], coef=-1.0)
-                self.center[0] = - self.center[0]
-
-            if plane in 'ZX':
-                self.surfs[isec][1] = list_mul(self.surfs[isec][1], coef=-1.0)
-                self.center[1] = - self.center[1]
-
-    def bend(self, start_angle=0.0, end_angle=0.0, leader=None):
-        '''
-        Bend the section by angle and leader curve. (Bent angle is of x-axis)
-            start_angle:    angle of 
-            end_angle:      
-
-        '''
-
-                            
     @staticmethod
     def section(sec0, sec1, ns=101, kind='S', split=False):
         '''
@@ -504,9 +554,44 @@ class Surface:
 
         return surf_1, surf_2
 
+#TODO: ===========================================
+#TODO: Static functions
+#TODO: ===========================================
+def interplot_sec(sec0, sec1, ratio=0.5):
+    '''
+    Interplot a section by ratio. CST coefficients are gained by cst_foil_fit.
 
-#TODO: Static methods
-@staticmethod
+    Return: sec
+    '''
+    if not isinstance(sec0, Section) or not isinstance(sec1, Section):
+        raise Exception('Interplot section, sec0 and sec1 must be section object')
+    
+    sec = Section()
+    sec.copyfrom(sec0)
+
+    sec.xLE   = (1-ratio)*sec0.xLE   + ratio*sec1.xLE
+    sec.yLE   = (1-ratio)*sec0.yLE   + ratio*sec1.yLE
+    sec.zLE   = (1-ratio)*sec0.zLE   + ratio*sec1.zLE
+    sec.chord = (1-ratio)*sec0.chord + ratio*sec1.chord
+    sec.twist = (1-ratio)*sec0.twist + ratio*sec1.twist
+    sec.thick = (1-ratio)*sec0.thick + ratio*sec1.thick
+    sec.tail  = (1-ratio)*sec0.tail  + ratio*sec1.tail
+    sec.RLE   = (1-ratio)*sec0.RLE   + ratio*sec1.RLE
+
+    for i in range(len(sec0.xx)):
+        sec.xx[i] = (1-ratio)*sec0.xx[i] + ratio*sec1.xx[i]
+        sec.yu[i] = (1-ratio)*sec0.yu[i] + ratio*sec1.yu[i]
+        sec.yl[i] = (1-ratio)*sec0.yl[i] + ratio*sec1.yl[i]
+
+    for i in range(len(sec0.x)):
+        sec.x[i] = (1-ratio)*sec0.x[i] + ratio*sec1.x[i]
+        sec.y[i] = (1-ratio)*sec0.y[i] + ratio*sec1.y[i]
+        sec.z[i] = (1-ratio)*sec0.z[i] + ratio*sec1.z[i]
+
+    sec.cst_u, sec.cst_l = cst_foil_fit(sec.xx, sec.yu, sec.xx, sec.yl, n_order=len(sec0.cst_u))
+
+    return sec
+
 def list_mul(list_, coef=1.0):
     '''
     Multiply each element in the list by coef

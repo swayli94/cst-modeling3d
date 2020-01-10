@@ -75,6 +75,31 @@ class Section:
             self.y.append(yu_[i])
             self.z.append(self.zLE)
 
+    def copyfrom(self, other):
+        '''
+        Copy from anthor section object
+        '''
+        if not isinstance(other, Section):
+            raise Exception('Must copy from another section object')
+        
+        self.xLE = other.xLE
+        self.yLE = other.yLE
+        self.zLE = other.zLE
+        self.chord = other.chord
+        self.twist = other.twist
+        self.thick = other.thick
+        self.tail = other.tail
+        self.RLE = other.RLE
+
+        self.cst_u = copy.deepcopy(other.cst_u)
+        self.cst_l = copy.deepcopy(other.cst_l)
+        self.xx = copy.deepcopy(other.xx)
+        self.yu = copy.deepcopy(other.yu)
+        self.yl = copy.deepcopy(other.yl)
+
+        self.x = copy.deepcopy(other.x)
+        self.y = copy.deepcopy(other.y)
+        self.z = copy.deepcopy(other.z)
 
 def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     '''

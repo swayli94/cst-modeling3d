@@ -47,7 +47,6 @@ class Surface:
         self.half_s = 0.5
         self.center = [0.5, 0.5, 0.5]
 
-
         if not fname is None:
             self.read_setting(fname, tail=tail)
 
@@ -193,6 +192,37 @@ class Surface:
                     ns = self.ns
                 )
                 self.surfs.append([surf_x, surf_y, surf_z])
+
+    def geo_new(self, showfoil=False, split=False):
+        '''
+        Generate surface geometry
+            showfoil:   True ~ output name-foil.dat of airfoils
+            split:      True ~ generate [surfs] as upper and lower separately
+        '''
+        for i in range(self.n_sec):
+            self.secs[i].foil(nn=self.nn)
+            if showfoil:
+                output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
+
+        self.split = split
+        self.surfs = []
+
+        if self.l2d:
+            sec_ = Section()
+            sec_.copyfrom(self.secs[0])
+            sec_.zLE = 1.0
+            surf_1, surf_2 = Surface.section_new(self.secs[0], sec_, ns=self.ns, split=split)
+            self.surfs.append(surf_1)
+            if split:
+                self.surfs.append(surf_2)
+            return
+
+        for i in range(self.n_sec-1):
+            surf_1, surf_2 = Surface.section_new(self.secs[i], self.secs[i+1], ns=self.ns, split=split)
+            self.surfs.append(surf_1)
+            if split:
+                self.surfs.append(surf_2)
+
 
     def plot(self, fig_id=1, type='wireframe'):
         '''
@@ -367,10 +397,181 @@ class Surface:
                         if ii%3 == 0:
                             f.write(' \n ')
 
+    def flip(self, axis=None, plane=None):
+        '''
+        For surfs, and center. (This should be the last action)
+        Turn 90 deg in axis '+X, -X, +Y, -Y, +Z, -Z'
+        or get symmetry by plane 'XY', 'YZ', 'ZX'
+        '''
+        for isec in range(len(self.surfs)):
 
+            if axis in '+X':
+                temp = list_mul(self.surfs[isec][2], coef=-1.0)
+                self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][1])
+                self.surfs[isec][1] = copy.deepcopy(temp)
+                temp = self.center[2]
+                self.center[2] = self.center[1]
+                self.center[1] = -temp
+
+            if axis in '-X':
+                temp = list_mul(self.surfs[isec][1], coef=-1.0)
+                self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][2])
+                self.surfs[isec][2] = copy.deepcopy(temp)
+                temp = self.center[1]
+                self.center[1] = self.center[2]
+                self.center[2] = -temp
+
+            if axis in '+Y':
+                temp = list_mul(self.surfs[isec][0], coef=-1.0)
+                self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][2])
+                self.surfs[isec][2] = copy.deepcopy(temp)
+                temp = self.center[0]
+                self.center[0] = self.center[2]
+                self.center[2] = -temp
+
+            if axis in '-Y':
+                temp = list_mul(self.surfs[isec][2], coef=-1.0)
+                self.surfs[isec][2] = copy.deepcopy(self.surfs[isec][0])
+                self.surfs[isec][0] = copy.deepcopy(temp)
+                temp = self.center[2]
+                self.center[2] = self.center[0]
+                self.center[0] = -temp
+
+            if axis in '+Z':
+                temp = list_mul(self.surfs[isec][1], coef=-1.0)
+                self.surfs[isec][1] = copy.deepcopy(self.surfs[isec][0])
+                self.surfs[isec][0] = copy.deepcopy(temp)
+                temp = self.center[1]
+                self.center[1] = self.center[0]
+                self.center[0] = -temp
+
+            if axis in '-Z':
+                temp = list_mul(self.surfs[isec][0], coef=-1.0)
+                self.surfs[isec][0] = copy.deepcopy(self.surfs[isec][1])
+                self.surfs[isec][1] = copy.deepcopy(temp)
+                temp = self.center[0]
+                self.center[0] = self.center[1]
+                self.center[1] = -temp
+
+            if plane in 'XY':
+                self.surfs[isec][2] = list_mul(self.surfs[isec][2], coef=-1.0)
+                self.center[2] = - self.center[2]
+
+            if plane in 'YZ':
+                self.surfs[isec][0] = list_mul(self.surfs[isec][0], coef=-1.0)
+                self.center[0] = - self.center[0]
+
+            if plane in 'ZX':
+                self.surfs[isec][1] = list_mul(self.surfs[isec][1], coef=-1.0)
+                self.center[1] = - self.center[1]
+
+    def bend(self, start_angle=0.0, end_angle=0.0, leader=None):
+        '''
+        Bend the section by angle and leader curve. (Bent angle is of x-axis)
+            start_angle:    angle of 
+            end_angle:      
+
+        '''
 
                             
- 
+    @staticmethod
+    def section_new(sec0, sec1, ns=101, kind='S', split=False):
+        '''
+        Interplot surface section between curves
+            sec0, sec1:     Section object [n0]
+            ns:             number of spanwise points
+            kind (S/L):     interplot method, linear or smooth
+            split:          True ~ generate [surfs] as upper and lower separately
+
+        Return: surf_1, surf_2
+                [surf_x, surf_y, surf_z] [nn, ns] (list)
+                split ~ False: surf_2 is None
+        '''
+        if not isinstance(sec0, Section) or not isinstance(sec1, Section):
+            raise Exception('Interplot surface section, sec0 and sec1 must be section object')
+        
+        n0 = len(sec0.xx)
+        ratio = []
+        for i in range(ns):
+            if kind in 'Linear':
+                tt = 1.0*i/(ns-1.0)
+            else:
+                tt = 0.5*(1-np.cos(np.pi*i/(ns-1.0)))
+            ratio.append(tt)
+            
+        if not split:
+            nn = len(sec0.x)
+        else:
+            nn = n0
+            surf_x2 = np.zeros((nn,ns))
+            surf_y2 = np.zeros((nn,ns))
+            surf_z2 = np.zeros((nn,ns))
+
+        surf_x1 = np.zeros((nn,ns))
+        surf_y1 = np.zeros((nn,ns))
+        surf_z1 = np.zeros((nn,ns))
+        
+        for i in range(ns):
+            tt = 1.0*i/(ns-1.0)
+            rr = ratio[i]
+            chord = (1-tt)*sec0.chord + tt*sec1.chord
+            twist = (1-tt)*sec0.twist + tt*sec1.twist
+            xLE   = (1-tt)*sec0.xLE   + tt*sec1.xLE
+            yLE   = (1-tt)*sec0.yLE   + tt*sec1.yLE
+
+            xx = []
+            yu = []
+            yl = []
+            zz = []
+            for j in range(n0):
+                xx.append( (1-tt)*sec0.xx[j] + tt*sec1.xx[j] )
+                zz.append( (1-tt)*sec0.zLE   + tt*sec1.zLE   )
+                yu.append( (1-rr)*sec0.yu[j] + rr*sec1.yu[j] )
+                yl.append( (1-rr)*sec0.yl[j] + rr*sec1.yl[j] )
+
+            xx_, yu_, yl_ = transform(xx, yu, yl, scale=chord, rotate=twist, dx=xLE, dy=yLE, proj=True)
+            
+            if not split:
+                x0 = []
+                y0 = []
+                z0 = []
+                for j in range(n0):
+                    x0.append(xx_[-1-j])
+                    y0.append(yl_[-1-j])
+                    z0.append(zz [-1-j])
+
+                for j in range(1,n0):
+                    x0.append(xx_[j])
+                    y0.append(yu_[j])
+                    z0.append(zz [j])
+
+                for j in range(nn):
+                    surf_x1[j][i] = x0[j]
+                    surf_y1[j][i] = y0[j]
+                    surf_z1[j][i] = z0[j]
+
+                surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
+                surf_2 = None
+
+            else:
+                nn = len(sec0.xx)
+
+                for j in range(n0):
+                    surf_x1[j][i] = xx_[j]
+                    surf_y1[j][i] = yu_[j]
+                    surf_z1[j][i] = zz [j]
+
+                for j in range(n0):
+                    surf_x2[j][i] = xx_[j]
+                    surf_y2[j][i] = yl_[j]
+                    surf_z2[j][i] = zz [j]
+
+                surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
+                surf_2 = [surf_x2.tolist(), surf_y2.tolist(), surf_z2.tolist()]
+
+        return surf_1, surf_2
+
+
 
     @staticmethod
     def section(x1, y1, z1, x2, y2, z2, ns=101, kind='S'):
@@ -407,3 +608,15 @@ class Surface:
         return surf_x.tolist(), surf_y.tolist(), surf_z.tolist()
 
 
+#TODO: Static methods
+@staticmethod
+def list_mul(list_, coef=1.0):
+    '''
+    Multiply each element in the list by coef
+    '''
+    if not isinstance(list_, list):
+        print(str(list_))
+        raise Exception('Can not use list_mul for a non-list object')
+    
+    temp = np.array(list_) * coef
+    return temp.tolist()

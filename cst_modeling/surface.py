@@ -140,89 +140,22 @@ class Surface:
 
         self.split = split
         self.surfs = []
-        if not split:
-
-            if self.l2d:
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[0].x, self.secs[0].y, [0.0 for i in range(self.nn*2-1)],
-                    self.secs[0].x, self.secs[0].y, [1.0 for i in range(self.nn*2-1)],
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-                return
-
-            for i in range(self.n_sec-1):
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[i].x, self.secs[i].y, self.secs[i].z,
-                    self.secs[i+1].x, self.secs[i+1].y, self.secs[i+1].z,
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-
-        else:
-            # Split into upper and lower surface
-            nn = self.nn
-            if self.l2d:
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[0].x[:nn][::-1], self.secs[0].y[:nn][::-1], [0.0 for i in range(self.nn)],
-                    self.secs[0].x[:nn][::-1], self.secs[0].y[:nn][::-1], [1.0 for i in range(self.nn)],
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[0].x[nn-1:], self.secs[0].y[nn-1:], [0.0 for i in range(self.nn)],
-                    self.secs[0].x[nn-1:], self.secs[0].y[nn-1:], [1.0 for i in range(self.nn)],
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-                return
-
-            for i in range(self.n_sec-1):
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[i  ].x[:nn][::-1], self.secs[i  ].y[:nn][::-1], self.secs[i  ].z[:nn][::-1],
-                    self.secs[i+1].x[:nn][::-1], self.secs[i+1].y[:nn][::-1], self.secs[i+1].z[:nn][::-1],
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-
-                surf_x, surf_y, surf_z = Surface.section(
-                    self.secs[i  ].x[nn-1:], self.secs[i  ].y[nn-1:], self.secs[i  ].z[nn-1:],
-                    self.secs[i+1].x[nn-1:], self.secs[i+1].y[nn-1:], self.secs[i+1].z[nn-1:],
-                    ns = self.ns
-                )
-                self.surfs.append([surf_x, surf_y, surf_z])
-
-    def geo_new(self, showfoil=False, split=False):
-        '''
-        Generate surface geometry
-            showfoil:   True ~ output name-foil.dat of airfoils
-            split:      True ~ generate [surfs] as upper and lower separately
-        '''
-        for i in range(self.n_sec):
-            self.secs[i].foil(nn=self.nn)
-            if showfoil:
-                output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
-
-        self.split = split
-        self.surfs = []
 
         if self.l2d:
             sec_ = Section()
             sec_.copyfrom(self.secs[0])
             sec_.zLE = 1.0
-            surf_1, surf_2 = Surface.section_new(self.secs[0], sec_, ns=self.ns, split=split)
+            surf_1, surf_2 = Surface.section(self.secs[0], sec_, ns=self.ns, split=split)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
             return
 
         for i in range(self.n_sec-1):
-            surf_1, surf_2 = Surface.section_new(self.secs[i], self.secs[i+1], ns=self.ns, split=split)
+            surf_1, surf_2 = Surface.section(self.secs[i], self.secs[i+1], ns=self.ns, split=split)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
-
 
     def plot(self, fig_id=1, type='wireframe'):
         '''
@@ -475,7 +408,7 @@ class Surface:
 
                             
     @staticmethod
-    def section_new(sec0, sec1, ns=101, kind='S', split=False):
+    def section(sec0, sec1, ns=101, kind='S', split=False):
         '''
         Interplot surface section between curves
             sec0, sec1:     Section object [n0]
@@ -570,42 +503,6 @@ class Surface:
                 surf_2 = [surf_x2.tolist(), surf_y2.tolist(), surf_z2.tolist()]
 
         return surf_1, surf_2
-
-
-
-    @staticmethod
-    def section(x1, y1, z1, x2, y2, z2, ns=101, kind='S'):
-        '''
-        Interplot surface section between curves
-            x1, y1, z1:     curve lists [nn]
-            x2, y2, z2:     curve lists [nn]
-            ns:             number of spanwise points
-            kind (S/L):     interplot method, linear or smooth
-
-        Return: surf_x, surf_y, surf_z [nn, ns] (list)
-        '''
-        nn = len(x1)
-        if nn!=len(y1) or nn!=len(x2) or nn!=len(y2):
-            raise Exception('Interplot surface section, must have same length curves')
-
-        ratio = []
-        for i in range(ns):
-            if kind in 'Linear':
-                tt = 1.0*i/(ns-1.0)
-            else:
-                tt = 0.5*(1-np.cos(np.pi*i/(ns-1.0)))
-            ratio.append(tt)
-
-        surf_x = np.zeros((nn,ns))
-        surf_y = np.zeros((nn,ns))
-        surf_z = np.zeros((nn,ns))
-        for j in range(nn):
-            for i in range(ns):
-                surf_x[j][i] = (1-ratio[i])*x1[j] + ratio[i]*x2[j]
-                surf_y[j][i] = (1-ratio[i])*y1[j] + ratio[i]*y2[j]
-                surf_z[j][i] = (1-ratio[i])*z1[j] + ratio[i]*z2[j]
-
-        return surf_x.tolist(), surf_y.tolist(), surf_z.tolist()
 
 
 #TODO: Static methods

@@ -30,7 +30,7 @@ class Surface:
 
         Data:
             secs:   list of [Section] class
-            surfs:  list of [surf_x, surf_y, surf_z], they are [nn, ns] lists
+            surfs:  list of [surf_x, surf_y, surf_z], they are [ns, nn] lists
 
         Note:
             + x:    flow direction (m)
@@ -300,10 +300,13 @@ class Surface:
     def bend(self, start_angle=0.0, end_angle=0.0, leader=None):
         '''
         Bend the section by angle and leader curve. (Bent angle is of x-axis)
-            start_angle:    angle of 
-            end_angle:      
+            start_angle:    angle of start section
+            end_angle:      angle of end section
+            leader:         list of leading points
 
         '''
+        
+
 
     def output_tecplot(self, fname=None, one_piece=False):
         '''
@@ -327,9 +330,9 @@ class Surface:
                     Y = self.surfs[isec][1]
                     Z = self.surfs[isec][2]
 
-                    # X[nn][ns], ns => spanwise
-                    nn = len(X)
-                    ns = len(X[0])
+                    # X[ns][nn], ns => spanwise
+                    ns = len(X)
+                    nn = len(X[0])
 
                     if self.split and isec%2==0:
                         f.write('zone T="SecUpp  %d" i= %d j= %d \n'%(isec, nn, ns))
@@ -340,7 +343,7 @@ class Surface:
 
                     for i in range(ns):
                         for j in range(nn):
-                            f.write('  %.9f   %.9f   %.9f\n'%(X[j][i], Y[j][i], Z[j][i]))
+                            f.write('  %.9f   %.9f   %.9f\n'%(X[i][j], Y[i][j], Z[i][j]))
                             
             else:
                 
@@ -349,7 +352,7 @@ class Surface:
 
                 for ii in range(n_part):
 
-                    nn = len(self.surfs[0][0])
+                    nn = len(self.surfs[0][0][0])
                     if self.split and ii%2==0:
                         f.write('zone T="SecUpp"  i= %d j= %d \n'%(nn, npoint))
                     elif self.split and ii%2==1:
@@ -362,9 +365,9 @@ class Surface:
                         Y = self.surfs[isec][1]
                         Z = self.surfs[isec][2]
 
-                        # X[nn][ns], ns => spanwise
-                        nn = len(X)
-                        ns = len(X[0])
+                        # X[ns][nn], ns => spanwise
+                        ns = len(X)
+                        nn = len(X[0])
                         i_add = 0 if isec>=n_piece-2 else 1
 
                         if self.split and isec%2!=ii:
@@ -372,7 +375,7 @@ class Surface:
                         else:
                             for i in range(ns-i_add):
                                 for j in range(nn):
-                                    f.write('  %.9f   %.9f   %.9f\n'%(X[j][i], Y[j][i], Z[j][i]))
+                                    f.write('  %.9f   %.9f   %.9f\n'%(X[i][j], Y[i][j], Z[i][j]))
 
     def output_plot3d(self, fname=None):
         '''
@@ -385,10 +388,10 @@ class Surface:
         n_sec   = 1 if self.l2d else self.n_sec-1
         n_piece = 2*n_sec if self.split else n_sec
 
-        # X[nn][ns], ns => spanwise
+        # X[ns][nn], ns => spanwise
         X = self.surfs[0][0]
-        nn = len(X)
-        ns = len(X[0])
+        ns = len(X)
+        nn = len(X[0])
         
         with open(fname, 'w') as f:
             f.write('%d \n '%(n_piece))     # Number of surfaces
@@ -400,7 +403,7 @@ class Surface:
                 ii = 0
                 for i in range(ns):
                     for j in range(nn):
-                        f.write(' %.9f '%(X[j][i]))
+                        f.write(' %.9f '%(X[i][j]))
                         ii += 1
                         if ii%3 == 0:
                             f.write(' \n ')
@@ -409,7 +412,7 @@ class Surface:
                 ii = 0
                 for i in range(ns):
                     for j in range(nn):
-                        f.write(' %.9f '%(Y[j][i]))
+                        f.write(' %.9f '%(Y[i][j]))
                         ii += 1
                         if ii%3 == 0:
                             f.write(' \n ')
@@ -418,7 +421,7 @@ class Surface:
                 ii = 0
                 for i in range(ns):
                     for j in range(nn):
-                        f.write(' %.9f '%(Z[j][i]))
+                        f.write(' %.9f '%(Z[i][j]))
                         ii += 1
                         if ii%3 == 0:
                             f.write(' \n ')
@@ -467,7 +470,7 @@ class Surface:
             split:          True ~ generate [surfs] as upper and lower separately
 
         Return: surf_1, surf_2
-                [surf_x, surf_y, surf_z] [nn, ns] (list)
+                [surf_x, surf_y, surf_z] [ns, nn] (list)
                 split ~ False: surf_2 is None
         '''
         if not isinstance(sec0, Section) or not isinstance(sec1, Section):
@@ -486,13 +489,13 @@ class Surface:
             nn = len(sec0.x)
         else:
             nn = n0
-            surf_x2 = np.zeros((nn,ns))
-            surf_y2 = np.zeros((nn,ns))
-            surf_z2 = np.zeros((nn,ns))
+            surf_x2 = np.zeros((ns,nn))
+            surf_y2 = np.zeros((ns,nn))
+            surf_z2 = np.zeros((ns,nn))
 
-        surf_x1 = np.zeros((nn,ns))
-        surf_y1 = np.zeros((nn,ns))
-        surf_z1 = np.zeros((nn,ns))
+        surf_x1 = np.zeros((ns,nn))
+        surf_y1 = np.zeros((ns,nn))
+        surf_z1 = np.zeros((ns,nn))
         
         for i in range(ns):
             tt = 1.0*i/(ns-1.0)
@@ -529,9 +532,9 @@ class Surface:
                     z0.append(zz [j])
 
                 for j in range(nn):
-                    surf_x1[j][i] = x0[j]
-                    surf_y1[j][i] = y0[j]
-                    surf_z1[j][i] = z0[j]
+                    surf_x1[i][j] = x0[j]
+                    surf_y1[i][j] = y0[j]
+                    surf_z1[i][j] = z0[j]
 
                 surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
                 surf_2 = None
@@ -540,14 +543,14 @@ class Surface:
                 nn = len(sec0.xx)
 
                 for j in range(n0):
-                    surf_x1[j][i] = xx_[j]
-                    surf_y1[j][i] = yu_[j]
-                    surf_z1[j][i] = zz [j]
+                    surf_x1[i][j] = xx_[j]
+                    surf_y1[i][j] = yu_[j]
+                    surf_z1[i][j] = zz [j]
 
                 for j in range(n0):
-                    surf_x2[j][i] = xx_[j]
-                    surf_y2[j][i] = yl_[j]
-                    surf_z2[j][i] = zz [j]
+                    surf_x2[i][j] = xx_[j]
+                    surf_y2[i][j] = yl_[j]
+                    surf_z2[i][j] = zz [j]
 
                 surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
                 surf_2 = [surf_x2.tolist(), surf_y2.tolist(), surf_z2.tolist()]

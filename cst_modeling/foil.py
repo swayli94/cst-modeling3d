@@ -262,13 +262,14 @@ def check_foil(x, yu, yl):
 
     return curv_u, curv_l, thickness, camber
 
-def transform(x, yu, yl, scale=1.0, rotate=0.0, dx=0.0, dy=0.0, proj=False):
+def transform(x, yu, yl, scale=1.0, rotate=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
         x, yu, yl:  current curve or unit airfoil (list)
         scale:      scale factor, e.g., chord length
         rotate:     rotate angle (deg), +z direction for x-y plane, e.g., twist angle
-        dx, dy :    translation, e.g., leading edge location
+        x0, y0:     rotation center (scaler)
+        dx, dy:     translation, e.g., leading edge location
         proj:       True => for unit airfoil, the rotation keeps the projection length the same
 
     Return: x_new, yu_new, yl_new
@@ -279,13 +280,15 @@ def transform(x, yu, yl, scale=1.0, rotate=0.0, dx=0.0, dy=0.0, proj=False):
     yl_new = dy + np.array(copy.deepcopy(yl))
 
     #* Rotation center
-    x0 = x_new[0]
-    y0 = 0.5*(yu_new[0]+yl_new[0])
-    angle  = rotate/180.0*np.pi  # rad
-
+    if x0 is None:
+        x0 = x_new[0]
+    if y0 is None:
+        y0 = 0.5*(yu_new[0]+yl_new[0])
+    
     #* Scale (keeps the same projection length)
     rr = 1.0
-    if proj:
+    if proj and not rotate is None:
+        angle = rotate/180.0*np.pi  # rad
         rr = np.cos(angle)
 
     x_new  = x0 + (x_new -x0)*scale/rr
@@ -293,18 +296,20 @@ def transform(x, yu, yl, scale=1.0, rotate=0.0, dx=0.0, dy=0.0, proj=False):
     yl_new = y0 + (yl_new-y0)*scale/rr
 
     #* Rotation
-    for i in range(1,len(x)):
-        aa = x_new [i] - x0
-        bu = yu_new[i] - y0
-        bl = yl_new[i] - y0
-        lu = np.sqrt(aa*aa+bu*bu)
-        ll = np.sqrt(aa*aa+bl*bl)
-        tu = np.arctan(bu/aa)
-        tl = np.arctan(bl/aa)
+    if not rotate is None:
+        angle  = rotate/180.0*np.pi  # rad
+        for i in range(1,len(x)):
+            aa = x_new [i] - x0
+            bu = yu_new[i] - y0
+            bl = yl_new[i] - y0
+            lu = np.sqrt(aa*aa+bu*bu)
+            ll = np.sqrt(aa*aa+bl*bl)
+            tu = np.arctan(bu/aa)
+            tl = np.arctan(bl/aa)
 
-        x_new [i] = x0 + 0.5*(lu*np.cos(tu-angle) + ll*np.cos(tl-angle))
-        yu_new[i] = y0 + lu*np.sin(tu-angle)
-        yl_new[i] = y0 + ll*np.sin(tl-angle)
+            x_new [i] = x0 + 0.5*(lu*np.cos(tu-angle) + ll*np.cos(tl-angle))
+            yu_new[i] = y0 + lu*np.sin(tu-angle)
+            yl_new[i] = y0 + ll*np.sin(tl-angle)
 
     return x_new.tolist(), yu_new.tolist(), yl_new.tolist()
 
@@ -315,6 +320,9 @@ def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
         angle:  rotation angle (deg)
         origin: rotation origin
         axis:   rotation axis (use positive direction to define angle)
+
+    Return:
+        x_, y_, z_
     '''
     cc = np.cos( angle/180.0*np.pi )
     ss = np.sin( angle/180.0*np.pi )

@@ -6,6 +6,8 @@ import os
 import copy
 import numpy as np
 
+from scipy.interpolate import CubicSpline
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -191,25 +193,44 @@ class Surface:
             if split:
                 self.surfs.append(surf_2)
 
-    def add_sec(self, z_location=None):
+    def add_sec(self, location=None, axis='Z'):
         '''
         Add sections to the surface, the new sections are interploted from current ones
-            z_location: list of spanwise location (must within current sections)
+            location: list of spanwise location (must within current sections)
+            axis:     the direction for interplotation Y,Z
 
-        Note: must run before geo() and flip()
+        Note:   
+            Must run before geo() and flip()
+            This will automatically update the curves of all sections
+            X is the flow direction (chord direction)
         '''
         if self.l2d:
             print('Can not add sections in 2D case')
             return
 
-        # First update current sections
+        if location is None:
+            print('Must specify locations when adding sections')
+            return
+
+        #* First update current sections
         for i in range(self.n_sec):
             self.secs[i].foil(nn=self.nn)
 
-        for zz in z_location:
+        #* Find new section's location
+        for loc in location:
+            found = False
             for j in range(self.n_sec-1):
-                if (self.secs[j].zLE-zz)*(self.secs[j+1].zLE-zz)<0.0:
-                    rr = (zz - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
+                if axis in 'Y':
+                    if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
+                        rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
+                        found = True
+
+                if axis in 'Z':
+                    if (self.secs[j].zLE-loc)*(self.secs[j+1].zLE-loc)<0.0:
+                        rr = (loc - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
+                        found = True
+                
+                if found:
                     sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
                     self.secs.insert(j+1, sec_add)
                     break
@@ -297,16 +318,121 @@ class Surface:
                 self.surfs[isec][1] = list_mul(self.surfs[isec][1], coef=-1.0)
             self.center[1] = - self.center[1]
 
-    def bend(self, start_angle=0.0, end_angle=0.0, leader=None):
+    def bend(self, isec0=None, isec1=None, leader=None, kx=None, ky=None):
         '''
-        Bend the section by angle and leader curve. (Bent angle is of x-axis)
-            start_angle:    angle of start section
-            end_angle:      angle of end section
-            leader:         list of leading points
+        Bend surfaces by angle and leader curve.
+            isec0:      the index of start section
+            isec1:      the index of end section
+            leader:     list of leading points (and chord length) [[x,y,z(,c)], [x,y,z(,c)]]
+            axis:       Z-axis, spanwise direction
+            kv:         X-axis slope at both ends [kx0, kx1]
+            ky:         Y-axis slope at both ends [ky0, ky1]
 
+        Note:
+            The leader is a list of points to define a spline curve describing the leading edge curve.
+
+            Regenerate the surface between section isec0 and isec1
+            X is the flow direction (chord direction)
         '''
+        if self.l2d:
+            print('No bending for 2D cases')
+            return
+
+        def sortZ(loc):
+            return loc[2]
+
+        #* Control points of the leader curve
+        leader_points = []
+        spline_chord = False
+        if not leader is None:
+            if len(leader[0]) == 4:
+                # chord length specified
+                spline_chord = True
+                for i in range(isec0, isec1+1):
+                    leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE, self.secs[i].chord])
+            else:
+                for i in range(isec0, isec1+1):
+                    leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE])
+            for point in leader:
+                leader_points.append(point)
+        else:
+            for i in range(isec0, isec1+1):
+                leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE])
+
+        leader_points.sort(key=sortZ)
+
+        n_point = len(leader_points)
+
+        #* Generating leader curve
+        u = np.zeros(n_point)   # independent variable list
+        v = np.zeros(n_point)   # dependent variable list
+        w = np.zeros(n_point)   # dependent variable list
+        c = np.zeros(n_point)   # chord list
+        for i in range(n_point):
+            u[i] = leader_points[i][2]  # z
+            v[i] = leader_points[i][0]  # x
+            w[i] = leader_points[i][1]  # y
+            if spline_chord:
+                c[i] = leader_points[i][3]  # chord
         
+        if kx is None:
+            leader_x = CubicSpline(u, v)
+        else:
+            leader_x = CubicSpline(u, v, bc_type=((1,kx[0]), (1,kx[1])))
 
+        if ky is None:
+            leader_y = CubicSpline(u, w)
+        else:
+            leader_y = CubicSpline(u, w, bc_type=((1,ky[0]), (1,ky[1])))
+
+        if spline_chord:
+            leader_c = CubicSpline(u, c)
+
+        #* Bend surfaces
+        if self.split:
+            i0 = 2*isec0
+            i1 = 2*isec1
+        else:
+            i0 = isec0
+            i1 = isec1
+
+        for i_surf in range(i0, i1):
+
+            if self.split:
+                sec0 = self.secs[i_surf//2]
+                sec1 = self.secs[i_surf//2+1]
+            else:
+                sec0 = self.secs[i_surf]
+                sec1 = self.secs[i_surf+1]
+
+            ns = len(self.surfs[i_surf][0])
+            for j in range(ns):
+                xx  = self.surfs[i_surf][0][j]
+                yy  = self.surfs[i_surf][1][j]
+                zz  = self.surfs[i_surf][2][j]
+
+                zLE = zz[0]
+                xLE = leader_x(zLE)
+                yLE = leader_y(zLE)
+
+                tt  = 1.0*j/(ns-1.0)
+                x0  = (1-tt)*sec0.xLE + tt*sec1.xLE
+                y0  = (1-tt)*sec0.yLE + tt*sec1.yLE
+
+                # Translation
+                if spline_chord:
+                    c0  = (1-tt)*sec0.chord + tt*sec1.chord
+                    xx, yy, _ = transform(xx, yy, yy, dx=xLE-x0, dy=yLE-y0, x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
+                else:
+                    xx, yy, _ = transform(xx, yy, yy, dx=xLE-x0, dy=yLE-y0)
+
+                # Rotation of x-axis (dy/dz)
+                angle = -np.arctan(leader_y(zLE, 1))/np.pi*180.0
+                xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE])
+
+                self.surfs[i_surf][0][j] = copy.deepcopy(xx)
+                self.surfs[i_surf][1][j] = copy.deepcopy(yy)
+                self.surfs[i_surf][2][j] = copy.deepcopy(zz)
 
     def output_tecplot(self, fname=None, one_piece=False):
         '''

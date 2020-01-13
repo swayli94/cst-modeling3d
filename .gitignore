@@ -2,3 +2,4 @@ cst_modeling/__pycache__/
 .vscode/
 *.dat
 *.grd
+*.lay

@@ -1,8 +1,9 @@
 cst_modeling/__pycache__/
 .vscode/
-example/*.lay
-*.dat
 *.grd
 *.lay
+*.dat
 *.txt
 test*.py
+
+example/*.lay

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from cst_modeling.foil import Section
-from cst_modeling.foil import cst_foil_fit, transform, rotate, output_foil
+from cst_modeling.foil import cst_foil_fit, transform, rotate, output_foil, stretch_fixed_point
 
 class Surface:
     '''
@@ -320,7 +320,7 @@ class Surface:
                 self.surfs[isec][1] = list_mul(self.surfs[isec][1], coef=-1.0)
             self.center[1] = - self.center[1]
 
-    def bend(self, isec0=None, isec1=None, leader=None, kx=None, ky=None):
+    def bend(self, isec0=None, isec1=None, leader=None, kx=None, ky=None, rot_x=False):
         '''
         Bend surfaces by angle and leader curve.
             isec0:      the index of start section
@@ -329,6 +329,7 @@ class Surface:
             axis:       Z-axis, spanwise direction
             kv:         X-axis slope at both ends [kx0, kx1]
             ky:         Y-axis slope at both ends [ky0, ky1]
+            rot_x:      True ~ rotate sections in x-axis to make the section vertical to the leader
 
         Note:
             The leader is a list of points to define a spline curve describing the leading edge curve.
@@ -422,15 +423,23 @@ class Surface:
                 y0  = (1-tt)*sec0.yLE + tt*sec1.yLE
 
                 # Translation
+                c0  = (1-tt)*sec0.chord + tt*sec1.chord
                 if spline_chord:
-                    c0  = (1-tt)*sec0.chord + tt*sec1.chord
                     xx, _, yy, _ = transform(xx, yy, yy, dx=xLE-x0, dy=yLE-y0, x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
                 else:
-                    xx, _, yy, _ = transform(xx, yy, yy, dx=xLE-x0, dy=yLE-y0)
+                    # The location of trailing edge (xTE, yTE) is fixed
+                    if self.split:
+                        xTE = xx[-1]
+                        yTE = yy[-1]
+                    else:
+                        xTE = 0.5*(xx[0]+xx[-1])
+                        yTE = 0.5*(yy[0]+yy[-1])
+                    xx, yy = stretch_fixed_point(xx, yy, dx=xLE-x0, dy=yLE-y0, xm=x0, ym=y0, xf=xTE, yf=yTE )
 
                 # Rotation of x-axis (dy/dz)
-                angle = -np.arctan(leader_y(zLE, 1))/np.pi*180.0
-                xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE])
+                if rot_x:
+                    angle = -np.arctan(leader_y(zLE, 1))/np.pi*180.0
+                    xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE])
 
                 self.surfs[i_surf][0][j] = copy.deepcopy(xx)
                 self.surfs[i_surf][1][j] = copy.deepcopy(yy)

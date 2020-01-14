@@ -489,6 +489,37 @@ def interplot_from_curve(x0, x, y):
 
     return y0
 
+def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
+    '''
+    Linearly stretch a curve when certain point is fixed
+        x, y:   curve (list)
+        dx, dy: movement of the first element (scaler)
+        xm, ym: The point that moves dx, dy (e.g., the first element of the curve)
+        xf, yf: The fixed point (e.g., the last element of the curve)
+
+    Returns:
+        x_, y_
+    '''
+    x_ = np.array(copy.deepcopy(x)) 
+    y_ = np.array(copy.deepcopy(y))
+
+    if xf is None or yf is None:
+        xf = x[-1]
+        yf = y[-1]
+
+    if xm is None or ym is None:
+        xm = x[0]
+        ym = y[0]
+
+    lm = np.linalg.norm([xm-xf, ym-yf])
+
+    for i in range(len(x)):
+        rr  = np.linalg.norm([x[i]-xf, y[i]-yf]) / lm
+        x_[i] = x_[i] + rr*dx
+        y_[i] = y_[i] + rr*dy
+
+    return x_, y_
+
 def add_bump(x, y, xc, h, s, kind='G'):
     '''
     Add a bump on current curve [x, y]

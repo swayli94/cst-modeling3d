@@ -22,13 +22,41 @@ if __name__ == "__main__":
     # Second part is the CST parameters of upper/lower surface of each section
     fan.read_setting('Fan.txt', tail=0.86)
 
+    #!===================================================
+    if True:
+        #! This part modifies the layout parameters of fan
+        #! These coordinates are the real value of the fan geometry
+        #! The XLE, XTE, chord, etc. are values in the converted space
+        # Leading edge
+        x = [15.180, 18.083, 18.222, 18.006, 17.168, 15.544, 20.749]
+        y = [13.292, 17.263, 21.259, 23.995, 28.183, 32.693, 31.469]
+        z = [15.057, 14.767, 16.453, 17.622, 19.434, 21.420, 22.103]
+        XLE, YLE, ZLE = Surface.fromCylinder(x, y, z, flip=True)
+
+        # Trailing edge center
+        x = [20.961, 25.417, 28.262, 29.943, 32.030, 33.346, 33.894]
+        y = [-3.109, -0.074,  3.029,  5.437,  9.627, 14.081, 17.136]
+        z = [-3.425, -2.203, -1.209, -0.552,  0.436,  1.340,  7.899]
+        XTE, YTE, ZTE = Surface.fromCylinder(x, y, z, flip=True)
+
+        for i in range(fan.n_sec):
+            chord = np.linalg.norm([XLE[i]-XTE[i], YLE[i]-YTE[i], ZLE[i]-ZTE[i]])
+            twist = np.arctan((YTE[i]-YLE[i])/(XTE[i]-XLE[i]))*180/np.pi
+
+            fan.secs[i].xLE = XLE[i]
+            fan.secs[i].yLE = YLE[i]
+            fan.secs[i].zLE = ZLE[i]
+            fan.secs[i].chord = chord
+            fan.secs[i].twist = twist
+    #!===================================================
+
     # This constructs the surfaces between sections
     # split and showfoil are options
     fan.geo(split=True, showfoil=False)
 
     # This is for constructing surfaces with curved leading edge lines
     # e.g., strut of the SBW aircraft, wing-let
-    # fan.bend(isec0=7, isec1=8, leader=[[22.9, 1.2, 27.1, 0.75]], kx=[0.4, 1.0], ky=[0.0, 1.6])
+    fan.bend(isec0=0, isec1=2)
 
     # Convert back to cylinder
     fan.toCylinder(flip=True)

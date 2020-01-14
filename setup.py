@@ -1,13 +1,21 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-# What you enter as the name variable of the setup 
-# is what you will use to import your environment
-# (for eg. here, import samo_database).
+with open('Readme.md') as f:
+      long_description = f.read()
 
 setup(name='cst_modeling',
       version='0.1',
       description='This is the module of surface/airfoil modeling',
+      long_description=long_description,
+      keywords='CST modeling',
+      download_url='https://github.com/swayli94/cst-modeling/',
+      license='MIT',
       author='Runze LI',
       author_email='swayli94@gmail.com',
-      install_requires=['copy','numpy','scipy','matplotlib']
+      packages=find_packages(exclude=['example']),
+      install_requires=['numpy', 'scipy', 'matplotlib'],
+      classifiers=[
+            'Programming Language :: Python :: 3'
+      ]
 )
+

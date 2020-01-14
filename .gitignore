@@ -1,5 +1,7 @@
 cst_modeling/__pycache__/
 cst_modeling.egg-info/
+dist/
+build/
 .vscode/
 *.grd
 *.lay

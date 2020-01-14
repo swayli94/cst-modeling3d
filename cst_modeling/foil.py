@@ -305,8 +305,6 @@ def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, 
         yl_ = copy.deepcopy(yl_new)
         z_  = None
 
-        print('x0 y0 rot %.3f  %.3f  %.3f'%(x0, y0, rot))
-
         xu_new, yu_new, _ = rotate(xu_, yu_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
         xl_new, yl_new, _ = rotate(xl_, yl_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
 

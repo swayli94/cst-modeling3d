@@ -434,6 +434,40 @@ class Surface:
                 self.surfs[i_surf][1][j] = copy.deepcopy(yy)
                 self.surfs[i_surf][2][j] = copy.deepcopy(zz)
 
+    def toCylinder(self):
+        '''
+        Bend the surface (surfs) to cylinder (turbomachinery).
+        The original surface is constructed by 2D sections.
+        Assume the origin (0,0,0) is the same.
+            Cylinder: x, y, z ~~ r, theta, z
+            Original: Z, Y, Z
+
+            x = r*cos(theta)
+            y = r*sin(theta)
+            z = z
+
+            X = r*theta
+            Y = z
+            Z = r
+        '''
+        for i_surf in range(self.n_sec):
+            ns = len(self.surfs[i_surf][0])
+            for j in range(ns):
+                X = self.surfs[i_surf][0][j]
+                Y = self.surfs[i_surf][1][j]
+                Z = self.surfs[i_surf][2][j]
+                nn = len(X)
+                for i in range(nn):
+                    z = Y[i]
+                    r = Z[i]
+                    theta = X[i]/r
+                    x = r*np.cos(theta)
+                    y = r*np.sin(theta)
+
+                    self.surfs[i_surf][0][j][i] = x
+                    self.surfs[i_surf][1][j][i] = y
+                    self.surfs[i_surf][2][j][i] = z
+
     def output_tecplot(self, fname=None, one_piece=False):
         '''
         Output the surface to *.dat in Tecplot format
@@ -682,6 +716,45 @@ class Surface:
                 surf_2 = [surf_x2.tolist(), surf_y2.tolist(), surf_z2.tolist()]
 
         return surf_1, surf_2
+
+    @staticmethod
+    def fromCylinder(x, y, z):
+        '''
+        Bend the cylinder surface (surfs) to plane.
+        Input:
+            x, y ,z: point coordinate lists of curves on the cylinder
+
+        Return:
+            X, Y, Z: point coordinate lists of curves bent to planes
+
+        Assume the origin (0,0,0) is the same.
+            Cylinder: x, y, z ~~ r, theta, z
+            Plane:    Z, Y, Z
+
+            theta = arctan(y/x)
+            r = sqrt(x^2+y^2)
+            z = z
+
+            X = r*theta
+            Y = z
+            Z = r
+        '''
+        nn = len(x)
+        xx = np.array(x)
+        yy = np.array(y)
+        zz = np.array(z)
+        rr = np.sqrt(xx*xx+yy*yy)
+        tt = np.arctan2(yy, xx)
+
+        X = []
+        Y = []
+        Z = []
+        for i in range(nn):
+            X.append(rr[i]*tt[i])
+            Y.append(zz[i])
+            Z.append(rr[i])
+
+        return X, Y, Z
 
 #TODO: ===========================================
 #TODO: Static functions

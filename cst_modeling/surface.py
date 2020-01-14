@@ -183,14 +183,14 @@ class Surface:
             sec_ = Section()
             sec_.copyfrom(self.secs[0])
             sec_.zLE = 1.0
-            surf_1, surf_2 = Surface.section(self.secs[0], sec_, ns=self.ns, split=split, proj=self.project)
+            surf_1, surf_2 = Surface.section_surf(self.secs[0], sec_, ns=self.ns, split=split, proj=self.project)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
             return
 
         for i in range(self.n_sec-1):
-            surf_1, surf_2 = Surface.section(self.secs[i], self.secs[i+1], ns=self.ns, split=split, proj=self.project)
+            surf_1, surf_2 = Surface.section_surf(self.secs[i], self.secs[i+1], ns=self.ns, split=split, proj=self.project)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
@@ -445,6 +445,63 @@ class Surface:
                 self.surfs[i_surf][1][j] = copy.deepcopy(yy)
                 self.surfs[i_surf][2][j] = copy.deepcopy(zz)
 
+    def smooth(self, isec0=None, isec1=None):
+        '''
+        Smooth the spanwise curve between isec0 and isec1
+        '''
+        #* Control points of the spanwise curve
+        if self.split:
+            i0 = 2*isec0
+            i1 = 2*isec1
+            jump = 2
+        else:
+            i0 = isec0
+            i1 = isec1
+            jump = 1
+
+        for ip in range(len(self.surfs[0][0][0])):
+            xx = []
+            yy = []
+            zz = []
+            for i_surf in range(i0, i1, jump):
+                xx.append(self.surfs[i_surf][0][0][ip])
+                yy.append(self.surfs[i_surf][1][0][ip])
+                zz.append(self.surfs[i_surf][2][0][ip])
+            xx.append(self.surfs[i_surf][0][-1][ip])
+            yy.append(self.surfs[i_surf][1][-1][ip])
+            zz.append(self.surfs[i_surf][2][-1][ip])
+            curve_x = CubicSpline(zz, xx)
+            curve_y = CubicSpline(zz, yy)
+
+            for i_surf in range(i0, i1, jump):
+                nn = len(self.surfs[i_surf][0])
+                for j in range(nn):
+                    zi = self.surfs[i_surf][2][j][ip]
+                    self.surfs[i_surf][0][j][ip] = curve_x(zi)
+                    self.surfs[i_surf][1][j][ip] = curve_y(zi)
+        
+        if self.split:
+            for ip in range(len(self.surfs[0][0][0])):
+                xx = []
+                yy = []
+                zz = []
+                for i_surf in range(i0+1, i1+1, jump):
+                    xx.append(self.surfs[i_surf][0][0][ip])
+                    yy.append(self.surfs[i_surf][1][0][ip])
+                    zz.append(self.surfs[i_surf][2][0][ip])
+                xx.append(self.surfs[i_surf][0][-1][ip])
+                yy.append(self.surfs[i_surf][1][-1][ip])
+                zz.append(self.surfs[i_surf][2][-1][ip])
+                curve_x = CubicSpline(zz, xx)
+                curve_y = CubicSpline(zz, yy)
+
+                for i_surf in range(i0+1, i1+1, jump):
+                    nn = len(self.surfs[i_surf][0])
+                    for j in range(nn):
+                        zi = self.surfs[i_surf][2][j][ip]
+                        self.surfs[i_surf][0][j][ip] = curve_x(zi)
+                        self.surfs[i_surf][1][j][ip] = curve_y(zi)
+
     def toCylinder(self, flip=True):
         '''
         Bend the surface (surfs) to cylinder (turbomachinery).
@@ -634,7 +691,7 @@ class Surface:
         plt.show()
 
     @staticmethod
-    def section(sec0, sec1, ns=101, kind='S', split=False, proj=True):
+    def section_surf(sec0, sec1, ns=101, split=False, proj=True):
         '''
         Interplot surface section between curves
             sec0, sec1:     Section object [n0]
@@ -650,14 +707,6 @@ class Surface:
             raise Exception('Interplot surface section, sec0 and sec1 must be section object')
         
         n0 = len(sec0.xx)
-        ratio = []
-        for i in range(ns):
-            if kind in 'Linear':
-                tt = 1.0*i/(ns-1.0)
-            else:
-                tt = 0.5*(1-np.cos(np.pi*i/(ns-1.0)))
-            ratio.append(tt)
-            
         if not split:
             nn = len(sec0.x)
         else:
@@ -672,7 +721,6 @@ class Surface:
         
         for i in range(ns):
             tt = 1.0*i/(ns-1.0)
-            rr = ratio[i]
             chord = (1-tt)*sec0.chord + tt*sec1.chord
             twist = (1-tt)*sec0.twist + tt*sec1.twist
             xLE   = (1-tt)*sec0.xLE   + tt*sec1.xLE
@@ -685,8 +733,8 @@ class Surface:
             for j in range(n0):
                 xx.append( (1-tt)*sec0.xx[j] + tt*sec1.xx[j] )
                 zz.append( (1-tt)*sec0.zLE   + tt*sec1.zLE   )
-                yu.append( (1-rr)*sec0.yu[j] + rr*sec1.yu[j] )
-                yl.append( (1-rr)*sec0.yl[j] + rr*sec1.yl[j] )
+                yu.append( (1-tt)*sec0.yu[j] + tt*sec1.yu[j] )
+                yl.append( (1-tt)*sec0.yl[j] + tt*sec1.yl[j] )
 
             xu_, xl_, yu_, yl_ = transform(xx, yu, yl, 
                 scale=chord, rot=twist, dx=xLE, dy=yLE, proj=proj)

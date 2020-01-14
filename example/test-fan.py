@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # Each section's upper/lower surface are constructed by CST method (has n_cst parameters)
     # The chord-wise has nn points in the upper/lower surface
     # The span-wise has ns points in each surface between two adjcent sections
-    fan = Surface(n_sec=7, n_cst=7, name='Fan',nn=101, ns=51, project=False)
+    fan = Surface(n_sec=7, n_cst=7, name='Fan',nn=51, ns=51, project=False)
 
     # Read settings from file 'Fan.txt'
     # The settings of [fan] object is under its name 'Fan'
@@ -54,9 +54,8 @@ if __name__ == "__main__":
     # split and showfoil are options
     fan.geo(split=True, showfoil=False)
 
-    # This is for constructing surfaces with curved leading edge lines
-    # e.g., strut of the SBW aircraft, wing-let
-    fan.bend(isec0=0, isec1=2)
+    # Smooth
+    fan.smooth(isec0=0, isec1=5)
 
     # Convert back to cylinder
     fan.toCylinder(flip=True)
@@ -64,6 +63,8 @@ if __name__ == "__main__":
     # This outputs the surface to fname in tecplot format
     # one_piece is an option for combining all surfaces in different sections into one piece
     fan.output_tecplot(fname='Fan.dat', one_piece=False)
+
+    # fan.output_plot3d(fname='Fan.grd')
 
     print()
 

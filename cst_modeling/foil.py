@@ -59,19 +59,19 @@ class Section:
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick, tail=self.tail)
 
-        xx_, yu_, yl_ = transform(self.xx, self.yu, self.yl, 
-            scale=self.chord, rotate=self.twist, dx=self.xLE, dy=self.yLE, proj=True)
+        xu_, xl_, yu_, yl_ = transform(self.xx, self.yu, self.yl, 
+            scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=True)
 
         self.x = []
         self.y = []
         self.z = []
         for i in range(nn):
-            self.x.append(xx_[-1-i])
+            self.x.append(xl_[-1-i])
             self.y.append(yl_[-1-i])
             self.z.append(self.zLE)
 
         for i in range(1,nn):
-            self.x.append(xx_[i])
+            self.x.append(xu_[i])
             self.y.append(yu_[i])
             self.z.append(self.zLE)
 
@@ -262,61 +262,60 @@ def check_foil(x, yu, yl):
 
     return curv_u, curv_l, thickness, camber
 
-def transform(x, yu, yl, scale=1.0, rotate=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
+def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
         x, yu, yl:  current curve or unit airfoil (list)
         scale:      scale factor, e.g., chord length
-        rotate:     rotate angle (deg), +z direction for x-y plane, e.g., twist angle
+        rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
         x0, y0:     rotation center (scaler)
         dx, dy:     translation, e.g., leading edge location
         proj:       True => for unit airfoil, the rotation keeps the projection length the same
 
-    Return: x_new, yu_new, yl_new
+    Return: xu_new, xl_new, yu_new, yl_new
     '''
     #* Translation
-    x_new  = dx + np.array(copy.deepcopy(x)) 
+    xu_new = dx + np.array(copy.deepcopy(x)) 
+    xl_new = dx + np.array(copy.deepcopy(x)) 
     yu_new = dy + np.array(copy.deepcopy(yu))
     yl_new = dy + np.array(copy.deepcopy(yl))
 
     #* Rotation center
     if x0 is None:
-        x0 = x_new[0]
+        x0 = xu_new[0]
     if y0 is None:
         y0 = 0.5*(yu_new[0]+yl_new[0])
     
     #* Scale (keeps the same projection length)
     rr = 1.0
-    if proj and not rotate is None:
-        angle = rotate/180.0*np.pi  # rad
+    if proj and not rot is None:
+        angle = rot/180.0*np.pi  # rad
         rr = np.cos(angle)
 
-    x_new  = x0 + (x_new -x0)*scale/rr
-    yu_new = y0 + (yu_new-y0)*scale/rr
-    yl_new = y0 + (yl_new-y0)*scale/rr
+    xu_new = (x0 + (xu_new-x0)*scale/rr).tolist()
+    xl_new = (x0 + (xl_new-x0)*scale/rr).tolist()
+    yu_new = (y0 + (yu_new-y0)*scale/rr).tolist()
+    yl_new = (y0 + (yl_new-y0)*scale/rr).tolist()
 
     #* Rotation
-    if not rotate is None:
-        angle  = rotate/180.0*np.pi  # rad
-        for i in range(1,len(x)):
-            aa = x_new [i] - x0
-            bu = yu_new[i] - y0
-            bl = yl_new[i] - y0
-            lu = np.sqrt(aa*aa+bu*bu)
-            ll = np.sqrt(aa*aa+bl*bl)
-            tu = np.arctan(bu/aa)
-            tl = np.arctan(bl/aa)
+    if not rot is None:
+        xu_ = copy.deepcopy(xu_new)
+        xl_ = copy.deepcopy(xl_new)
+        yu_ = copy.deepcopy(yu_new)
+        yl_ = copy.deepcopy(yl_new)
+        z_  = None
 
-            x_new [i] = x0 + 0.5*(lu*np.cos(tu-angle) + ll*np.cos(tl-angle))
-            yu_new[i] = y0 + lu*np.sin(tu-angle)
-            yl_new[i] = y0 + ll*np.sin(tl-angle)
+        print('x0 y0 rot %.3f  %.3f  %.3f'%(x0, y0, rot))
 
-    return x_new.tolist(), yu_new.tolist(), yl_new.tolist()
+        xu_new, yu_new, _ = rotate(xu_, yu_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_, yl_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+
+    return xu_new, xl_new, yu_new, yl_new
 
 def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
     '''
     Rotate the 3D curve according to origin
-        x,y,z:  curve lists
+        x,y,z:  curve lists (can be None if not used)
         angle:  rotation angle (deg)
         origin: rotation origin
         axis:   rotation axis (use positive direction to define angle)
@@ -331,12 +330,12 @@ def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
     z_ = copy.deepcopy(z)
 
     if axis in 'X':
-        for i in range(len(x)):
+        for i in range(len(y)):
             y_[i] = origin[1] + (y[i]-origin[1])*cc - (z[i]-origin[2])*ss
             z_[i] = origin[2] + (y[i]-origin[1])*ss + (z[i]-origin[2])*cc
 
     if axis in 'Y':
-        for i in range(len(x)):
+        for i in range(len(z)):
             z_[i] = origin[2] + (z[i]-origin[2])*cc - (x[i]-origin[0])*ss
             x_[i] = origin[0] + (z[i]-origin[2])*ss + (x[i]-origin[0])*cc
 

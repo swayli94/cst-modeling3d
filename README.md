@@ -6,7 +6,7 @@ The curves, e.g., foil's upper and lower surface, are constructed via CST method
 
 The multi-section surface is interpolated from several control sections.
 
-## Functions
+## Modules
 
 ### foil
 
@@ -32,7 +32,7 @@ The multi-section surface is interpolated from several control sections.
 
     This is a class for multi-section surface.
 
-        [__init__]              number of control sections and cst parameters of each curve must be specified immediately
+        [__init__]              number of control sections, cst parameters of each curve must be specified immediately
         [read_setting]          layout and cst parameters can be read in from a control file
         [geo]                   the function of generating curves and surfaces
         [add_sec]               add sections to the surface, the new sections are interpolated from current ones

@@ -262,88 +262,6 @@ def check_foil(x, yu, yl):
 
     return curv_u, curv_l, thickness, camber
 
-def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
-    '''
-    Apply chord length, twist angle(deg) and leading edge position to unit airfoil
-        x, yu, yl:  current curve or unit airfoil (list)
-        scale:      scale factor, e.g., chord length
-        rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
-        x0, y0:     rotation center (scaler)
-        dx, dy:     translation, e.g., leading edge location
-        proj:       True => for unit airfoil, the rotation keeps the projection length the same
-
-    Return: xu_new, xl_new, yu_new, yl_new
-    '''
-    #* Translation
-    xu_new = dx + np.array(copy.deepcopy(x)) 
-    xl_new = dx + np.array(copy.deepcopy(x)) 
-    yu_new = dy + np.array(copy.deepcopy(yu))
-    yl_new = dy + np.array(copy.deepcopy(yl))
-
-    #* Rotation center
-    if x0 is None:
-        x0 = xu_new[0]
-    if y0 is None:
-        y0 = 0.5*(yu_new[0]+yl_new[0])
-    
-    #* Scale (keeps the same projection length)
-    rr = 1.0
-    if proj and not rot is None:
-        angle = rot/180.0*np.pi  # rad
-        rr = np.cos(angle)
-
-    xu_new = (x0 + (xu_new-x0)*scale/rr).tolist()
-    xl_new = (x0 + (xl_new-x0)*scale/rr).tolist()
-    yu_new = (y0 + (yu_new-y0)*scale/rr).tolist()
-    yl_new = (y0 + (yl_new-y0)*scale/rr).tolist()
-
-    #* Rotation
-    if not rot is None:
-        xu_ = copy.deepcopy(xu_new)
-        xl_ = copy.deepcopy(xl_new)
-        yu_ = copy.deepcopy(yu_new)
-        yl_ = copy.deepcopy(yl_new)
-        z_  = None
-
-        xu_new, yu_new, _ = rotate(xu_, yu_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
-        xl_new, yl_new, _ = rotate(xl_, yl_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
-
-    return xu_new, xl_new, yu_new, yl_new
-
-def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
-    '''
-    Rotate the 3D curve according to origin
-        x,y,z:  curve lists (can be None if not used)
-        angle:  rotation angle (deg)
-        origin: rotation origin
-        axis:   rotation axis (use positive direction to define angle)
-
-    Return:
-        x_, y_, z_
-    '''
-    cc = np.cos( angle/180.0*np.pi )
-    ss = np.sin( angle/180.0*np.pi )
-    x_ = copy.deepcopy(x)
-    y_ = copy.deepcopy(y)
-    z_ = copy.deepcopy(z)
-
-    if axis in 'X':
-        for i in range(len(y)):
-            y_[i] = origin[1] + (y[i]-origin[1])*cc - (z[i]-origin[2])*ss
-            z_[i] = origin[2] + (y[i]-origin[1])*ss + (z[i]-origin[2])*cc
-
-    if axis in 'Y':
-        for i in range(len(z)):
-            z_[i] = origin[2] + (z[i]-origin[2])*cc - (x[i]-origin[0])*ss
-            x_[i] = origin[0] + (z[i]-origin[2])*ss + (x[i]-origin[0])*cc
-
-    if axis in 'Z':
-        for i in range(len(x)):
-            x_[i] = origin[0] + (x[i]-origin[0])*cc - (y[i]-origin[1])*ss
-            y_[i] = origin[1] + (x[i]-origin[0])*ss + (y[i]-origin[1])*cc
-
-    return x_, y_, z_
-
 #TODO: ===========================================
 #TODO: Supportive functions
 #TODO: ===========================================
@@ -466,6 +384,88 @@ def curve_curvature(x, y):
     curv.append(curv[-1])
 
     return curv
+
+def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
+    '''
+    Apply chord length, twist angle(deg) and leading edge position to unit airfoil
+        x, yu, yl:  current curve or unit airfoil (list)
+        scale:      scale factor, e.g., chord length
+        rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
+        x0, y0:     rotation center (scaler)
+        dx, dy:     translation, e.g., leading edge location
+        proj:       True => for unit airfoil, the rotation keeps the projection length the same
+
+    Return: xu_new, xl_new, yu_new, yl_new
+    '''
+    #* Translation
+    xu_new = dx + np.array(copy.deepcopy(x)) 
+    xl_new = dx + np.array(copy.deepcopy(x)) 
+    yu_new = dy + np.array(copy.deepcopy(yu))
+    yl_new = dy + np.array(copy.deepcopy(yl))
+
+    #* Rotation center
+    if x0 is None:
+        x0 = xu_new[0]
+    if y0 is None:
+        y0 = 0.5*(yu_new[0]+yl_new[0])
+    
+    #* Scale (keeps the same projection length)
+    rr = 1.0
+    if proj and not rot is None:
+        angle = rot/180.0*np.pi  # rad
+        rr = np.cos(angle)
+
+    xu_new = (x0 + (xu_new-x0)*scale/rr).tolist()
+    xl_new = (x0 + (xl_new-x0)*scale/rr).tolist()
+    yu_new = (y0 + (yu_new-y0)*scale/rr).tolist()
+    yl_new = (y0 + (yl_new-y0)*scale/rr).tolist()
+
+    #* Rotation
+    if not rot is None:
+        xu_ = copy.deepcopy(xu_new)
+        xl_ = copy.deepcopy(xl_new)
+        yu_ = copy.deepcopy(yu_new)
+        yl_ = copy.deepcopy(yl_new)
+        z_  = None
+
+        xu_new, yu_new, _ = rotate(xu_, yu_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_, yl_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+
+    return xu_new, xl_new, yu_new, yl_new
+
+def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
+    '''
+    Rotate the 3D curve according to origin
+        x,y,z:  curve lists (can be None if not used)
+        angle:  rotation angle (deg)
+        origin: rotation origin
+        axis:   rotation axis (use positive direction to define angle)
+
+    Return:
+        x_, y_, z_
+    '''
+    cc = np.cos( angle/180.0*np.pi )
+    ss = np.sin( angle/180.0*np.pi )
+    x_ = copy.deepcopy(x)
+    y_ = copy.deepcopy(y)
+    z_ = copy.deepcopy(z)
+
+    if axis in 'X':
+        for i in range(len(y)):
+            y_[i] = origin[1] + (y[i]-origin[1])*cc - (z[i]-origin[2])*ss
+            z_[i] = origin[2] + (y[i]-origin[1])*ss + (z[i]-origin[2])*cc
+
+    if axis in 'Y':
+        for i in range(len(z)):
+            z_[i] = origin[2] + (z[i]-origin[2])*cc - (x[i]-origin[0])*ss
+            x_[i] = origin[0] + (z[i]-origin[2])*ss + (x[i]-origin[0])*cc
+
+    if axis in 'Z':
+        for i in range(len(x)):
+            x_[i] = origin[0] + (x[i]-origin[0])*cc - (y[i]-origin[1])*ss
+            y_[i] = origin[1] + (x[i]-origin[0])*ss + (y[i]-origin[1])*cc
+
+    return x_, y_, z_
 
 def interplot_from_curve(x0, x, y):
     '''

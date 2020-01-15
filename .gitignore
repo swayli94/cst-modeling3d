@@ -4,9 +4,8 @@ dist/
 build/
 .vscode/
 *.grd
-*.lay
-*.dat
-*.txt
-test*.py
 
 example/*.lay
+
+test*
+*.txt

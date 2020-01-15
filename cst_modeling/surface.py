@@ -197,7 +197,7 @@ class Surface:
 
     def add_sec(self, location=None, axis='Z'):
         '''
-        Add sections to the surface, the new sections are interploted from current ones
+        Add sections to the surface, the new sections are interpolated from current ones
             location: list of spanwise location (must within current sections)
             axis:     the direction for interplotation Y,Z
 

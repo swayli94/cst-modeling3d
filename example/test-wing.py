@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # This outputs the surface to fname in plot3d format
     wing.output_plot3d(fname='Wing.grd')
 
-    # This is fliping the surface, it can do turing 90deg or mirror
+    # This is flipping the surface, it can do turing 90deg or mirror
     wing.flip(axis='+X +Z')
 
     # Plot the surface by python

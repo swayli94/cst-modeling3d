@@ -105,6 +105,9 @@ class Surface:
                         self.secs[i].thick = float(line[5])
                         self.secs[i].tail  = tail/self.secs[i].chord
 
+                        if self.secs[i].thick <= 0.0:
+                            self.secs[i].thick = None
+
                         if self.l2d:
                             self.secs[i].zLE = 0.0
 

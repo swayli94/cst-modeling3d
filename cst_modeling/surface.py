@@ -105,9 +105,6 @@ class Surface:
                         self.secs[i].thick = float(line[5])
                         self.secs[i].tail  = tail/self.secs[i].chord
 
-                        if self.secs[i].thick <= 0.0:
-                            self.secs[i].thick = None
-
                         if self.l2d:
                             self.secs[i].zLE = 0.0
 
@@ -168,14 +165,15 @@ class Surface:
         self.half_s = other.half_s
         self.center = copy.deepcopy(other.center)
 
-    def geo(self, showfoil=False, split=False):
+    def geo(self, showfoil=False, split=False, flip_x=False):
         '''
         Generate surface geometry
             showfoil:   True ~ output name-foil.dat of airfoils
             split:      True ~ generate [surfs] as upper and lower separately
+            flip_x:     True ~ flip section.xx in reverse order
         '''
         for i in range(self.n_sec):
-            self.secs[i].foil(nn=self.nn)
+            self.secs[i].foil(nn=self.nn, flip_x=flip_x)
             if showfoil:
                 output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
 

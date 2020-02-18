@@ -45,12 +45,13 @@ class Section:
         self.thick = thick
         self.tail = tail
 
-    def foil(self, cst_u=None, cst_l=None, nn=1001):
+    def foil(self, cst_u=None, cst_l=None, nn=1001, flip_x=False):
         '''
         Generating the section (3D) by cst_foil. 
             nn:     total amount of points
             cst_u:  CST coefficients of upper surface (list, optional)
             cst_l:  CST coefficients of lower surface (list, optional)
+            flip_x: True ~ flip section.xx in reverse order
         '''
         if not cst_u is None and not cst_l is None:
             self.cst_u = copy.deepcopy(cst_u)
@@ -58,6 +59,9 @@ class Section:
 
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick, tail=self.tail)
+
+        if flip_x:
+            self.xx.reverse()
 
         xu_, xl_, yu_, yl_ = transform(self.xx, self.yu, self.yl, 
             scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=True)

@@ -33,17 +33,67 @@ class Section:
         self.y = []
         self.z = []
 
-    def set_params(self, thick=None, chord=1.0, twist=0.0, tail=0.0, xLE=0.0, yLE=0.0, zLE=0.0):
+        #* Refine airfoil
+        self.refine_fixed_t = True
+        self.refine_u = None
+        self.refine_l = None
+
+    def set_params(self, init=False, **kwargs):
         '''
-        Set parameters of the section
+        Set parameters of the section \n
+            init:   True, set to default values
+
+        kwargs: \n
+            xLE, yLE, zLE, chord, twist, tail, thick (None)
+
+            refine_fixed_t: True, fixed thickness when adding incremental curves
+            refine_u:       list, cst coefficients of upper incremental curve
+            refine_l:       list, cst coefficients of lower incremental curve
+
         '''
-        self.xLE = xLE
-        self.yLE = yLE
-        self.zLE = zLE
-        self.chord = chord
-        self.twist = twist
-        self.thick = thick
-        self.tail = tail
+        if init:
+            self.xLE = 0.0
+            self.yLE = 0.0
+            self.zLE = 0.0
+            self.chord = 1.0
+            self.thick = None
+            self.twist = 0.0
+            self.tail = 0.0
+
+            self.refine_fixed_t = True
+            self.refine_u = None
+            self.refine_l = None
+            return
+
+        if 'xLE' in kwargs.keys():
+            self.xLE = kwargs['xLE']
+
+        if 'yLE' in kwargs.keys():
+            self.yLE = kwargs['yLE']
+
+        if 'zLE' in kwargs.keys():
+            self.zLE = kwargs['zLE']
+
+        if 'chord' in kwargs.keys():
+            self.chord = kwargs['chord']
+
+        if 'thick' in kwargs.keys():
+            self.thick = kwargs['thick']
+
+        if 'twist' in kwargs.keys():
+            self.twist = kwargs['twist']
+
+        if 'tail' in kwargs.keys():
+            self.tail = kwargs['tail']
+
+        if 'refine_fixed_t' in kwargs.keys():
+            self.refine_fixed_t = kwargs['refine_fixed_t']
+
+        if 'refine_u' in kwargs.keys():
+            self.refine_u = copy.deepcopy(kwargs['refine_u'])
+
+        if 'refine_l' in kwargs.keys():
+            self.refine_l = copy.deepcopy(kwargs['refine_l'])
 
     def foil(self, cst_u=None, cst_l=None, nn=1001, flip_x=False):
         '''
@@ -60,6 +110,16 @@ class Section:
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick, tail=self.tail)
 
+        #* Refine the airfoil by incremental curves
+        if self.refine_fixed_t:
+            t0 = self.thick
+        else:
+            t0 = None
+
+        if (self.refine_u is not None) and (self.refine_l is not None):
+            self.yu, self.yl = foil_increment(self.xx, self.yu, self.yl, self.refine_u, self.refine_l, t=t0)
+
+        #* Transform to 3D
         if flip_x:
             self.xx.reverse()
 
@@ -104,6 +164,10 @@ class Section:
         self.x = copy.deepcopy(other.x)
         self.y = copy.deepcopy(other.y)
         self.z = copy.deepcopy(other.z)
+
+        self.refine_fixed_t = other.refine_fixed_t
+        self.refine_u = other.refine_u
+        self.refine_l = other.refine_l
 
 #TODO: ===========================================
 #TODO: Static functions
@@ -265,6 +329,52 @@ def check_foil(x, yu, yl):
             print('Unreasonable Airfoil: negative thickness')
 
     return curv_u, curv_l, thickness, camber
+
+def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
+    '''
+    Add cst curve by incremental curves
+        x, yu, yl:  baseline airfoil
+        coef_upp:   CST coefficients of incremental upper curve (list)
+        coef_low:   CST coefficients of incremental lower curve (list)
+        t:          relative maximum thickness (optional)
+
+    Return: lists of y_upp, y_low
+    '''
+    nn = len(x)
+    _, yu_i = cst_curve(nn, coef_upp, x=x)
+    _, yl_i = cst_curve(nn, coef_low, x=x)
+    yu_i = np.array(yu_i)
+    yl_i = np.array(yl_i)
+    x_   = np.array(x)
+    yu_  = np.array(yu)
+    yl_  = np.array(yl)
+
+    # Remove tail
+    tail = yu_[-1] - yl_[-1]
+    if tail > 0.0:
+        yu_ = yu_ - 0.5*tail*x_
+        yl_ = yl_ + 0.5*tail*x_
+
+    # Add incremental curves
+    yu_  = yu_ + yu_i
+    yl_  = yl_ + yl_i
+
+    thick = yu_-yl_
+    it = np.argmax(thick)
+    t0 = thick[it]
+
+    # Apply thickness constraint
+    if t is not None:
+        r  = (t-tail*x[it])/t0
+        yu_ = yu_ * r
+        yl_ = yl_ * r
+
+    # Add tail
+    if tail > 0.0:
+        yu_ = yu_ + 0.5*tail*x_
+        yl_ = yl_ - 0.5*tail*x_
+
+    return yu_, yl_
 
 #TODO: ===========================================
 #TODO: Supportive functions

@@ -74,7 +74,7 @@ class Surface:
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'Layout:': 1, 'CST_coefs:': 2}
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
 
         found_surf = False
         found_key = 0
@@ -118,6 +118,39 @@ class Surface:
                         line = f.readline().split()
                         self.secs[i].cst_l = [float(line[i]) for i in range(self.n_cst)]
                     
+                    found_key = 0
+
+                elif found_key == 3:
+                    line = f.readline()
+                    line = f.readline().split()
+
+                    n_cst_refine = int(line[0])
+                    i_cst_start = int(line[1])
+
+                    for i in range(self.n_sec):
+                        line = f.readline()
+                        line1 = f.readline().split()
+                        line2 = f.readline().split()
+
+                        cst_ur = [0.0 for _ in range(n_cst_refine)]
+                        cst_lr = [0.0 for _ in range(n_cst_refine)]
+
+                        i1 = 0
+                        i2 = 0
+                        for j in range(n_cst_refine):
+                            if j>=i_cst_start-1 and i1<len(line1):
+                                cst_ur[j] = float(line1[i1])
+                                i1 += 1
+                            if j>=i_cst_start-1 and i2<len(line2):
+                                cst_lr[j] = float(line2[i2])
+                                i2 += 1
+
+                        self.secs[i].set_params(
+                            refine_fixed_t=True,
+                            refine_u=cst_ur,
+                            refine_l=cst_lr,
+                        )
+
                     found_key = 0
 
                 else:

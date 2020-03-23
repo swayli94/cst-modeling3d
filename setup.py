@@ -1,10 +1,11 @@
 from setuptools import setup, find_packages
+from cst_modeling import __version__
 
 with open('Readme.md') as f:
       long_description = f.read()
 
 setup(name='cst_modeling3d',
-      version='0.1',
+      version=__version__,
       description='This is the module of surface/airfoil modeling',
       long_description=long_description,
       keywords='CST modeling',

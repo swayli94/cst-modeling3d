@@ -185,7 +185,7 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
 
         CST:    class shape transfermation method (Kulfan, 2008)
 
-    Return lists of x, y_upp, y_low
+    Return lists of x, y_upp, y_low, t0, R0
     '''
     x_, yu_ = cst_curve(nn, coef_upp, x=x)
     x_, yl_ = cst_curve(nn, coef_low, x=x)
@@ -307,13 +307,12 @@ def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=None):
 
     return yu_new, yl_new
 
-def check_foil(x, yu, yl):
+def foil_tcc(x, yu, yl, info=True):
     '''
-    Check if the airfoil is reasonable.
-    Calculate curvature, thickness, camber distribution.
+    Calculate thickness, curvature, camber distribution. \n
         x, yu, yl: current airfoil (list)
 
-    Return: curv_u, curv_l, thickness, camber
+    Return: thickness, curv_u, curv_l, camber
     '''
     curv_u = curve_curvature(x, yu)
     curv_l = curve_curvature(x, yl)
@@ -325,10 +324,72 @@ def check_foil(x, yu, yl):
         thickness.append(tt)
         camber.append(0.5*(yu[i]+yl[i]))
 
-        if tt < 0:
+        if info and tt<0:
             print('Unreasonable Airfoil: negative thickness')
 
-    return curv_u, curv_l, thickness, camber
+    return thickness, curv_u, curv_l, camber
+
+def check_valid(x, yu, yl, RLE=0.0):
+    '''
+    Check if the airfoil is reasonable by rules: \n
+        1:  negative thickness
+        2:  maximum thickness point location
+        3:  extreme points of thickness
+        4:  maximum curvature
+        5:  RLE if provided
+
+    Return:
+        rule_invalid: list, 0 means valid
+    '''
+    thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=False)
+    thickness = np.array(thickness)
+    curv_u = np.array(curv_u)
+    curv_l = np.array(curv_l)
+    camber = np.array(camber)
+    nn = len(x)
+
+    n_rule = 5
+    rule_invalid = [0 for _ in range(n_rule)]
+
+    #* Rule 1: negative thickness
+    if np.min(thickness) < 0.0:
+        rule_invalid[0] = 1
+
+    #* Rule 2: maximum thickness point location
+    i_max = np.argmax(thickness)
+    t0    = thickness[i_max]
+    x_max = x[i_max]
+    if x_max<0.15 or x_max>0.75:
+        rule_invalid[1] = 1
+
+    #* Rule 3: extreme points of thickness
+    n_extreme = 0
+    for i in range(nn-2):
+        a1 = thickness[i+2]-thickness[i+1]
+        a2 = thickness[i]-thickness[i+1]
+        if a1*a2>=0.0:
+            n_extreme += 1
+    if n_extreme>2:
+        rule_invalid[2] = 1
+
+    #* Rule 4: maximum curvature
+    cur_max_u = 0.0
+    cur_max_l = 0.0
+    for i in range(nn):
+        if x[i]<0.1:
+            continue
+        cur_max_u = max(cur_max_u, abs(curv_u[i]))
+        cur_max_l = max(cur_max_l, abs(curv_l[i]))
+
+    if cur_max_u>5 or cur_max_l>5:
+        rule_invalid[3] = 1
+    #   print('maximum curvature %.2f  %.2f'%(cur_max_u, cur_max_l))
+
+    #* Rule 5: RLE
+    if RLE>0.0 and RLE<0.005:
+        rule_invalid[4] = 1
+
+    return rule_invalid
 
 def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
     '''
@@ -743,7 +804,7 @@ def output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False):
             f.write(line)
 
     if info:
-        curv_u, curv_l, thickness, camber = check_foil(x, yu, yl)
+        thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=info)
 
     with open(fname, 'a') as f:
         f.write('zone T="Upp-%d" i= %d \n'%(ID, len(x)))

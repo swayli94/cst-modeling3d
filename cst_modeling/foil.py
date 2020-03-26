@@ -336,7 +336,9 @@ def check_valid(x, yu, yl, RLE=0.0):
         2:  maximum thickness point location
         3:  extreme points of thickness
         4:  maximum curvature
-        5:  RLE if provided
+        5:  maximum camber within x [0.2,0.7]
+        6:  RLE if provided
+        7:  convex LE
 
     Return:
         rule_invalid: list, 0 means valid
@@ -348,7 +350,7 @@ def check_valid(x, yu, yl, RLE=0.0):
     camber = np.array(camber)
     nn = len(x)
 
-    n_rule = 5
+    n_rule = 10
     rule_invalid = [0 for _ in range(n_rule)]
 
     #* Rule 1: negative thickness
@@ -383,11 +385,36 @@ def check_valid(x, yu, yl, RLE=0.0):
 
     if cur_max_u>5 or cur_max_l>5:
         rule_invalid[3] = 1
-    #   print('maximum curvature %.2f  %.2f'%(cur_max_u, cur_max_l))
 
-    #* Rule 5: RLE
-    if RLE>0.0 and RLE<0.005:
+    #* Rule 5: Maximum camber within x [0.2,0.7]
+    cam_max = 0.0
+    for i in range(nn):
+        if x[i]<0.2 or x[i]>0.7:
+            continue
+        cam_max = max(cam_max, abs(camber[i]))
+
+    if cam_max>0.025:
         rule_invalid[4] = 1
+    
+    #* Rule 6: RLE
+    if RLE>0.0 and RLE<0.005:
+        rule_invalid[5] = 1
+
+    if RLE>0.0 and RLE/t0<0.1:
+        rule_invalid[5] = 1
+
+    #* Rule 7: convex LE
+    ii = int(0.1*nn)+1
+    a0 = thickness[i_max]/x[i_max]
+    au = yu[ii]/x[ii]/a0
+    al = -yl[ii]/x[ii]/a0
+
+    if au<1.0 or al<1.0:
+        rule_invalid[6] = 1
+    
+    #if sum(rule_invalid)<=0:
+    #    np.set_printoptions(formatter={'float': '{: 0.6f}'.format}, linewidth=100)
+    #    print(np.array([x_max, n_extreme, cur_max_u, cur_max_l, cam_max, RLE/t0, au, al]))
 
     return rule_invalid
 

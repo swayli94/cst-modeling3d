@@ -15,10 +15,10 @@ if __name__ == "__main__":
     print('This is a example for constructing a wing')
     # Define a [Surface] object, which is called wing
     # It has n_sec control sections, and its name is 'Wing'
-    # Each section's upper/lower surface are constructed by CST method (has n_cst parameters)
+    # Each section's upper/lower surface are constructed by CST method
     # The chord-wise has nn points in the upper/lower surface
     # The span-wise has ns points in each surface between two adjcent sections
-    wing = Surface(n_sec=9, n_cst=7, name='Wing',nn=101, ns=51)
+    wing = Surface(n_sec=9, name='Wing',nn=101, ns=51)
 
     # Read settings from file 'Wing.txt'
     # The settings of [wing] object is under its name 'Wing'

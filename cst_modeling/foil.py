@@ -229,7 +229,7 @@ def cst_foil_fit(xu, yu, xl, yl, n_order=7):
     coef_low = fit_curve(xl, yl, n_order=n_order)
     return coef_upp, coef_low
 
-def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=None):
+def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=0):
     '''
     Add bumps on the airfoil
         x, yu, yl: current airfoil (list)
@@ -298,7 +298,7 @@ def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=None):
             ru = (t0-tl)/tu
             yl_new = (ru * np.array(yu_new)).tolist()
 
-    if not n_order is None:
+    if n_order > 0:
         # CST reverse
         tail = yu[-1] - yl[-1]
 

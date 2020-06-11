@@ -14,7 +14,7 @@ if __name__ == "__main__":
     # Each section's upper/lower surface are constructed by CST method (has n_cst parameters)
     # The chord-wise has nn points in the upper/lower surface
     # The span-wise has ns points in each surface between two adjcent sections
-    fan = Surface(n_sec=7, n_cst=7, name='Fan',nn=51, ns=51, project=False)
+    fan = Surface(n_sec=7, name='Fan',nn=51, ns=51, project=False)
 
     # Read settings from file 'Fan.txt'
     # The settings of [fan] object is under its name 'Fan'

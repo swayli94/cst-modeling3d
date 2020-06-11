@@ -207,7 +207,22 @@ class Surface:
         self.half_s = other.half_s
         self.center = copy.deepcopy(other.center)
 
-    def geo(self, showfoil=False, split=False, flip_x=False):
+    def geo_secs(self, showfoil=False, flip_x=False):
+        '''
+        Generate surface sections
+
+        Inputs:
+        ---
+        showfoil:   True ~ output name-foil.dat of airfoils \n
+        flip_x:     True ~ flip section.xx in reverse order \n
+        '''
+
+        for i in range(self.n_sec):
+            self.secs[i].foil(nn=self.nn, flip_x=flip_x)
+            if showfoil:
+                output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
+
+    def geo(self, showfoil=False, split=False, flip_x=False, update_sec=True):
         '''
         Generate surface geometry
 
@@ -216,11 +231,14 @@ class Surface:
         showfoil:   True ~ output name-foil.dat of airfoils \n
         split:      True ~ generate [surfs] as upper and lower separately \n
         flip_x:     True ~ flip section.xx in reverse order \n
+        update_sec: True ~ update sections \n
         '''
-        for i in range(self.n_sec):
-            self.secs[i].foil(nn=self.nn, flip_x=flip_x)
-            if showfoil:
-                output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
+        if update_sec:
+            for i in range(self.n_sec):
+                self.secs[i].foil(nn=self.nn, flip_x=flip_x)
+                if showfoil:
+                    output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl,
+                                ID=i, info=True, fname=self.name+'-foil.dat')
 
         self.split = split
         self.surfs = []
@@ -244,13 +262,17 @@ class Surface:
     def add_sec(self, location: list, axis='Z'):
         '''
         Add sections to the surface, the new sections are interpolated from current ones
-            location: list of spanwise location (must within current sections)
-            axis:     the direction for interplotation Y,Z
+
+        Inputs:
+        ---
+        location: list of spanwise location (must within current sections) \n
+        axis:     the direction for interplotation Y,Z \n
 
         Note:   
-            Must run before geo() and flip()
-            This will automatically update the curves of all sections
-            X is the flow direction (chord direction)
+        ---
+        Must run before geo(), geo_secs() and flip() \n
+        This will automatically update the curves of all sections \n
+        X is the flow direction (chord direction) \n
         '''
         if self.l2d:
             print('Can not add sections in 2D case')
@@ -286,9 +308,12 @@ class Surface:
     def flip(self, axis='None', plane='None'):
         '''
         For surfs, and center. (This should be the last action)
-            axis:  Turn 90 deg in axis, +X, -X, +Y, -Y, +Z, -Z
-            plane: get symmetry by plane, 'XY', 'YZ', 'ZX'
-            (can list multiple action in order, split with space)
+
+        Inputs:
+        ---
+        axis:  Turn 90 deg in axis, +X, -X, +Y, -Y, +Z, -Z \n
+        plane: get symmetry by plane, 'XY', 'YZ', 'ZX' \n
+        (can list multiple action in order, split with space)
         '''
         for axis_ in axis.split():
             if '+X' in axis_:
@@ -369,19 +394,23 @@ class Surface:
     def bend(self, isec0: int, isec1: int, leader=None, kx=None, ky=None, rot_x=False):
         '''
         Bend surfaces by angle and leader curve.
-            isec0:      the index of start section
-            isec1:      the index of end section
-            leader:     list of leading points (and chord length) [[x,y,z(,c)], [x,y,z(,c)]]
-            axis:       Z-axis, spanwise direction
-            kv:         X-axis slope at both ends [kx0, kx1]
-            ky:         Y-axis slope at both ends [ky0, ky1]
-            rot_x:      True ~ rotate sections in x-axis to make the section vertical to the leader
+
+        Inputs:
+        ---
+        isec0:      the index of start section \n
+        isec1:      the index of end section \n
+        leader:     list of leading points (and chord length) [[x,y,z(,c)], [x,y,z(,c)]] \n
+        axis:       Z-axis, spanwise direction \n
+        kv:         X-axis slope at both ends [kx0, kx1] \n
+        ky:         Y-axis slope at both ends [ky0, ky1] \n
+        rot_x:      True ~ rotate sections in x-axis to make the section vertical to the leader \n
 
         Note:
-            The leader is a list of points to define a spline curve describing the leading edge curve.
+        ---
+        The leader is a list of points to define a spline curve describing the leading edge curve. \n
 
-            Regenerate the surface between section isec0 and isec1
-            X is the flow direction (chord direction)
+        Regenerate the surface between section isec0 and isec1 \n
+        X is the flow direction (chord direction) \n
         '''
         if self.l2d:
             print('No bending for 2D cases')
@@ -471,7 +500,7 @@ class Surface:
                 # Translation
                 c0  = (1-tt)*sec0.chord + tt*sec1.chord
                 if spline_chord:
-                    xx, _, yy, _ = transform(xx, yy, yy, dx=xLE-x0, dy=yLE-y0, x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
+                    xx, _, yy, _ = transform(xx, xx, yy, yy, dx=xLE-x0, dy=yLE-y0, x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
                 else:
                     # The location of trailing edge (xTE, yTE) is fixed
                     if self.split:
@@ -587,8 +616,11 @@ class Surface:
     def output_tecplot(self, fname=None, one_piece=False):
         '''
         Output the surface to *.dat in Tecplot format
-            fname:      the name of the file
-            one_piece:  True ~ combine the spanwise sections into one piece
+
+        Inputs:
+        ---
+        fname:      the name of the file \n
+        one_piece:  True ~ combine the spanwise sections into one piece \n
         '''
         if fname is None:
             fname = self.name + '.dat'
@@ -656,7 +688,10 @@ class Surface:
     def output_plot3d(self, fname=None):
         '''
         Output the surface to *.grd in plot3d format
-            fname: the name of the file
+
+        Inputs:
+        ---
+        fname: the name of the file
         '''
         if fname is None:
             fname = self.name + '.grd'
@@ -705,8 +740,11 @@ class Surface:
     def plot(self, fig_id=1, type='wireframe'):
         '''
         Plot surface
-            fig_id: ID of the figure
-            type:   wireframe, surface
+
+        Inputs:
+        ---
+        fig_id: ID of the figure \n
+        type:   wireframe, surface \n
         '''
         fig = plt.figure(fig_id)
         ax = Axes3D(fig)
@@ -740,14 +778,19 @@ class Surface:
     def section_surf(sec0, sec1, ns=101, split=False, proj=True):
         '''
         Interplot surface section between curves
-            sec0, sec1:     Section object [n0]
-            ns:             number of spanwise points
-            kind (S/L):     interplot method, linear or smooth
-            split:          True ~ generate [surfs] as upper and lower separately
 
-        Return: surf_1, surf_2
-                [surf_x, surf_y, surf_z] [ns, nn] (list)
-                split ~ False: surf_2 is None
+        Inputs:
+        ---
+        sec0, sec1:     Section object [n0] \n
+        ns:             number of spanwise points \n
+        kind (S/L):     interplot method, linear or smooth \n
+        split:          True ~ generate [surfs] as upper and lower separately \n
+
+        Return: 
+        ---
+        surf_1, surf_2 \n
+        [surf_x, surf_y, surf_z] [ns, nn] (list) \n
+        split ~ False: surf_2 is None \n
         '''
         if not isinstance(sec0, Section) or not isinstance(sec1, Section):
             raise Exception('Interplot surface section, sec0 and sec1 must be section object')
@@ -766,59 +809,29 @@ class Surface:
         surf_z1 = np.zeros((ns,nn))
         
         for i in range(ns):
+
             tt = 1.0*i/(ns-1.0)
-            chord = (1-tt)*sec0.chord + tt*sec1.chord
-            twist = (1-tt)*sec0.twist + tt*sec1.twist
-            xLE   = (1-tt)*sec0.xLE   + tt*sec1.xLE
-            yLE   = (1-tt)*sec0.yLE   + tt*sec1.yLE
 
-            xx = []
-            yu = []
-            yl = []
-            zz = []
-            for j in range(n0):
-                xx.append( (1-tt)*sec0.xx[j] + tt*sec1.xx[j] )
-                zz.append( (1-tt)*sec0.zLE   + tt*sec1.zLE   )
-                yu.append( (1-tt)*sec0.yu[j] + tt*sec1.yu[j] )
-                yl.append( (1-tt)*sec0.yl[j] + tt*sec1.yl[j] )
-
-            xu_, xl_, yu_, yl_ = transform(xx, yu, yl, 
-                scale=chord, rot=twist, dx=xLE, dy=yLE, proj=proj)
-            
             if not split:
-                x0 = []
-                y0 = []
-                z0 = []
-                for j in range(n0):
-                    x0.append(xl_[-1-j])
-                    y0.append(yl_[-1-j])
-                    z0.append(zz [-1-j])
-
-                for j in range(1,n0):
-                    x0.append(xu_[j])
-                    y0.append(yu_[j])
-                    z0.append(zz [j])
 
                 for j in range(nn):
-                    surf_x1[i][j] = x0[j]
-                    surf_y1[i][j] = y0[j]
-                    surf_z1[i][j] = z0[j]
+                    surf_x1[i][j] = (1-tt)*sec0.x[j] + tt*sec1.x[j]
+                    surf_y1[i][j] = (1-tt)*sec0.y[j] + tt*sec1.y[j]
+                    surf_z1[i][j] = (1-tt)*sec0.z[j] + tt*sec1.z[j]
 
                 surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
                 surf_2 = None
 
             else:
-                nn = len(sec0.xx)
 
-                for j in range(n0):
-                    surf_x1[i][j] = xu_[j]
-                    surf_y1[i][j] = yu_[j]
-                    surf_z1[i][j] = zz [j]
+                for j in range(nn):
+                    surf_x1[i][j] = (1-tt)*sec0.x[j+nn-1] + tt*sec1.x[j+nn-1]
+                    surf_y1[i][j] = (1-tt)*sec0.y[j+nn-1] + tt*sec1.y[j+nn-1]
+                    surf_z1[i][j] = (1-tt)*sec0.z[j+nn-1] + tt*sec1.z[j+nn-1]
 
-                for j in range(n0):
-                    surf_x2[i][j] = xl_[j]
-                    surf_y2[i][j] = yl_[j]
-                    surf_z2[i][j] = zz [j]
+                    surf_x2[i][j] = (1-tt)*sec0.x[nn-1-j] + tt*sec1.x[nn-1-j]
+                    surf_y2[i][j] = (1-tt)*sec0.y[nn-1-j] + tt*sec1.y[nn-1-j]
+                    surf_z2[i][j] = (1-tt)*sec0.z[nn-1-j] + tt*sec1.z[nn-1-j]
 
                 surf_1 = [surf_x1.tolist(), surf_y1.tolist(), surf_z1.tolist()]
                 surf_2 = [surf_x2.tolist(), surf_y2.tolist(), surf_z2.tolist()]

@@ -80,7 +80,7 @@ Details for usage can be found in code comments.
 
     ```python
     >>> from cst_modeling.foil import transform
-    >>> xu_, xl_, yu_, yl_ = transform(x, yu, yl, scale=1.0)
+    >>> xu_, xl_, yu_, yl_ = transform(x, x, yu, yl, scale=1.0)
     ```
 
 9. rotate the 3D curve according to origin

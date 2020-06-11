@@ -6,6 +6,7 @@ import numpy as np
 from numpy.linalg import lstsq
 from scipy.special import factorial
 from scipy.interpolate import interp1d
+from scipy import spatial
 
 class Section:
     '''
@@ -116,14 +117,14 @@ class Section:
         else:
             t0 = None
 
-        if (self.refine_u is not None) and (self.refine_l is not None):
+        if (self.refine_u is not None) or (self.refine_l is not None):
             self.yu, self.yl = foil_increment(self.xx, self.yu, self.yl, self.refine_u, self.refine_l, t=t0)
 
         #* Transform to 3D
         if flip_x:
             self.xx.reverse()
 
-        xu_, xl_, yu_, yl_ = transform(self.xx, self.yu, self.yl, 
+        xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
             scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=True)
 
         self.x = []
@@ -422,17 +423,26 @@ def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
     '''
     Add cst curve by incremental curves
         x, yu, yl:  baseline airfoil
-        coef_upp:   CST coefficients of incremental upper curve (list)
-        coef_low:   CST coefficients of incremental lower curve (list)
+        coef_upp:   CST coefficients of incremental upper curve (list or None)
+        coef_low:   CST coefficients of incremental lower curve (list or None)
         t:          relative maximum thickness (optional)
 
     Return: lists of y_upp, y_low
     '''
     nn = len(x)
-    _, yu_i = cst_curve(nn, coef_upp, x=x)
-    _, yl_i = cst_curve(nn, coef_low, x=x)
-    yu_i = np.array(yu_i)
-    yl_i = np.array(yl_i)
+
+    if coef_upp is not None:
+        _, yu_i = cst_curve(nn, coef_upp, x=x)
+        yu_i = np.array(yu_i)
+    else:
+        yu_i = np.zeros(nn)
+
+    if coef_upp is not None:
+        _, yl_i = cst_curve(nn, coef_low, x=x)
+        yl_i = np.array(yl_i)
+    else:
+        yl_i = np.zeros(nn)
+
     x_   = np.array(x)
     yu_  = np.array(yu)
     yl_  = np.array(yl)
@@ -587,10 +597,10 @@ def curve_curvature(x, y):
 
     return curv
 
-def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
+def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
-        x, yu, yl:  current curve or unit airfoil (list)
+        xu, xl, yu, yl:  current curve or unit airfoil (list)
         scale:      scale factor, e.g., chord length
         rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
         x0, y0:     rotation center (scaler)
@@ -600,8 +610,8 @@ def transform(x, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, 
     Return: xu_new, xl_new, yu_new, yl_new
     '''
     #* Translation
-    xu_new = dx + np.array(copy.deepcopy(x)) 
-    xl_new = dx + np.array(copy.deepcopy(x)) 
+    xu_new = dx + np.array(copy.deepcopy(xu)) 
+    xl_new = dx + np.array(copy.deepcopy(xl)) 
     yu_new = dy + np.array(copy.deepcopy(yu))
     yl_new = dy + np.array(copy.deepcopy(yl))
 
@@ -690,6 +700,32 @@ def interplot_from_curve(x0, x, y):
         raise Exception('Interplot: x0 must be a list or number')
 
     return y0
+
+def curve_intersect(x1, y1, x2, y2):
+    '''
+    Find the intersect index between two curves.
+
+    Inputs:
+    ---
+    x1, y1: curve 1 coordinates, list or ndarray \n
+    x2, y2: curve 2 coordinates, list or ndarray \n
+
+    Return:
+    ---
+    i1, i2: index of the closest points in curve 1 & 2 \n
+    points: tuple of two closest points in curve 1 & 2 \n
+    '''
+
+    arr1 = np.vstack((np.array(x1),np.array(y1))).T
+    arr2 = np.vstack((np.array(x2),np.array(y2))).T
+
+    tree = spatial.KDTree(arr2)
+    distance, arr2_index = tree.query(arr1)
+    i1 = distance.argmin()
+    i2 = arr2_index[i1]
+    points = (arr1[i1], arr2[i2])
+
+    return i1, i2, points
 
 def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
     '''

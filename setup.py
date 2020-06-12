@@ -1,13 +1,11 @@
 from setuptools import setup, find_packages
 from cst_modeling import __version__
 
-with open('Readme.md') as f:
-      long_description = f.read()
 
 setup(name='cst_modeling3d',
       version=__version__,
       description='This is the module of surface/airfoil modeling',
-      long_description=long_description,
+      long_description='See github pages \n https://github.com/swayli94/cst-modeling3d/',
       keywords='CST modeling',
       download_url='https://github.com/swayli94/cst-modeling3d/',
       license='MIT',

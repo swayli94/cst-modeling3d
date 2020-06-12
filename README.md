@@ -178,3 +178,61 @@ Surface is a class for multi-section surface.
     ```python
     >>> wing.smooth(isec0, isec1)
     ```
+
+### Wing with variable camber or flap
+
+WingVariableCamber is a sub-class of Surface.
+
+```text
++x:     flow direction (m)
++y:     upside (m)
++z:     span-wise (m)
+twist:  +z direction (deg)
+chord:  chord length (m)
+thick:  relative maximum thickness
+tail:   absolute tail thickness (m)
+```
+
+1. Initialization
+
+    ```python
+    >>> from cst_modeling.auxiliary import WingVariableCamber
+    >>> flap_loc = [5.0, 10.0, 18.0, 23.0]
+    >>> flap_angle = [-10.0, 10.0]
+    >>> axis_xloc = [0.8, 0.7]
+    >>> wingVC = WingVariableCamber(n_sec=4, name='WingVC', fname='Wing.txt', nn=201, ns=51,
+            flap_loc=flap_loc, flap_trans=0.2, flap_angle=flap_angle, axis_xloc=axis_xloc)
+    ```
+
+    Parameters for setting up wing and flap.
+
+    ```text
+    n_sec:   number of control sections (2D if set to 0 or 1)
+    tail:    tail thickness (m)
+    name:    name of the surface
+    fname:   name of control file
+    nn:      number of points of upper/lower section
+    ns:      number of span-wise points
+    project: True ~ projected chord length does not change when twisted
+
+    flap_loc:   list [2*n_flap], z coordinates of the flap ends. [z_flap1_1, z_flap1_2, z_flap2_1, z_flap2_2, ...]
+    flap_trans: float, transition length of the flap deflection
+    flap_angle: list [n_flap], deflect angle of flaps
+    axis_xloc:  list [n_flap], chord-wise ratio of the flap rotation axis
+    axis_dy:    empty list or list [n_flap], scaled y location of the rotation axis
+    ```
+
+2. Building the geometry
+
+    ```python
+    >>> wingVC.build(split=True, one_piece=False, f_tecplot='Wing.dat', f_plot3d='Wing.grd')
+    ```
+
+    ```text
+    split:      True ~ generate [surfs] as upper and lower separately
+    showfoil:   True ~ output name-foil.dat of airfoils
+    one_piece:  True ~ combine the span-wise sections into one piece (for tecplot format)
+
+    f_tecplot:  file name of tecplot format file. If None, do not output.
+    f_plot3d:   file name of tecplot format file. If None, do not output.
+    ```

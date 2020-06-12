@@ -3,9 +3,10 @@ cst_modeling3d.egg-info/
 dist/
 build/
 .vscode/
-*.grd
-
-example/*.lay
 
 test*
+
 *.txt
+*.dat
+*.lay
+*.grd

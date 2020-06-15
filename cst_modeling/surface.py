@@ -86,7 +86,12 @@ class Surface:
 
     def read_setting(self, fname, tail=0.0):
         '''
-        Read in Surface layout and CST parameters from file [fname]
+        Read in Surface layout and CST parameters from file
+
+        Inputs:
+        ---
+        fname:  settings file name \n
+        tail:   float or list, tail thickness (m) of each section \n
         '''
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
@@ -120,7 +125,13 @@ class Surface:
                         self.secs[i].chord = float(line[3])
                         self.secs[i].twist = float(line[4])
                         self.secs[i].thick = float(line[5])
-                        self.secs[i].tail  = tail/self.secs[i].chord
+
+                        if isinstance(tail, float):
+                            self.secs[i].tail  = tail/self.secs[i].chord
+                        elif len(tail)==self.n_Sec:
+                            self.secs[i].tail  = tail[i]/self.secs[i].chord
+                        else:
+                            raise Exception('tail must be a float or a list with length = section number')
                         
                         if self.secs[i].thick <= 0.0:
                             self.secs[i].thick = None
@@ -228,7 +239,7 @@ class Surface:
         '''
 
         for i in range(self.n_sec):
-            self.secs[i].foil(nn=self.nn, flip_x=flip_x)
+            self.secs[i].foil(nn=self.nn, flip_x=flip_x, proj=self.project)
             if showfoil:
                 output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl, ID=i, info=True, fname=self.name+'-foil.dat')
 
@@ -245,7 +256,7 @@ class Surface:
         '''
         if update_sec:
             for i in range(self.n_sec):
-                self.secs[i].foil(nn=self.nn, flip_x=flip_x)
+                self.secs[i].foil(nn=self.nn, flip_x=flip_x, proj=self.project)
                 if showfoil:
                     output_foil(self.secs[i].xx, self.secs[i].yu, self.secs[i].yl,
                                 ID=i, info=True, fname=self.name+'-foil.dat')
@@ -257,14 +268,14 @@ class Surface:
             sec_ = Section()
             sec_.copyfrom(self.secs[0])
             sec_.zLE = 1.0
-            surf_1, surf_2 = Surface.section_surf(self.secs[0], sec_, ns=self.ns, split=split, proj=self.project)
+            surf_1, surf_2 = Surface.section_surf(self.secs[0], sec_, ns=self.ns, split=split)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
             return
 
         for i in range(self.n_sec-1):
-            surf_1, surf_2 = Surface.section_surf(self.secs[i], self.secs[i+1], ns=self.ns, split=split, proj=self.project)
+            surf_1, surf_2 = Surface.section_surf(self.secs[i], self.secs[i+1], ns=self.ns, split=split)
             self.surfs.append(surf_1)
             if split:
                 self.surfs.append(surf_2)
@@ -587,23 +598,12 @@ class Surface:
                         self.surfs[i_surf][0][j][ip] = curve_x(zi)
                         self.surfs[i_surf][1][j][ip] = curve_y(zi)
 
-    def toCylinder(self, flip=True):
+    def Surf2Cylinder(self, flip=True):
         '''
         Bend the surface (surfs) to cylinder (turbomachinery).
         The original surface is constructed by 2D sections.
-        Assume the origin (0,0,0) is the same.
-            Cylinder: x, y, z ~~ r, theta, z
-            Original: X, Y, Z
-
-            x = r*cos(theta)
-            y = r*sin(theta)
-            z = z
-
-            X = r*theta
-            Y = z
-            Z = r
         '''
-        coef = -1.0 if flip else 1.0
+
         n_surf = 2*(self.n_sec-1) if self.split else self.n_sec-1
         for i_surf in range(n_surf):
             ns = len(self.surfs[i_surf][0])
@@ -611,17 +611,13 @@ class Surface:
                 X = self.surfs[i_surf][0][j]
                 Y = self.surfs[i_surf][1][j]
                 Z = self.surfs[i_surf][2][j]
-                nn = len(X)
-                for i in range(nn):
-                    z = Y[i]
-                    r = Z[i]
-                    theta = X[i]/r * coef
-                    x = r*np.cos(theta)
-                    y = r*np.sin(theta)
 
-                    self.surfs[i_surf][0][j][i] = x
-                    self.surfs[i_surf][1][j][i] = y
-                    self.surfs[i_surf][2][j][i] = z
+                x, y, z = Surface.toCylinder(X, Y, Z, flip=flip)
+
+                self.surfs[i_surf][0][j] = copy.deepcopy(x)
+                self.surfs[i_surf][1][j] = copy.deepcopy(y)
+                self.surfs[i_surf][2][j] = copy.deepcopy(z)
+
 
     def output_tecplot(self, fname=None, one_piece=False):
         '''
@@ -785,7 +781,7 @@ class Surface:
         plt.show()
 
     @staticmethod
-    def section_surf(sec0, sec1, ns=101, split=False, proj=True):
+    def section_surf(sec0, sec1, ns=101, split=False):
         '''
         Interplot surface section between curves
 
@@ -851,16 +847,24 @@ class Surface:
     @staticmethod
     def fromCylinder(x, y, z, flip=True):
         '''
-        Bend the cylinder surface (surfs) to plane.
-        Input:
-            x, y ,z: point coordinate lists of curves on the cylinder
+        Bend the cylinder curve to a 2D plane curve.
+        Inputs:
+        ---
+        x, y ,z: point coordinate lists of curves on the cylinder \n
+
+        Cylinder: origin (0,0,0), axis is z-axis \n
+        x and y must not be 0 at the same time \n
 
         Return:
-            X, Y, Z: point coordinate lists of curves bent to planes
+        ---
+        X, Y, Z: point coordinate lists of curves bent to 2D X-Y planes \n
 
-        Assume the origin (0,0,0) is the same.
+        Note:
+        ---
+        The origin of cylinder and plane curves is the same (0,0,0). \n
+        ```text
             Cylinder: x, y, z ~~ r, theta, z
-            Plane:    Z, Y, Z
+            Plane:    X, Y, Z
 
             theta = arctan(y/x)
             r = sqrt(x^2+y^2)
@@ -869,6 +873,7 @@ class Surface:
             X = r*theta
             Y = z
             Z = r
+        ```
         '''
         coef = -1.0 if flip else 1.0
 
@@ -889,9 +894,55 @@ class Surface:
 
         return X, Y, Z
 
-#TODO: ===========================================
-#TODO: Static functions
-#TODO: ===========================================
+    @staticmethod
+    def toCylinder(X, Y, Z, flip=True):
+        '''
+        Bend the plane sections to curves on a cylinder.
+        Inputs:
+        ---
+        X, Y, Z: point coordinate lists of curves on 2D X-Y planes \n
+        Z must not be 0 \n
+
+        Return:
+        ---
+        x, y ,z: point coordinate lists of curves bent to a cylinder \n
+
+        Note:
+        ---
+        The origin of cylinder and plane curves is the same (0,0,0). \n
+        ```text
+            Plane:    X, Y, Z
+            Cylinder: x, y, z ~~ r, theta, z
+            
+            theta = arctan(y/x)
+            r = sqrt(x^2+y^2)
+            z = z
+
+            X = r*theta
+            Y = z
+            Z = r
+        ```
+        '''
+        coef = -1.0 if flip else 1.0
+
+        nn = len(X)
+        x = [0.0 for _ in range(nn)]
+        y = [0.0 for _ in range(nn)]
+        z = [0.0 for _ in range(nn)]
+
+        for i in range(nn):
+            r = Z[i]
+            theta = X[i]/r * coef
+            x[i] = r*np.cos(theta)
+            y[i] = r*np.sin(theta)
+            z[i] = Y[i]
+
+        return x, y, z
+
+
+#* ===========================================
+#* Static functions
+#* ===========================================
 def interplot_sec(sec0, sec1, ratio=0.5):
     '''
     Interplot a section by ratio. CST coefficients are gained by cst_foil_fit.

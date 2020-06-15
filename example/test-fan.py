@@ -58,7 +58,7 @@ if __name__ == "__main__":
     fan.smooth(isec0=0, isec1=5)
 
     # Convert back to cylinder
-    fan.toCylinder(flip=True)
+    fan.Surf2Cylinder(flip=True)
 
     # This outputs the surface to fname in tecplot format
     # one_piece is an option for combining all surfaces in different sections into one piece

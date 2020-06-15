@@ -42,15 +42,18 @@ class Section:
     def set_params(self, init=False, **kwargs):
         '''
         Set parameters of the section \n
-            init:   True, set to default values
 
-        kwargs: \n
-            xLE, yLE, zLE, chord, twist, tail, thick (None)
+        Inputs:
+        ---
+        init:   True, set to default values \n
 
-            refine_fixed_t: True, fixed thickness when adding incremental curves
-            refine_u:       list, cst coefficients of upper incremental curve
-            refine_l:       list, cst coefficients of lower incremental curve
+        kwargs:
+        ---
+        xLE, yLE, zLE, chord, twist, tail, thick (None) \n
 
+        refine_fixed_t: True, fixed thickness when adding incremental curves \n
+        refine_u:       list, cst coefficients of upper incremental curve \n
+        refine_l:       list, cst coefficients of lower incremental curve \n
         '''
         if init:
             self.xLE = 0.0
@@ -96,13 +99,17 @@ class Section:
         if 'refine_l' in kwargs.keys():
             self.refine_l = copy.deepcopy(kwargs['refine_l'])
 
-    def foil(self, cst_u=None, cst_l=None, nn=1001, flip_x=False):
+    def foil(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, proj=True):
         '''
         Generating the section (3D) by cst_foil. 
-            nn:     total amount of points
-            cst_u:  CST coefficients of upper surface (list, optional)
-            cst_l:  CST coefficients of lower surface (list, optional)
-            flip_x: True ~ flip section.xx in reverse order
+
+        Inputs:
+        ---
+        nn:     total amount of points \n
+        cst_u:  CST coefficients of upper surface (list, optional) \n
+        cst_l:  CST coefficients of lower surface (list, optional) \n
+        flip_x: True ~ flip section.xx in reverse order \n
+        proj:   True => for unit airfoil, the rotation keeps the projection length the same \n
         '''
         if not cst_u is None and not cst_l is None:
             self.cst_u = copy.deepcopy(cst_u)
@@ -125,7 +132,7 @@ class Section:
             self.xx.reverse()
 
         xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
-            scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=True)
+            scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
 
         self.x = []
         self.y = []
@@ -170,9 +177,9 @@ class Section:
         self.refine_u = other.refine_u
         self.refine_l = other.refine_l
 
-#TODO: ===========================================
-#TODO: Static functions
-#TODO: ===========================================
+#* ===========================================
+#* Static functions
+#* ===========================================
 
 def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     '''
@@ -474,9 +481,9 @@ def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
 
     return yu_, yl_
 
-#TODO: ===========================================
-#TODO: Supportive functions
-#TODO: ===========================================
+#* ===========================================
+#* Supportive functions
+#* ===========================================
 
 def clustcos(i, nn, a0=0.0079, a1=0.96, beta=1.0):
     '''
@@ -600,14 +607,19 @@ def curve_curvature(x, y):
 def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
-        xu, xl, yu, yl:  current curve or unit airfoil (list)
-        scale:      scale factor, e.g., chord length
-        rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
-        x0, y0:     rotation center (scaler)
-        dx, dy:     translation, e.g., leading edge location
-        proj:       True => for unit airfoil, the rotation keeps the projection length the same
 
-    Return: xu_new, xl_new, yu_new, yl_new
+    Inputs:
+    ---
+    xu, xl, yu, yl:  current curve or unit airfoil (list) \n
+    scale:      scale factor, e.g., chord length \n
+    rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle \n
+    x0, y0:     rotation center (scaler) \n
+    dx, dy:     translation, e.g., leading edge location \n
+    proj:       True => for unit airfoil, the rotation keeps the projection length the same \n
+
+    Return: 
+    ---
+    xu_new, xl_new, yu_new, yl_new
     '''
     #* Translation
     xu_new = dx + np.array(copy.deepcopy(xu)) 

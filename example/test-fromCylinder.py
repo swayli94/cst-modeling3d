@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Run this in the directory where the folder cst_modeling is
 from cst_modeling.surface import Surface
-from cst_modeling.foil import cst_foil_fit, rotate
+from cst_modeling.foil import cst_foil, cst_foil_fit, rotate
 
 def sortX(loc):
     return loc[0]
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     # This .py transfer the coordinates of curves on cylinders
     # to 2D sections on planes
 
-    #TODO: ==================================================
+    #* ==================================================
     print()
     print('This is a example for transfer cylinder to plane')
     print()
@@ -31,38 +31,43 @@ if __name__ == "__main__":
     XLE, YLE, ZLE = Surface.fromCylinder(x, y, z, flip=True)
 
     # Trailing edge upper
-    x = [20.926, 25.423, 28.316, 30.028, 32.158, 33.512, 33.857]
-    y = [-3.837, -0.504,  2.591,  5.010,  9.223, 13.689, 17.154]
-    z = [-3.425, -2.192, -1.199, -0.539,  0.446,  1.353,  9.067]
-    XTE1, YTE1, ZTE1 = Surface.fromCylinder(x, y, z, flip=True)
+    xTE1 = [20.926, 25.423, 28.316, 30.028, 32.158, 33.512, 33.857]
+    yTE1 = [-3.837, -0.504,  2.591,  5.010,  9.223, 13.689, 17.154]
+    zTE1 = [-3.425, -2.192, -1.199, -0.539,  0.446,  1.353,  9.067]
 
     # Trailing edge lower
-    x = [20.996, 25.411, 28.208, 29.859, 31.902, 33.181, 33.931]
-    y = [-2.382,  0.356,  3.467,  5.865, 10.032, 14.473, 17.118]
-    z = [-3.425, -2.215, -1.219, -0.565,  0.427,  1.328,  6.731]
-    XTE2, YTE2, ZTE2 = Surface.fromCylinder(x, y, z, flip=True)
+    xTE2 = [20.996, 25.411, 28.208, 29.859, 31.902, 33.181, 33.931]
+    yTE2 = [-2.382,  0.356,  3.467,  5.865, 10.032, 14.473, 17.118]
+    zTE2 = [-3.425, -2.215, -1.219, -0.565,  0.427,  1.328,  6.731]
 
-    XTE = copy.deepcopy(XLE)
-    YTE = copy.deepcopy(YLE)
-    ZTE = copy.deepcopy(ZLE)
-    chord = copy.deepcopy(XLE)
-    twist = copy.deepcopy(XLE)
-    for i in range(len(x)):
-        XTE[i] = 0.5*(XTE1[i]+XTE2[i])
-        YTE[i] = 0.5*(YTE1[i]+YTE2[i])
-        ZTE[i] = 0.5*(ZTE1[i]+ZTE2[i])
+    n = len(x)
+    xTE = [0.0 for _ in range(n)]
+    yTE = [0.0 for _ in range(n)]
+    zTE = [0.0 for _ in range(n)]
 
+    for i in range(n):
+        xTE[i] = 0.5*(xTE1[i]+xTE2[i])
+        yTE[i] = 0.5*(yTE1[i]+yTE2[i])
+        zTE[i] = 0.5*(zTE1[i]+zTE2[i])
+
+    XTE, YTE, ZTE = Surface.fromCylinder(xTE, yTE, zTE, flip=True)
+
+
+    chord = [0.0 for _ in range(n)]
+    twist = [0.0 for _ in range(n)]
+    for i in range(n):
         chord[i] = np.linalg.norm([XLE[i]-XTE[i], YLE[i]-YTE[i], ZLE[i]-ZTE[i]])
         twist[i] = np.arctan((YTE[i]-YLE[i])/(XTE[i]-XLE[i]))*180/np.pi
 
         print('%.3f  %.3f  %.3f  %.3f  %.3f'%(XLE[i], YLE[i], ZLE[i], chord[i], twist[i]))
 
-    #TODO: ==============================================
+    #* ==============================================
     print()
     print('This is a example for getting CST parameters')
     print()
 
     n_sec = 6
+    ts = [0.0 for _ in range(n_sec)]
     with open('ori-sections.dat', 'r') as f:
         line = f.readline()    # Variables= X Y Z
 
@@ -127,17 +132,22 @@ if __name__ == "__main__":
 
             coef_upp, coef_low = cst_foil_fit(xu, yu, xl, yl, n_order=7)
 
+            _, _, _, ts[i], _ = cst_foil(1001, coef_upp, coef_low)
+
             print('Section %d ---------------'%(i+1))
             for ii in range(len(coef_upp)):
-                print(' %.6f '%(coef_upp[ii]), end='')
+                print(' %10.6f '%(coef_upp[ii]), end='')
             print()
             for ii in range(len(coef_low)):
-                print(' %.6f '%(coef_low[ii]), end='')
+                print(' %10.6f '%(coef_low[ii]), end='')
             print()
 
             plt.plot(xu, yu, 'b')
             plt.plot(xl, yl, 'b')
-            plt.show()
 
+    ts = [round(t, 4) for t in ts]
+    print()
+    print('relative thickness = ',ts)
 
+    plt.show()
     exit()

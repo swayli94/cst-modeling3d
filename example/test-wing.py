@@ -1,7 +1,6 @@
 
 import os
 import numpy as np
-from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 
 # Run this in the directory where the folder cst_modeling is
@@ -36,7 +35,7 @@ if __name__ == "__main__":
 
     # This is for constructing surfaces with curved leading edge lines
     # e.g., strut of the SBW aircraft, wing-let
-    wing.bend(isec0=7, isec1=8, leader=[[22.9, 1.2, 27.1, 0.75]], kx=[0.4, 1.0], ky=[0.0, 1.6], rot_x=True)
+    wing.bend(isec0=9, isec1=10, leader=[[22.9, 1.2, 27.1, 0.75]], kx=[0.4, 1.0], ky=[0.0, 1.6], rot_x=True)
 
     # This outputs the surface to fname in tecplot format
     # one_piece is an option for combining all surfaces in different sections into one piece

@@ -2,7 +2,7 @@
 This is a module containing functions to construct an airfoil
 '''
 import copy
-import numpy as np 
+import numpy as np
 from numpy.linalg import lstsq
 from scipy.special import factorial
 from scipy.interpolate import interp1d
@@ -23,16 +23,16 @@ class Section:
         self.RLE = 0.0
 
         #* 2D unit airfoil
-        self.cst_u = []
-        self.cst_l = []
-        self.xx = []
-        self.yu = []
-        self.yl = []
+        self.cst_u = np.zeros(1)
+        self.cst_l = np.zeros(1)
+        self.xx = np.zeros(1)
+        self.yu = np.zeros(1)
+        self.yl = np.zeros(1)
 
         #* 3D section
-        self.x = []
-        self.y = []
-        self.z = []
+        self.x = np.zeros(1)
+        self.y = np.zeros(1)
+        self.z = np.zeros(1)
 
         #* Refine airfoil
         self.refine_fixed_t = True
@@ -52,8 +52,8 @@ class Section:
         xLE, yLE, zLE, chord, twist, tail, thick (None) \n
 
         refine_fixed_t: True, fixed thickness when adding incremental curves \n
-        refine_u:       list, cst coefficients of upper incremental curve \n
-        refine_l:       list, cst coefficients of lower incremental curve \n
+        refine_u:       ndarray, cst coefficients of upper incremental curve \n
+        refine_l:       ndarray, cst coefficients of lower incremental curve \n
         '''
         if init:
             self.xLE = 0.0
@@ -94,26 +94,31 @@ class Section:
             self.refine_fixed_t = kwargs['refine_fixed_t']
 
         if 'refine_u' in kwargs.keys():
-            self.refine_u = copy.deepcopy(kwargs['refine_u'])
+            aa_ = kwargs['refine_u']
+            if isinstance(aa_, np.ndarray):
+                self.refine_u = aa_.copy()
 
         if 'refine_l' in kwargs.keys():
-            self.refine_l = copy.deepcopy(kwargs['refine_l'])
+            aa_ = kwargs['refine_l']
+            if isinstance(aa_, np.ndarray):
+                self.refine_l = aa_.copy()
 
     def foil(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, proj=True):
         '''
         Generating the section (3D) by cst_foil. 
 
-        Inputs:
-        ---
-        nn:     total amount of points \n
-        cst_u:  CST coefficients of upper surface (list, optional) \n
-        cst_l:  CST coefficients of lower surface (list, optional) \n
-        flip_x: True ~ flip section.xx in reverse order \n
-        proj:   True => for unit airfoil, the rotation keeps the projection length the same \n
+        ### Inputs:
+        ```text
+        nn:     total amount of points
+        cst_u:  CST coefficients of upper surface (ndarray, optional)
+        cst_l:  CST coefficients of lower surface (ndarray, optional)
+        flip_x: True ~ flip section.xx in reverse order
+        proj:   True => for unit airfoil, the rotation keeps the projection length the same
+        ```
         '''
-        if not cst_u is None and not cst_l is None:
-            self.cst_u = copy.deepcopy(cst_u)
-            self.cst_l = copy.deepcopy(cst_l)
+        if isinstance(cst_u, np.ndarray) and isinstance(cst_l, np.ndarray):
+            self.cst_u = cst_u.copy()
+            self.cst_l = cst_l.copy()
 
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick, tail=self.tail)
@@ -134,18 +139,9 @@ class Section:
         xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
             scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
 
-        self.x = []
-        self.y = []
-        self.z = []
-        for i in range(nn):
-            self.x.append(xl_[-1-i])
-            self.y.append(yl_[-1-i])
-            self.z.append(self.zLE)
-
-        for i in range(1,nn):
-            self.x.append(xu_[i])
-            self.y.append(yu_[i])
-            self.z.append(self.zLE)
+        self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
+        self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
+        self.z = np.ones(2*nn-1)*self.zLE
 
     def copyfrom(self, other):
         '''
@@ -163,15 +159,15 @@ class Section:
         self.tail = other.tail
         self.RLE = other.RLE
 
-        self.cst_u = copy.deepcopy(other.cst_u)
-        self.cst_l = copy.deepcopy(other.cst_l)
-        self.xx = copy.deepcopy(other.xx)
-        self.yu = copy.deepcopy(other.yu)
-        self.yl = copy.deepcopy(other.yl)
+        self.cst_u = other.cst_u.copy()
+        self.cst_l = other.cst_l.copy()
+        self.xx = other.xx.copy()
+        self.yu = other.yu.copy()
+        self.yl = other.yl.copy()
 
-        self.x = copy.deepcopy(other.x)
-        self.y = copy.deepcopy(other.y)
-        self.z = copy.deepcopy(other.z)
+        self.x = other.x.copy()
+        self.y = other.y.copy()
+        self.z = other.z.copy()
 
         self.refine_fixed_t = other.refine_fixed_t
         self.refine_u = other.refine_u
@@ -184,21 +180,26 @@ class Section:
 def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     '''
     Constructing upper and lower curves of an airfoil based on CST method
-        nn:         total amount of points
-        coef_upp:   CST coefficients of upper surface (list)
-        coef_low:   CST coefficients of lower surface (list)
-        x:          point x [0,1] (optional list, size is nn)
-        t:          relative maximum thickness (optional)
-        tail:       relative tail thickness (optional)
 
-        CST:    class shape transfermation method (Kulfan, 2008)
+    CST:    class shape transfermation method (Kulfan, 2008)
 
-    Return lists of x, y_upp, y_low, t0, R0
+    >>> x_, yu, yl, t0, R0 = cst_foil()
+
+    ### Inputs:
+    ```text
+    nn:         total amount of points
+    coef_upp:   CST coefficients of upper surface (ndarray)
+    coef_low:   CST coefficients of lower surface (ndarray)
+    x:          point x [0,1] (optional ndarray, size is nn)
+    t:          relative maximum thickness (optional)
+    tail:       relative tail thickness (optional)
+    ```
+
+    ### Return
+    x (ndarray), y_upp (ndarray), y_low (ndarray), t0, R0
     '''
-    x_, yu_ = cst_curve(nn, coef_upp, x=x)
-    x_, yl_ = cst_curve(nn, coef_low, x=x)
-    yu = np.array(yu_)
-    yl = np.array(yl_)
+    x_, yu = cst_curve(nn, coef_upp, x=x)
+    x_, yl = cst_curve(nn, coef_low, x=x)
     
     thick = yu-yl
     it = np.argmax(thick)
@@ -222,89 +223,74 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     yl_RLE = interplot_from_curve(x_RLE, x_, yl)
     R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
 
-    return x_, yu.tolist(), yl.tolist(), t0, R0
+    return x_, yu, yl, t0, R0
 
 def cst_foil_fit(xu, yu, xl, yl, n_order=7):
     '''
     Using CST method to fit an airfoil
-        xu, yu:  upper surface points (list)
-        xl, yl:  lower surface points (list)
-        n_order: number of CST parameters
 
-    Return: coef_upp, coef_low (list)
+    >>> cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_order=7)
+
+    ### Inputs:
+    ```text
+    xu, yu:  upper surface points (ndarray)
+    xl, yl:  lower surface points (ndarray)
+    n_order: number of CST parameters
+    ```
+
+    ### Return: 
+    cst_u, cst_l (ndarray)
     '''
-    coef_upp = fit_curve(xu, yu, n_order=n_order)
-    coef_low = fit_curve(xl, yl, n_order=n_order)
-    return coef_upp, coef_low
+    cst_u = fit_curve(xu, yu, n_order=n_order)
+    cst_l = fit_curve(xl, yl, n_order=n_order)
+    return cst_u, cst_l
 
-def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=0):
+def foil_bump_modify(x, yu, yl, xc: float, h: float, s: float, side=1, n_order=0):
     '''
     Add bumps on the airfoil
-        x, yu, yl: current airfoil (list)
-        xc:        x of the bump center
-        h:         relative height of the bump (to maximum thickness)
-        s:         span of the bump
-        side:      +1/-1 upper/lower side of the airfoil
-        n_order:   if specified (>0), then use CST to fit the new foil
 
-    Return: yu_new, yl_new
+    >>> yu_new, yl_new = foil_bump_modify(x, yu, yl, xc, h, s, side, n_order)
+
+    ### Inputs:
+    ```text
+    x, yu, yl: current airfoil (ndarray)
+    xc:        x of the bump center
+    h:         relative height of the bump (to maximum thickness)
+    s:         span of the bump
+    side:      +1/-1 upper/lower side of the airfoil
+    n_order:   if specified (>0), then use CST to fit the new foil
+    ```
+
+    ### Return:
+    yu_new, yl_new (ndarray)
     '''
-    yu_new = copy.deepcopy(yu)
-    yl_new = copy.deepcopy(yl)
+    yu_new = yu.copy()
+    yl_new = yl.copy()
+    t0 = np.max(yu_new-yl_new)
 
-    yu_ = np.array(yu)
-    yl_ = np.array(yl)
-    t0 = np.max(yu_-yl_)
+    yu_ = yu.copy()
+    yl_ = yl.copy()
 
-    if isinstance(xc, list):
-
-        for i in range(len(xc)):
-            if xc[i]<0.1 or xc[i]>0.9:
-                kind = 'H'
-            else:
-                kind = 'G'
-
-            if side[i] > 0:
-                yu_new = add_bump(x, yu_new, xc[i], h[i]*t0, s[i], kind=kind)
-            else:
-                yl_new = add_bump(x, yl_new, xc[i], h[i]*t0, s[i], kind=kind)
-
-            yu_ = np.array(yu_new)
-            yl_ = np.array(yl_new)
-            it = np.argmax(yu_-yl_)
-            tu = np.abs(yu_new[it])
-            tl = np.abs(yl_new[it])
-
-            if side[i] > 0:
-                rl = (t0-tu)/tl
-                yl_new = (rl * np.array(yl_new)).tolist()
-            else:
-                ru = (t0-tl)/tu
-                yl_new = (ru * np.array(yu_new)).tolist()
-
+    if xc<0.1 or xc>0.9:
+        kind = 'H'
     else:
-        if xc<0.1 or xc>0.9:
-            kind = 'H'
-        else:
-            kind = 'G'
+        kind = 'G'
 
-        if side > 0:
-            yu_new = add_bump(x, yu_new, xc, h*t0, s, kind=kind)
-        else:
-            yl_new = add_bump(x, yl_new, xc, h*t0, s, kind=kind)
+    if side > 0:
+        yu_new = add_bump(x, yu_new, xc, h*t0, s, kind=kind)
+    else:
+        yl_new = add_bump(x, yl_new, xc, h*t0, s, kind=kind)
 
-        yu_ = np.array(yu_new)
-        yl_ = np.array(yl_new)
-        it = np.argmax(yu_-yl_)
-        tu = np.abs(yu_new[it])
-        tl = np.abs(yl_new[it])
+    it = np.argmax(yu_new-yl_new)
+    tu = np.abs(yu_new[it])
+    tl = np.abs(yl_new[it])
 
-        if side > 0:
-            rl = (t0-tu)/tl
-            yl_new = (rl * np.array(yl_new)).tolist()
-        else:
-            ru = (t0-tl)/tu
-            yl_new = (ru * np.array(yu_new)).tolist()
+    if side > 0:
+        rl = (t0-tu)/tl
+        yl_new = rl * np.array(yl_new)
+    else:
+        ru = (t0-tl)/tu
+        yl_new = ru * np.array(yu_new)
 
     if n_order > 0:
         # CST reverse
@@ -317,46 +303,56 @@ def foil_bump_modify(x, yu, yl, xc, h, s, side, n_order=0):
 
 def foil_tcc(x, yu, yl, info=True):
     '''
-    Calculate thickness, curvature, camber distribution. \n
-        x, yu, yl: current airfoil (list)
+    Calculate thickness, curvature, camber distribution.
 
-    Return: thickness, curv_u, curv_l, camber
+    >>> thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=True)
+
+    ### Inputs:
+    ```text
+    x, yu, yl: current airfoil (ndarray)
+    ```
+
+    ### Return: 
+    thickness, curv_u, curv_l, camber (ndarray)
     '''
     curv_u = curve_curvature(x, yu)
     curv_l = curve_curvature(x, yl)
 
-    thickness = []
-    camber = []
-    for i in range(len(x)):
-        tt = yu[i] - yl[i]
-        thickness.append(tt)
-        camber.append(0.5*(yu[i]+yl[i]))
-
-        if info and tt<0:
+    thickness = yu-yl
+    camber = 0.5*(yu+yl)
+    for i in range(x.shape[0]):
+        if info and thickness[i]<0:
             print('Unreasonable Airfoil: negative thickness')
 
     return thickness, curv_u, curv_l, camber
 
-def check_valid(x, yu, yl, RLE=0.0):
+def check_valid(x, yu, yl, RLE=0.0) -> list:
     '''
-    Check if the airfoil is reasonable by rules: \n
-        1:  negative thickness
-        2:  maximum thickness point location
-        3:  extreme points of thickness
-        4:  maximum curvature
-        5:  maximum camber within x [0.2,0.7]
-        6:  RLE if provided
-        7:  convex LE
+    Check if the airfoil is reasonable by rules
 
-    Return:
-        rule_invalid: list, 0 means valid
+    >>> rule_invalid = check_valid(x, yu, yl, RLE=0.0)
+
+    ### Inputs:
+    ```text
+    x, yu, yl: current airfoil (ndarray)
+    ```
+
+    ### Rules:
+    ```text
+    1:  negative thickness
+    2:  maximum thickness point location
+    3:  extreme points of thickness
+    4:  maximum curvature
+    5:  maximum camber within x [0.2,0.7]
+    6:  RLE if provided
+    7:  convex LE
+    ```
+
+    ### Return:
+    rule_invalid: list, 0 means valid
     '''
     thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=False)
-    thickness = np.array(thickness)
-    curv_u = np.array(curv_u)
-    curv_l = np.array(curv_l)
-    camber = np.array(camber)
-    nn = len(x)
+    nn = x.shape[0]
 
     n_rule = 10
     rule_invalid = [0 for _ in range(n_rule)]
@@ -429,30 +425,35 @@ def check_valid(x, yu, yl, RLE=0.0):
 def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
     '''
     Add cst curve by incremental curves
-        x, yu, yl:  baseline airfoil
-        coef_upp:   CST coefficients of incremental upper curve (list or None)
-        coef_low:   CST coefficients of incremental lower curve (list or None)
-        t:          relative maximum thickness (optional)
 
-    Return: lists of y_upp, y_low
+    >>> yu_, yl_ = foil_increment(x, yu, yl, coef_upp, coef_low, t=None)
+
+    ### Inputs:
+    ```text
+    x, yu, yl:  baseline airfoil (ndarray)
+    coef_upp:   CST coefficients of incremental upper curve (ndarray or None)
+    coef_low:   CST coefficients of incremental lower curve (ndarray or None)
+    t:          relative maximum thickness (optional)
+    ```
+
+    ### Return: 
+    y_upp, y_low (ndarray)
     '''
     nn = len(x)
 
     if coef_upp is not None:
         _, yu_i = cst_curve(nn, coef_upp, x=x)
-        yu_i = np.array(yu_i)
     else:
         yu_i = np.zeros(nn)
 
     if coef_upp is not None:
         _, yl_i = cst_curve(nn, coef_low, x=x)
-        yl_i = np.array(yl_i)
     else:
         yl_i = np.zeros(nn)
 
-    x_   = np.array(x)
-    yu_  = np.array(yu)
-    yl_  = np.array(yl)
+    x_   = x.copy()
+    yu_  = yu.copy()
+    yl_  = yl.copy()
 
     # Remove tail
     tail = yu_[-1] - yl_[-1]
@@ -485,14 +486,20 @@ def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
 #* Supportive functions
 #* ===========================================
 
-def clustcos(i, nn, a0=0.0079, a1=0.96, beta=1.0):
+def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
     '''
     Point distribution on x-axis [0, 1]. (More points at both ends)
-        i:      index of current point (start from 0)
-        nn:     total amount of points
-        a0:     parameter for distributing points near x=0
-        a1:     parameter for distributing points near x=1
-        beta:   parameter for distribution points 
+
+    >>> c = clustcos(i, n, a0, a1, beta)
+
+    ### Inputs:
+    ```text
+    i:      index of current point (start from 0)
+    nn:     total amount of points
+    a0:     parameter for distributing points near x=0
+    a1:     parameter for distributing points near x=1
+    beta:   parameter for distribution points 
+    ```
     '''
     aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
     dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
@@ -502,27 +509,33 @@ def clustcos(i, nn, a0=0.0079, a1=0.96, beta=1.0):
 
     return c
 
-def cst_curve(nn, coef, x=None, xn1=0.5, xn2=1.0):
+def cst_curve(nn: int, coef, x=None, xn1=0.5, xn2=1.0):
     '''
     Generating single curve based on CST method.
-        nn:     total amount of points
-        coef:   CST coefficients (list)
-        x:      points x [0,1] (optional list, size= nn)
-        xn1,2:  CST parameters
 
-        CST:    class shape transfermation method (Kulfan, 2008)
+    CST:    class shape transfermation method (Kulfan, 2008)
 
-    Return lists of x, y
+    >>> x, y = cst_curve(nn, coef, x, xn1, xn2)
+
+    ### Inputs:
+    ```text
+    nn:     total amount of points
+    coef:   CST coefficients (ndarray)
+    x:      points x [0,1] (optional ndarray, size= nn)
+    xn1,2:  CST parameters
+    ```
+    ### Return:
+    x, y (ndarray)
     '''
     if x is None:
-        x = []
+        x = np.zeros(nn)
         for i in range(nn):
-            x.append(clustcos(i, nn))
-    elif len(x) != nn:
-        raise Exception('Specified point distribution has different size %d as input nn %d'%(len(x), nn))
+            x[i] = clustcos(i, nn)
+    elif x.shape[0] != nn:
+        raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
     
-    n_order = len(coef)
-    y = []
+    n_order = coef.shape[0]
+    y = np.zeros(nn)
     for ip in range(nn):
         s_psi = 0.0
         for i in range(n_order):
@@ -530,7 +543,7 @@ def cst_curve(nn, coef, x=None, xn1=0.5, xn2=1.0):
             s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_order-1-i)
 
         C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
-        y.append(C_n1n2*s_psi)
+        y[ip] = C_n1n2*s_psi
 
     y[0] = 0.0
     y[-1] = 0.0
@@ -540,9 +553,16 @@ def cst_curve(nn, coef, x=None, xn1=0.5, xn2=1.0):
 def find_circle_3p(p1, p2, p3):
     '''
     Determine the radius and origin of a circle by 3 points (2D)
-        p1, p2, p3: lists of [x, y]
 
-    Return: R, [xc, yc]
+    >>> R, XC = find_circle_3p(p1, p2, p3)
+
+    ### Inputs:
+    ```text
+    p1, p2, p3: [x, y], list or ndarray
+    ```
+
+    ### Return: 
+    R, XC = np.array([xc, yc])
     '''
     x21 = p2[0] - p1[0]
     y21 = p2[1] - p1[1]
@@ -550,8 +570,7 @@ def find_circle_3p(p1, p2, p3):
     y32 = p3[1] - p2[1]
 
     if x21 * y32 - x32 * y21 == 0:
-        print('Finding circle: 3 points in one line')
-        return None
+        raise Exception('Finding circle: 3 points in one line')
 
     xy21 = p2[0]*p2[0] - p1[0]*p1[0] + p2[1]*p2[1] - p1[1]*p1[1]
     xy32 = p3[0]*p3[0] - p2[0]*p2[0] + p3[1]*p3[1] - p2[1]*p2[1]
@@ -560,20 +579,26 @@ def find_circle_3p(p1, p2, p3):
     x0 = (xy21 - 2 * y0 * y21) / (2.0 * x21)
     R = np.sqrt(np.power(p1[0]-x0,2) + np.power(p1[1]-y0,2))
 
-    return R, [x0, y0]
+    return R, np.array([x0, y0])
 
 def curve_curvature(x, y):
     '''
     Calculate curvature of points in the curve
-        x, y: points of curve (list or ndarray)
 
-    Return: curv (list)
+    >>> curv = curve_curvature(x, y)
+
+    ### Inputs:
+    ```text
+    x, y: points of curve (ndarray)
+    ```
+
+    Return: curv (ndarray)
     '''
-    nn = len(x)
+    nn = x.shape[0]
     if nn<3:
         raise Exception('curvature needs at least 3 points')
     
-    curv = [0.0]
+    curv = np.zeros(nn)
     for i in range(1, nn-1):
         X1 = np.array([x[i-1], y[i-1]])
         X2 = np.array([x[i  ], y[i  ]])
@@ -597,10 +622,10 @@ def curve_curvature(x, y):
         if a1*b2 < a2*b1:
             curv_ = -curv_
 
-        curv.append(curv_)
+        curv[i] = curv_
 
     curv[0] = curv[1]
-    curv.append(curv[-1])
+    curv[-1] = curv[-2]
 
     return curv
 
@@ -608,24 +633,26 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
 
-    Inputs:
-    ---
-    xu, xl, yu, yl:  current curve or unit airfoil (list) \n
-    scale:      scale factor, e.g., chord length \n
-    rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle \n
-    x0, y0:     rotation center (scaler) \n
-    dx, dy:     translation, e.g., leading edge location \n
-    proj:       True => for unit airfoil, the rotation keeps the projection length the same \n
+    >>> xu_new, xl_new, yu_new, yl_new = transform()
 
-    Return: 
-    ---
-    xu_new, xl_new, yu_new, yl_new
+    ### Inputs:
+    ```text
+    xu, xl, yu, yl:  current curve or unit airfoil (ndarray)
+    scale:      scale factor, e.g., chord length
+    rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
+    x0, y0:     rotation center (scaler)
+    dx, dy:     translation, e.g., leading edge location
+    proj:       True => for unit airfoil, the rotation keeps the projection length the same
+    ```
+
+    ### Return: 
+    xu_new, xl_new, yu_new, yl_new (ndarray)
     '''
     #* Translation
-    xu_new = dx + np.array(copy.deepcopy(xu)) 
-    xl_new = dx + np.array(copy.deepcopy(xl)) 
-    yu_new = dy + np.array(copy.deepcopy(yu))
-    yl_new = dy + np.array(copy.deepcopy(yl))
+    xu_new = dx + xu
+    xl_new = dx + xl
+    yu_new = dy + yu
+    yl_new = dy + yl
 
     #* Rotation center
     if x0 is None:
@@ -639,34 +666,34 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
         angle = rot/180.0*np.pi  # rad
         rr = np.cos(angle)
 
-    xu_new = (x0 + (xu_new-x0)*scale/rr).tolist()
-    xl_new = (x0 + (xl_new-x0)*scale/rr).tolist()
-    yu_new = (y0 + (yu_new-y0)*scale/rr).tolist()
-    yl_new = (y0 + (yl_new-y0)*scale/rr).tolist()
+    xu_new = x0 + (xu_new-x0)*scale/rr
+    xl_new = x0 + (xl_new-x0)*scale/rr
+    yu_new = y0 + (yu_new-y0)*scale/rr
+    yl_new = y0 + (yl_new-y0)*scale/rr
 
     #* Rotation
     if not rot is None:
-        xu_ = copy.deepcopy(xu_new)
-        xl_ = copy.deepcopy(xl_new)
-        yu_ = copy.deepcopy(yu_new)
-        yl_ = copy.deepcopy(yl_new)
-        z_  = None
-
-        xu_new, yu_new, _ = rotate(xu_, yu_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
-        xl_new, yl_new, _ = rotate(xl_, yl_, z_, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+        xu_new, yu_new, _ = rotate(xu_new, yu_new, None, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_new, yl_new, None, angle=rot, origin=[x0, y0, 0.0], axis='Z')
 
     return xu_new, xl_new, yu_new, yl_new
 
 def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
     '''
     Rotate the 3D curve according to origin
-        x,y,z:  curve lists (can be None if not used)
-        angle:  rotation angle (deg)
-        origin: rotation origin
-        axis:   rotation axis (use positive direction to define angle)
 
-    Return:
-        x_, y_, z_
+    >>> x_, y_, z_ = rotate(x, y, z, angle, origin, axis)
+
+    ### Inputs:
+    ```text
+    x,y,z:  curve ndarray
+    angle:  rotation angle (deg)
+    origin: rotation origin
+    axis:   rotation axis (use positive direction to define angle)
+    ```
+
+    ### Return:
+    x_, y_, z_ (ndarray)
     '''
     cc = np.cos( angle/180.0*np.pi )
     ss = np.sin( angle/180.0*np.pi )
@@ -675,41 +702,36 @@ def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
     z_ = copy.deepcopy(z)
 
     if axis in 'X':
-        for i in range(len(y)):
-            y_[i] = origin[1] + (y[i]-origin[1])*cc - (z[i]-origin[2])*ss
-            z_[i] = origin[2] + (y[i]-origin[1])*ss + (z[i]-origin[2])*cc
+        y_ = origin[1] + (y-origin[1])*cc - (z-origin[2])*ss
+        z_ = origin[2] + (y-origin[1])*ss + (z-origin[2])*cc
 
     if axis in 'Y':
-        for i in range(len(z)):
-            z_[i] = origin[2] + (z[i]-origin[2])*cc - (x[i]-origin[0])*ss
-            x_[i] = origin[0] + (z[i]-origin[2])*ss + (x[i]-origin[0])*cc
+        z_ = origin[2] + (z-origin[2])*cc - (x-origin[0])*ss
+        x_ = origin[0] + (z-origin[2])*ss + (x-origin[0])*cc
 
     if axis in 'Z':
-        for i in range(len(x)):
-            x_[i] = origin[0] + (x[i]-origin[0])*cc - (y[i]-origin[1])*ss
-            y_[i] = origin[1] + (x[i]-origin[0])*ss + (y[i]-origin[1])*cc
+        x_ = origin[0] + (x-origin[0])*cc - (y-origin[1])*ss
+        y_ = origin[1] + (x-origin[0])*ss + (y-origin[1])*cc
 
     return x_, y_, z_
 
-def interplot_from_curve(x0, x, y):
+def interplot_from_curve(x0, x, y) -> np.ndarray:
     '''
     Interplot points from curve represented points [x, y]
-        x0  : list/number of x locations to be interploted
-        x, y: points of curve (list or ndarray)
 
-    Return: y0 list/number
+    >>> y0 = interplot_from_curve(x0, x, y)
+
+    ### Inputs:
+    ```text
+    x0  : ndarray/value of x locations to be interploted
+    x, y: points of curve (ndarray)
+    ```
+
+    ### Return: 
+    y0: ndarray/float
     '''
-    x_ = np.array(x)
-    y_ = np.array(y)
-    f = interp1d(x_, y_, kind='cubic')
-    x0_ = np.array(x0)
-
-    if isinstance(x0, list):
-        y0 = f(x0_).tolist()
-    elif np.size(x0_)==1:
-        y0 = f(x0_)
-    else:
-        raise Exception('Interplot: x0 must be a list or number')
+    f  = interp1d(x, y, kind='cubic')
+    y0 = f(x0)
 
     return y0
 
@@ -717,15 +739,19 @@ def curve_intersect(x1, y1, x2, y2):
     '''
     Find the intersect index between two curves.
 
-    Inputs:
-    ---
-    x1, y1: curve 1 coordinates, list or ndarray \n
-    x2, y2: curve 2 coordinates, list or ndarray \n
+    >>> i1, i2, points = curve_intersect(x1, y1, x2, y2)
 
-    Return:
-    ---
-    i1, i2: index of the closest points in curve 1 & 2 \n
-    points: tuple of two closest points in curve 1 & 2 \n
+    ### Inputs:
+    ```text
+    x1, y1: curve 1 coordinates, list or ndarray
+    x2, y2: curve 2 coordinates, list or ndarray
+    ```
+
+    ### Return:
+    ```text
+    i1, i2: index of the closest points in curve 1 & 2
+    points: tuple of two closest points in curve 1 & 2
+    ```
     '''
 
     arr1 = np.vstack((np.array(x1),np.array(y1))).T
@@ -733,8 +759,8 @@ def curve_intersect(x1, y1, x2, y2):
 
     tree = spatial.KDTree(arr2)
     distance, arr2_index = tree.query(arr1)
-    i1 = distance.argmin()
-    i2 = arr2_index[i1]
+    i1 = distance.argmin()  # type: int
+    i2 = arr2_index[i1]     # type: int
     points = (arr1[i1], arr2[i2])
 
     return i1, i2, points
@@ -742,16 +768,22 @@ def curve_intersect(x1, y1, x2, y2):
 def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
     '''
     Linearly stretch a curve when certain point is fixed
-        x, y:   curve (list)
-        dx, dy: movement of the first element (scaler)
-        xm, ym: The point that moves dx, dy (e.g., the first element of the curve)
-        xf, yf: The fixed point (e.g., the last element of the curve)
 
-    Returns:
-        x_, y_
+    >>> x_, y_ = stretch_fixed_point(x, y, dx, dy, xm, ym, xf, yf)
+
+    ### Inputs:
+    ```text
+    x, y:   curve (ndarray)
+    dx, dy: movement of the first element (scaler)
+    xm, ym: The point that moves dx, dy (e.g., the first element of the curve)
+    xf, yf: The fixed point (e.g., the last element of the curve)
+    ```
+
+    ### Returns:
+    x_, y_ (ndarray)
     '''
-    x_ = np.array(copy.deepcopy(x)) 
-    y_ = np.array(copy.deepcopy(y))
+    x_ = x.copy()
+    y_ = y.copy()
 
     if xf is None or yf is None:
         xf = x[-1]
@@ -763,33 +795,42 @@ def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None
 
     lm = np.linalg.norm([xm-xf, ym-yf])
 
-    for i in range(len(x)):
+    for i in range(x.shape[0]):
         rr  = np.linalg.norm([x[i]-xf, y[i]-yf]) / lm
         x_[i] = x_[i] + rr*dx
         y_[i] = y_[i] + rr*dy
 
     return x_, y_
 
-def add_bump(x, y, xc, h, s, kind='G'):
+def add_bump(x, y, xc: float, h: float, s: float, kind='G'):
     '''
     Add a bump on current curve [x, y]
-        x, y:   current curve (list, x[0,1])
-        xc:     x of the bump center
-        h:      height of the bump
-        s:      span of the bump
-        kind:   bump function
-            G: Gaussian, less cpu cost
-            H: Hicks-Henne, better when near leading edge
 
-    Return: y_new (list, new curve)
+    >>> y_new = add_bump(x, y, xc, h, s, kind)
+
+    ### Inputs:
+    ```text
+    x, y:   current curve (ndarray, x[0,1])
+    xc:     x of the bump center
+    h:      height of the bump
+    s:      span of the bump
+    kind:   bump function
+     'G':   Gaussian, less cpu cost
+     'H':   Hicks-Henne, better when near leading edge
+    ```
+
+    ### Return: 
+    y_new (ndarray, new curve)
     '''
+    y_new = y.copy()
+
     if xc<=0 or xc>=1:
         print('Bump location not valid (0,1): xc = %.3f'%(xc))
-        return y
+        return y_new
 
     if 'G' in kind:
-        y_new = []
-        for i in range(len(x)):
+
+        for i in range(x.shape[0]):
             if xc-s<0.0 and x[i]<xc:
                 sigma = xc/3.5
             elif  xc+s>1.0 and x[i]>xc:
@@ -797,7 +838,7 @@ def add_bump(x, y, xc, h, s, kind='G'):
             else:
                 sigma = s/6.0
             aa = -np.power(x[i]-xc,2)/2.0/sigma**2
-            y_new.append(y[i]+h*np.exp(aa))
+            y_new[i] += h*np.exp(aa)
 
     else:
         
@@ -823,33 +864,40 @@ def add_bump(x, y, xc, h, s, kind='G'):
             span = x2 - x1
             Pow = Pow + 1
 
-        y_new = []
         for i in range(len(x)):
             rr = np.pi*np.power(x[i],s0)
             dy = h*np.power(np.sin(rr),Pow)
-            y_new.append(y[i]+dy)
+            y_new[i] += dy
 
     return y_new
 
 def fit_curve(x, y, n_order=7, xn1=0.5, xn2=1.0):
     '''
     Using least square method to fit a CST curve
-        x, y:    curve points (list)
-        n_order: number of CST parameters
 
+    >>> coef = fit_curve(x, y, n_order, xn1, xn2)
+
+    ### Input:
+    ```text
+    x, y:    curve points (ndarray)
+    n_order: number of CST parameters
+    ```
+
+    ### Attributes:
+    ```text
     Array A: A[nn, n_order], nn=len(x)
     Array b: b[nn]
+    ```
 
-    Return: coef (list)
+    ### Return: 
+    coef (ndarray)
     '''
-    nn = len(x)
-    L  = x[-1] - x[0]
-    x_ = []
-    b_ = []
+    nn = x.shape[0]
+    L  = x[-1] - x[0]   # type: float
+    x_ = (x-x[0])/L     # scaling x to 0~1
+    b  = y.copy()
     for ip in range(nn):
-        x_.append((x[ip]-x[0])/L)    # scaling x to 0~1
-        b_.append(y[ip]-x_[ip]*y[-1])  # removing tail
-    b = np.array(b_)
+        b[ip] -= x_[ip]*y[-1]   # removing tail
 
     A = np.zeros((nn, n_order))
     for ip in range(nn):
@@ -860,15 +908,25 @@ def fit_curve(x, y, n_order=7, xn1=0.5, xn2=1.0):
 
     solution = lstsq(A, b, rcond=None)
 
-    return solution[0].tolist()
+    return solution[0]
 
 def output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False):
     '''
     Output airfoil data to tecplot ASCII format file
-        x, yu, yl:  current airfoil (list)
-        ID:         >0 append to existed file. 0: write header
-        info:       True: include curvature, thickness and camber
+
+    ### Inputs:
+    ```text
+    x, yu, yl:  current airfoil (ndarray)
+    ID:         >0 append to existed file. 0: write header
+    info:       True: include curvature, thickness and camber
+    ```
     '''
+    nn = x.shape[0]
+    curv_u = np.zeros(nn)
+    curv_l = np.zeros(nn)
+    camber = np.zeros(nn)
+    thickness = np.zeros(nn)
+    
     if ID == 0:
         # Write header
         with open(fname, 'w') as f:
@@ -882,15 +940,15 @@ def output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False):
         thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=info)
 
     with open(fname, 'a') as f:
-        f.write('zone T="Upp-%d" i= %d \n'%(ID, len(x)))
-        for i in range(len(x)):
+        f.write('zone T="Upp-%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
             line = '   %.9f  %.9f'%(x[i], yu[i])
             if info:
                 line = line + '  %.9f  %.9f  %.9f'%(curv_u[i], thickness[i], camber[i])
             f.write(line+'\n')
             
-        f.write('zone T="Low-%d" i= %d \n'%(ID, len(x)))
-        for i in range(len(x)):
+        f.write('zone T="Low-%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
             line = '   %.9f  %.9f'%(x[i], yl[i])
             if info:
                 line = line + '  %.9f  %.9f  %.9f'%(curv_l[i], thickness[i], camber[i])

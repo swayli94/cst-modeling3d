@@ -2,11 +2,17 @@
 This is a module containing functions to construct an airfoil
 '''
 import copy
+
 import numpy as np
 from numpy.linalg import lstsq
-from scipy.special import factorial
-from scipy.interpolate import interp1d
 from scipy import spatial
+from scipy.interpolate import interp1d
+from scipy.special import factorial
+
+from .naca import naca
+
+import matplotlib.pyplot as plt
+
 
 class Section:
     '''
@@ -481,6 +487,40 @@ def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
         yl_ = yl_ - 0.5*tail*x_
 
     return yu_, yl_
+
+def naca_to_cst(NACA_series: str, n_order=7, nn=101):
+    '''
+    Get CST parameters of a NACA series airfoil
+
+    >>> cst_u, cst_l = naca_to_cst(NACA_series, n_order, nn)
+
+    ### Inputs:
+    ```text
+    NACA_series:    4 or 5 digit NACA number string
+    n_order:        number of CST parameters
+    nn:             total amount of points
+    ```
+
+    ### Return: 
+    cst_u, cst_l (ndarray)
+    '''
+    xx, yy = naca(NACA_series, nn-1, finite_TE=False, half_cosine_spacing=True)
+
+    xu = np.zeros(nn)
+    xl = np.zeros(nn)
+    yu = np.zeros(nn)
+    yl = np.zeros(nn)
+
+    n0 = 2*nn-1
+    for i in range(nn):
+        xu[i] = xx[n0-i-nn]
+        yu[i] = yy[n0-i-nn]
+        xl[i] = xx[nn+i-1]
+        yl[i] = yy[nn+i-1]
+
+    cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_order=n_order)
+
+    return cst_u, cst_l
 
 #* ===========================================
 #* Supportive functions

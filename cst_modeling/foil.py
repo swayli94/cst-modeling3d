@@ -235,6 +235,9 @@ def cst_foil_fit(xu, yu, xl, yl, n_order=7):
     '''
     Using CST method to fit an airfoil
 
+    This function allows the airfoil has non-zero tail thickness.
+    Also allows the airfoil chord length not equals to one.
+
     >>> cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_order=7)
 
     ### Inputs:

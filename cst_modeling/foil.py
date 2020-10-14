@@ -299,7 +299,7 @@ def foil_bump_modify(x, yu, yl, xc: float, h: float, s: float, side=1, n_order=0
         yl_new = rl * np.array(yl_new)
     else:
         ru = (t0-tl)/tu
-        yl_new = ru * np.array(yu_new)
+        yu_new = ru * np.array(yu_new)
 
     if n_order > 0:
         # CST reverse

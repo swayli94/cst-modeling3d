@@ -12,6 +12,7 @@ Reference: Kulfan, B. M., “Universal parametric geometry representation method
 	<img src="airfoil\shape-function.png" width="300"> <br>
     Fig. CST shape functions (sixth-order)
 </div>
+
 ```python
 from cst_modeling.foil import cst_curve
 from matplotlib import pyplot as plt
@@ -42,8 +43,8 @@ Build a clean airfoil with given CST coefficients.
 import numpy as np
 from cst_modeling.foil import cst_foil
 
-cst_u = np.array([ 0.699328, 0.701191, 0.918286, 0.806252, 1.233955, 0.874498, 1.141528])
-cst_l = np.array([-0.681143,-0.791295,-0.643583,-1.493055,-0.072058,-0.698530, 0.377973])
+cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
+cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
 x, yu, yl, t0, R0 = cst_foil(1001, cst_u, cst_l, x=None, t=None, tail=0.0)
 
 plt.figure()
@@ -65,8 +66,14 @@ nn:         total amount of points on the upper/lower surfaces
 x:          optional ndarray [nn]. If given, the points on the airfoil are placed by the given x.
 t:          optional float. If given, the airfoil y is scaled to mathc the given relative maximum thickness
 tail:       optional float. If given, the airfoil is stretched to have the given relative tail thickness
-            (Meanwhile, the relative maximum thickness is kept the same)
+            Meanwhile, the relative maximum thickness is kept unchanged if t is specified.
+            Otherwise, the thickness will increase, when the tail is added.
 ```
+
+<div align=center>
+	<img src="airfoil\airfoil-tail-1.png" width="300"> <img src="airfoil\airfoil-tail-2.png" width="300"> <br>
+    Fig. Adding tail to an airfoil (left: t=None, right: t=0.11)
+</div>
 
 
 

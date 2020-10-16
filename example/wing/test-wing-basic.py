@@ -10,7 +10,7 @@ if __name__ == "__main__":
     #  Each section's upper/lower surface are constructed by CST method
     #  The chord-wise has nn points in the upper/lower surface
     #  The span-wise has ns points in each surface between two adjcent sections
-    wing = Surface(n_sec=2, name='Wing-basic', nn=101, ns=21)
+    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=21)
 
 
     #* Read settings from file 'Wing.txt'

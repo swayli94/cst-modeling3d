@@ -98,8 +98,8 @@ cst_u, cst_l = cst_foil_fit(x, yu, x, yl, n_order=n_cst)
 Output the curves of airfoil upper and lower surfaces in Tecplot format.
 
 ```python
->>> from cst_modeling.foil import output_foil
->>> output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False)
+from cst_modeling.foil import output_foil
+output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False)
 ```
 
 Settings of this function:
@@ -115,7 +115,59 @@ info:   if True, then outputs the curvature, thickness and camber distribution a
 
 ### 2.4 airfoil modification
 
+Add bump function to the airfoil.
 
+```python
+from cst_modeling.foil import foil_bump_modify
+xc = 0.7
+h  = 0.02
+s  = 0.6
+yu_, yl_ = foil_bump_modify(x, yu, yl, xc, h, s, side=1)
+```
+
+Settings of this function:
+
+```text
+xc:         x location of the bump center
+h:          bump height (can be either positive or negetive)
+s:          bump width
+side:       1/-1, modification to the upper/lower surface
+n_order:    if specified (>0), then use CST to fit the new foil
+```
+
+<div align=center>
+	<img src="airfoil\airfoil-bump.png" width="300"> <br>
+    Fig. Bump modification to airfoil upper surface
+</div>
+
+
+
+### 2.5 airfoil increment
+
+Add an incremental CST curve to the airfoil.
+
+```python
+from cst_modeling.foil import foil_increment
+cst_u_ = np.zeros(16)
+cst_l_ = np.zeros(16)
+cst_u_[12] = 0.05
+yu_, yl_ = foil_increment(x, yu, yl, cst_u_, cst_l_, t=t0)
+```
+
+Settings of this function:
+
+```text
+cst_u_:     CST coefficients of the incremental curve on the upper surface
+cst_l_:     CST coefficients of the incremental curve on the lower surface
+t:          optional float. If given, the airfoil relative maximum thickness is kept unchanged
+```
+
+<div align=center>
+	<img src="airfoil\airfoil-increment.png" width="300"> <br>
+    Fig. Increment to airfoil upper surface
+</div>
+
+The green dash curve is the incremental CST curve.
 
 
 

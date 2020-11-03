@@ -335,7 +335,7 @@ def foil_tcc(x, yu, yl, info=True):
 
     return thickness, curv_u, curv_l, camber
 
-def check_valid(x, yu, yl, RLE=0.0) -> list:
+def check_valid(x, yu, yl, RLE=0.0, neg_tcri=0.0) -> list:
     '''
     Check if the airfoil is reasonable by rules
 
@@ -344,6 +344,9 @@ def check_valid(x, yu, yl, RLE=0.0) -> list:
     ### Inputs:
     ```text
     x, yu, yl: current airfoil (ndarray)
+    RLE:       The leading edge radius of this airfoil
+    neg_tcri:  critical value for checking negative thickness
+               e.g., neg_tcri = -0.01, then only invalid when the thickness is smaller than -0.01
     ```
 
     ### Rules:
@@ -367,7 +370,7 @@ def check_valid(x, yu, yl, RLE=0.0) -> list:
     rule_invalid = [0 for _ in range(n_rule)]
 
     #* Rule 1: negative thickness
-    if np.min(thickness) < 0.0:
+    if np.min(thickness) < neg_tcri:
         rule_invalid[0] = 1
 
     #* Rule 2: maximum thickness point location
@@ -413,7 +416,7 @@ def check_valid(x, yu, yl, RLE=0.0) -> list:
     if RLE>0.0 and RLE<0.005:
         rule_invalid[5] = 1
 
-    if RLE>0.0 and RLE/t0<0.1:
+    if RLE>0.0 and RLE/t0<0.01:
         rule_invalid[5] = 1
 
     #* Rule 7: convex LE

@@ -10,7 +10,7 @@ if __name__ == "__main__":
     #  Each section's upper/lower surface are constructed by CST method
     #  The chord-wise has nn points in the upper/lower surface
     #  The span-wise has ns points in each surface between two adjcent sections
-    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=21)
+    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=101)
 
 
     #* Read settings from file 'Wing.txt'
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     #* Constructs the surfaces between sections
     #  split and showfoil are options
-    wing.geo(split=False, showfoil=True)
+    wing.geo(split=False, showfoil=False)
 
 
     #* Output tecplot format to fname
@@ -35,5 +35,4 @@ if __name__ == "__main__":
     wing.flip(axis='+X +Z')
 
     wing.plot()
-
 

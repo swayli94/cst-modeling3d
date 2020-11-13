@@ -23,7 +23,7 @@ class Surface:
     ### Inputs:
     ```text
     n_sec:   number of control sections (2D if set to 0 or 1)
-    tail:    tail thickness (m)
+    tail:    float or list, absolute tail thickness (m)
     name:    name of the surface
     fname:   name of control file (not None: read in settings)
     nn:      number of points of upper/lower section
@@ -168,6 +168,11 @@ class Surface:
                     line = lines[iL].split()
                     n_cst_refine = int(line[0])
                     i_cst_start = int(line[1])
+
+                    if n_cst_refine <= 0:
+                        iL += self.n_sec*3
+                        found_key = 0
+                        continue
 
                     for i in range(self.n_sec):
 
@@ -350,11 +355,13 @@ class Surface:
         '''
         For surfs, and center. (This should be the last action)
 
+        The axis and plane can be a single string, 
+        or a string contains multiple actions to take in order, e.g., '+X  +Y'.
+
         ### Inputs:
         ```text
-        axis:  Turn 90 deg in axis, +X, -X, +Y, -Y, +Z, -Z
-        plane: get symmetry by plane, 'XY', 'YZ', 'ZX'
-        (can list multiple action in order, split with space)
+        axis:  turn 90 degrees about axis: +X, -X, +Y, -Y, +Z, -Z
+        plane: get symmetry about plane: 'XY', 'YZ', 'ZX'
         ```
         '''
         for axis_ in axis.split():
@@ -435,16 +442,16 @@ class Surface:
 
     def bend(self, isec0: int, isec1: int, leader=None, kx=None, ky=None, rot_x=False):
         '''
-        Bend surfaces by angle and leader curve.
+        Bend surfaces by a guide curve, i.e., leader.
 
         ### Inputs:
         ```text
         isec0:      the index of start section
         isec1:      the index of end section
-        leader:     list of leading points (and chord length) [[x,y,z(,c)], [x,y,z(,c)]]
+        leader:     list of points (and chord length) in the guide curve. [[x,y,z(,c)], [x,y,z(,c)]]
         axis:       Z-axis, spanwise direction
-        kv:         X-axis slope at both ends [kx0, kx1]
-        ky:         Y-axis slope at both ends [ky0, ky1]
+        kx:         X-axis slope (dx/dz) at both ends [kx0, kx1]
+        ky:         Y-axis slope (dy/dz) at both ends [ky0, ky1]
         rot_x:      True ~ rotate sections in x-axis to make the section vertical to the leader
         ```
 

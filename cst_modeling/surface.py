@@ -27,7 +27,7 @@ class Surface:
     name:    name of the surface
     fname:   name of control file (not None: read in settings)
     nn:      number of points of upper/lower section
-    ns:      number of spanwise
+    ns:      number of spanwise points
     project: True ~ projected chord length does not change when twisted
     ```
 
@@ -115,17 +115,17 @@ class Surface:
                     continue
                 
                 if not found_surf and len(line) > 1:
-                    if '[Surf]' in line[0] and self.name in line[1]:
+                    if '[Surf]' in line[0] and self.name == line[1]:
                         found_surf = True
 
                 elif found_surf and '[Surf]' in line[0]:
                     break
 
-                elif found_key == 0:
+                elif found_surf and found_key == 0:
                     if line[0] in key_dict:
                         found_key = key_dict[line[0]]
 
-                elif found_key == 1:
+                elif found_surf and found_key == 1:
                     for i in range(self.n_sec):
                         iL += 1
                         line = lines[iL].split()
@@ -138,7 +138,7 @@ class Surface:
 
                         if isinstance(tail, float):
                             self.secs[i].tail  = tail/self.secs[i].chord
-                        elif len(tail)==self.n_Sec:
+                        elif len(tail)==self.n_sec:
                             self.secs[i].tail  = tail[i]/self.secs[i].chord
                         else:
                             raise Exception('tail must be a float or a list with length = section number')
@@ -151,7 +151,7 @@ class Surface:
 
                     found_key = 0
 
-                elif found_key == 2:
+                elif found_surf and found_key == 2:
                     for i in range(self.n_sec):
                         iL += 2
                         line = lines[iL].split()
@@ -163,7 +163,7 @@ class Surface:
                     
                     found_key = 0
 
-                elif found_key == 3:
+                elif found_surf and found_key == 3:
                     iL += 2
                     line = lines[iL].split()
                     n_cst_refine = int(line[0])
@@ -535,6 +535,21 @@ class Surface:
 
             ns = self.surfs[i_surf][0].shape[0]
             for j in range(ns):
+
+                # Transition of inner sections
+                if isec0!=0 and j==0:
+                    if self.split and i_surf<=i0+1:
+                        continue
+                    elif not self.split and i_surf==i0:
+                        continue
+
+                if isec1!=self.n_sec-1 and j==ns-1:
+                    if self.split and i_surf>=i1-2:
+                        continue
+                    elif not self.split and i_surf==i1-1:
+                        continue
+
+                # Start bending
                 xx  = self.surfs[i_surf][0][j,:]
                 yy  = self.surfs[i_surf][1][j,:]
                 zz  = self.surfs[i_surf][2][j,:]
@@ -570,11 +585,17 @@ class Surface:
                 self.surfs[i_surf][1][j,:] = yy.copy()
                 self.surfs[i_surf][2][j,:] = zz.copy()
 
-    def smooth(self, isec0: int, isec1: int):
+    def smooth(self, isec0: int, isec1: int, smooth0=False, smooth1=False):
         '''
         Smooth the spanwise curve between isec0 and isec1
+
+        ### Inputs:
+        ```text
+        isec0, isec1:       the starting and ending section index of the smooth region
+        smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
+        ```
         '''
-        #* Control points of the spanwise curve
+        #* Section index
         if self.split:
             i0 = 2*isec0
             i1 = 2*isec1
@@ -584,8 +605,17 @@ class Surface:
             i1 = isec1
             jump = 1
 
+        #* Do not have neighboring surfaces
+        if isec0 == 0:
+            smooth0 = False
+        if isec1 == self.n_sec-1:
+            smooth1 = False
+
+        #* For each point in the section curve (npoint)
         npoint = self.surfs[0][0].shape[1]
         for ip in range(npoint):
+
+            #* Collect the spanwise control points
             xx = []
             yy = []
             zz = []
@@ -596,9 +626,32 @@ class Surface:
             xx.append(self.surfs[i_surf][0][-1,ip])
             yy.append(self.surfs[i_surf][1][-1,ip])
             zz.append(self.surfs[i_surf][2][-1,ip])
-            curve_x = CubicSpline(zz, xx)
-            curve_y = CubicSpline(zz, yy)
 
+            #* Construct spanwise spline curve
+            bcx0 = (2,0.0)
+            bcx1 = (2,0.0)
+            bcy0 = (2,0.0)
+            bcy1 = (2,0.0)
+            if smooth0:
+                ii = i0-jump
+                dz = self.surfs[ii][2][-1,ip] - self.surfs[ii][2][-2,ip]
+                dxz0 = (self.surfs[ii][0][-1,ip] - self.surfs[ii][0][-2,ip])/dz
+                dyz0 = (self.surfs[ii][1][-1,ip] - self.surfs[ii][1][-2,ip])/dz
+                bcx0 = (1,dxz0)
+                bcy0 = (1,dyz0)
+
+            if smooth1:
+                ii = i1+jump
+                dz = self.surfs[ii][2][1,ip] - self.surfs[ii][2][0,ip]
+                dxz1 = (self.surfs[ii][0][1,ip] - self.surfs[ii][0][0,ip])/dz
+                dyz1 = (self.surfs[ii][1][1,ip] - self.surfs[ii][1][0,ip])/dz
+                bcx1 = (1,dxz1)
+                bcy1 = (1,dyz1)
+
+            curve_x = CubicSpline(zz, xx, bc_type=(bcx0, bcx1))
+            curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
+
+            #* Use the spanwise spline to update the spanwise geometry
             for i_surf in range(i0, i1, jump):
                 nn = self.surfs[i_surf][0].shape[0]
                 for j in range(nn):

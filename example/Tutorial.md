@@ -445,6 +445,23 @@ Smooth the spanwise curve between *isec0* and *isec1*.
 wing.smooth(isec0: int, isec1: int)
 ```
 
+<div align=center>
+	<img src="wing\wing-tip.jpg" width="500"> <br>
+    Fig. Smooth wing surface and wing tip
+</div>
+Relevant code:
+
+```python
+from cst_modeling.surface import Surface
+wing = Surface(n_sec=6, name='Wing-tip', nn=101, ns=101)
+wing.read_setting('Wing.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.05, 0.01])
+wing.geo(split=False, showfoil=False)
+wing.bend(4, 5, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
+wing.smooth(0,2)
+wing.smooth(2,4)
+wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
+```
+
 
 
 #### output_tecplot
@@ -473,6 +490,5 @@ wing.output_plot3d(fname=None)
 
 
 ## 4. Fan blade
-
 
 

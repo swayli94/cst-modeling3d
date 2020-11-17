@@ -176,8 +176,8 @@ class Section:
         self.z = other.z.copy()
 
         self.refine_fixed_t = other.refine_fixed_t
-        self.refine_u = other.refine_u.copy()
-        self.refine_l = other.refine_l.copy()
+        self.refine_u = copy.deepcopy(other.refine_u)
+        self.refine_l = copy.deepcopy(other.refine_l)
 
 
 class OpenSection:
@@ -305,7 +305,7 @@ class OpenSection:
         self.y = other.y.copy()
         self.z = other.z.copy()
 
-        self.refine = other.refine.copy()
+        self.refine = copy.deepcopy(other.refine)
 
 
 #* ===========================================

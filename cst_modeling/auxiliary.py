@@ -108,7 +108,9 @@ class WingVariableCamber(Surface):
         if 'ns' in kwargs.keys():
             ns = kwargs['ns']
 
-        super().__init__(n_sec=n_sec, tail=tail, name=name, fname=fname, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+
+        self.read_setting(fname, tail=tail)
 
         self.flap_trans = 0.2
         self.flap_loc = []
@@ -139,14 +141,13 @@ class WingVariableCamber(Surface):
         if len(self.axis_xloc) != self.n_flap:
             raise Exception('Size of axis_xloc %d does not match flap_angle %d'%(len(self.axis_xloc), self.n_flap))
 
-    def build(self, split=True, showfoil=False, one_piece=False, f_tecplot='Wing.dat', f_plot3d='Wing.grd'):
+    def build(self, split=True, one_piece=False, f_tecplot='Wing.dat', f_plot3d='Wing.grd'):
         '''
         Build wing geometry.
 
         ### Inputs:
         ```text
         split:      True ~ generate [surfs] as upper and lower separately
-        showfoil:   True ~ output name-foil.dat of airfoils
         one_piece:  True ~ combine the spanwise sections into one piece (for tecplot format)
 
         f_tecplot:  file name of tecplot format file. If None, do not output.
@@ -164,7 +165,7 @@ class WingVariableCamber(Surface):
 
             self.add_sec(z_secs)
 
-        self.geo_secs(showfoil=showfoil)
+        self.geo_secs()
 
         zLE_secs = self.zLE_secs
 
@@ -182,10 +183,10 @@ class WingVariableCamber(Surface):
             section_flap(self.secs[i1], ax, aa, dy_axis=ay)
             section_flap(self.secs[i2], ax, aa, dy_axis=ay)
 
-        self.geo(split=split, update_sec=False)
+        self.geo(update_sec=False)
 
         if f_tecplot is not None:
-            self.output_tecplot(fname=f_tecplot, one_piece=one_piece)
+            self.output_tecplot(fname=f_tecplot, one_piece=one_piece, split=split)
 
         if f_plot3d is not None:
             self.output_plot3d(fname=f_plot3d)

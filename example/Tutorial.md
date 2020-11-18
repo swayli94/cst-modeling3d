@@ -350,11 +350,10 @@ Detailed settings can be found in the comments of each function.
 Generate the surface sections.
 
 ```python
-wing.geo_secs(showfoil=True, flip_x=False)
+wing.geo_secs(flip_x=False)
 ```
 
 ```text
-showfoil:   if True, output name-foil.dat of airfoils
 flip_x:     if True, flip section.xx in reverse order
 ```
 
@@ -365,12 +364,10 @@ flip_x:     if True, flip section.xx in reverse order
 Generate the surface geometry.
 
 ```python
-wing.geo(split=True, showfoil=True, flip_x=False, update_sec=True)
+wing.geo(flip_x=False, update_sec=True)
 ```
 
 ```text
-showfoil:   if True, output name-foil.dat of airfoils
-split:      if True, generate surfaces as upper and lower separately
 flip_x:     if True, flip section.xx in reverse order
 update_sec: if True, update control sections
 ```
@@ -455,11 +452,11 @@ Relevant code:
 from cst_modeling.surface import Surface
 wing = Surface(n_sec=6, name='Wing-tip', nn=101, ns=101)
 wing.read_setting('Wing.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.05, 0.01])
-wing.geo(split=False, showfoil=False)
+wing.geo()
 wing.bend(4, 5, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
 wing.smooth(0,2)
 wing.smooth(2,4)
-wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
+wing.output_tecplot(fname='Wing-tip.dat')
 ```
 
 
@@ -469,12 +466,13 @@ wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
 Output the surface to *.dat in *Tecplot* format.
 
 ```python
-wing.output_tecplot(fname=None, one_piece=False)
+wing.output_tecplot(fname=None, one_piece=False, split=False)
 ```
 
 ```text
 fname:      string (the name of the file), or None (default name)
 one_piece:  if True, combine the spanwise sections into one piece
+split:      if True, split to upper and lower surfaces
 ```
 
 

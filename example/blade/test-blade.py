@@ -1,43 +1,43 @@
 
 import numpy as np
-from scipy.interpolate import CubicSpline
-
-# Run this in the directory where the folder cst_modeling is
-from cst_modeling.surface import Surface
+from cst_modeling.surface import OpenSurface
 
 
 if __name__ == "__main__":
 
-    print('This is a example for constructing a fan')
-    # Define a [Surface] object, which is called fan
-    # It has n_sec control sections, and its name is 'Fan'
-    # Each section's upper/lower surface are constructed by CST method (has n_cst parameters)
-    # The chord-wise has nn points in the upper/lower surface
-    # The span-wise has ns points in each surface between two adjcent sections
-    fan = Surface(n_sec=7, name='Blade-basic',nn=51, ns=51, project=False)
+    #* ==========================================
+    #* Suction side
+    blade1 = OpenSurface(n_sec=6, name='Blade-suction',nn=101, ns=51, project=False)
 
-    # Read settings from file 'Fan.txt'
-    # The settings of [fan] object is under its name 'Fan'
-    # First part is the parameters fro the layout
-    # Second part is the CST parameters of upper/lower surface of each section
-    fan.read_setting('Fan.txt', tail=0.86)
+    blade1.read_setting('Fan.txt')
 
-    # This constructs the surfaces between sections
-    # split and showfoil are options
-    fan.geo(split=True, showfoil=False)
+    origins = blade1.read_cylinder_origins('Fan.txt')
+
+    blade1.geo()
 
     # Smooth
-    fan.smooth(isec0=0, isec1=5)
+    blade1.smooth(isec0=0, isec1=5)
 
     # Convert back to cylinder
-    fan.Surf2Cylinder(flip=True)
+    blade1.Surf2Cylinder(flip=True, origin=origins)
 
     # This outputs the surface to fname in tecplot format
-    # one_piece is an option for combining all surfaces in different sections into one piece
-    fan.output_tecplot(fname='Fan.dat', one_piece=False)
+    blade1.output_tecplot(fname='Blade-suction.dat')
 
-    # fan.output_plot3d(fname='Fan.grd')
+    #* ==========================================
+    #* Pressure side
+    blade2 = OpenSurface(n_sec=6, name='Blade-pressure',nn=101, ns=51, project=False)
 
+    blade2.read_setting('Fan.txt')
 
+    origins = blade2.read_cylinder_origins('Fan.txt')
+
+    blade2.geo()
+
+    blade2.smooth(isec0=0, isec1=5)
+
+    blade2.Surf2Cylinder(flip=True, origin=origins)
+
+    blade2.output_tecplot(fname='Blade-pressure.dat')
 
 

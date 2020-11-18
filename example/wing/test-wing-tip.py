@@ -6,7 +6,7 @@ from cst_modeling.surface import Surface
 if __name__ == "__main__":
 
 
-    wing = Surface(n_sec=6, name='Wing-tip', nn=101, ns=101)
+    wing = Surface(n_sec=6, name='Wing-tip', nn=101, ns=51)
 
     wing.read_setting('Wing.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.05, 0.01])
 
@@ -17,5 +17,5 @@ if __name__ == "__main__":
     wing.smooth(0,2)
     wing.smooth(2,4)
 
-    wing.output_tecplot(fname='Wing-tip.dat', one_piece=True, split=True)
+    wing.output_tecplot(fname='Wing-tip.dat', one_piece=False, split=False)
 

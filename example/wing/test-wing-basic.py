@@ -34,6 +34,9 @@ if __name__ == "__main__":
     wing.output_tecplot(fname='Wing-basic.dat', one_piece=False, split=True)
 
 
+    wing.output_section(fname='Wing-basic-sec.dat', TwoD=False)
+
+
     #* Plot the wing surface on screen
     #  This is flipping the surface, it can do turing 90deg or mirror
     wing.flip(axis='+X +Z')

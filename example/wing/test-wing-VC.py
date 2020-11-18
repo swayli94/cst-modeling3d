@@ -5,8 +5,6 @@ from cst_modeling.auxiliary import WingVariableCamber
 
 if __name__ == "__main__":
 
-    print('This is a example for constructing a wing')
-
     flap_loc = [5.0, 10.0, 12.0, 25.0]
     flap_angle = [-5.0, 5.0]
     axis_xloc = [0.8, 0.7]

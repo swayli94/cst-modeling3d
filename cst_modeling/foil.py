@@ -140,7 +140,7 @@ class Section:
 
         #* Transform to 3D
         if flip_x:
-            self.xx.reverse()
+            self.xx = np.flip(self.xx)
 
         xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
             scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
@@ -277,7 +277,7 @@ class OpenSection:
 
         #* Transform to 3D
         if flip_x:
-            self.xx.reverse()
+            self.xx = np.flip(self.xx)
 
         self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
             scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
@@ -683,17 +683,20 @@ def scale_cst(x, yu, yl, cst_u, cst_l, t: float, tail=0.0):
 
     return cst_u_new, cst_l_new
 
-def fromCylinder(x, y, z, flip=True):
+def fromCylinder(x, y, z, flip=True, origin=None):
     '''
     Bend the cylinder curve to a 2D plane curve.
 
     ### Inputs:
     ```text
-    x, y ,z: point coordinate ndarray of curves on the cylinder
+    x, y ,z:    ndarray, point coordinates of curves on the cylinder
+    flip:       if True, flip the X of plane curve
+    origin:     default None.
+                if provided a list [x0, y0], then the cylinder origin is [x0, y0]
     ```
 
     ### Return:
-    X, Y, Z: point coordinate ndarray of curves bent to 2D X-Y planes
+    X, Y, Z:    ndarray, point coordinates of curves bent to 2D X-Y planes
 
     ### Note:
     ```text
@@ -716,6 +719,10 @@ def fromCylinder(x, y, z, flip=True):
     '''
     coef = -1.0 if flip else 1.0
 
+    if origin is not None:
+        x = x - origin[0]
+        y = y - origin[1]
+
     rr = np.sqrt(x*x+y*y)
     tt = np.arctan2(y, x) * coef
 
@@ -725,18 +732,21 @@ def fromCylinder(x, y, z, flip=True):
 
     return X, Y, Z
 
-def toCylinder(X, Y, Z, flip=True):
+def toCylinder(X, Y, Z, flip=True, origin=None):
     '''
     Bend the plane sections to curves on a cylinder.
 
     ### Inputs:
     ```text
-    X, Y, Z: point coordinate ndarray of curves on 2D X-Y planes
-    Z must not be 0
+    X, Y, Z:    ndarray, point coordinates of curves on 2D X-Y planes
+                Z must not be 0
+    flip:       if True, flip the X of plane curve
+    origin:     default None.
+                if provided a list [x0, y0], then the cylinder origin is [x0, y0]
     ```
 
     ### Return:
-    x, y ,z: point coordinate ndarray of curves bent to a cylinder
+    x, y ,z:    ndarray, point coordinate of curves bent to a cylinder
 
     ### Note:
     ```text
@@ -766,6 +776,10 @@ def toCylinder(X, Y, Z, flip=True):
         theta = X[i]/r * coef
         x[i] = r*np.cos(theta)
         y[i] = r*np.sin(theta)
+
+    if origin is not None:
+        x = x + origin[0]
+        y = y + origin[1]
 
     return x, y, z
 
@@ -851,6 +865,26 @@ def find_circle_3p(p1, p2, p3):
     ### Return: 
     R, XC = np.array([xc, yc])
     '''
+
+    # http://ambrsoft.com/TrigoCalc/Circle3D.htm
+
+    A = p1[0]*(p2[1]-p3[1]) - p1[1]*(p2[0]-p3[0]) + p2[0]*p3[1] - p3[0]*p2[1]
+    if np.abs(A) <= 1E-20:
+        raise Exception('Finding circle: 3 points in one line')
+    
+    p1s = p1[0]**2 + p1[1]**2
+    p2s = p2[0]**2 + p2[1]**2
+    p3s = p3[0]**2 + p3[1]**2
+
+    B = p1s*(p3[1]-p2[1]) + p2s*(p1[1]-p3[1]) + p3s*(p2[1]-p1[1])
+    C = p1s*(p2[0]-p3[0]) + p2s*(p3[0]-p1[0]) + p3s*(p1[0]-p2[0])
+    D = p1s*(p3[0]*p2[1]-p2[0]*p3[1]) + p2s*(p1[0]*p3[1]-p3[0]*p1[1]) + p3s*(p2[0]*p1[1]-p1[0]*p2[1])
+
+    x0 = -B/2/A
+    y0 = -C/2/A
+    R  = np.sqrt(B**2+C**2-4*A*D)/2/np.abs(A)
+
+    '''
     x21 = p2[0] - p1[0]
     y21 = p2[1] - p1[1]
     x32 = p3[0] - p2[0]
@@ -865,6 +899,7 @@ def find_circle_3p(p1, p2, p3):
     y0 = (x32 * xy21 - x21 * xy32) / 2 * (y21 * x32 - y32 * x21)
     x0 = (xy21 - 2 * y0 * y21) / (2.0 * x21)
     R = np.sqrt(np.power(p1[0]-x0,2) + np.power(p1[1]-y0,2))
+    '''
 
     return R, np.array([x0, y0])
 
@@ -1201,7 +1236,7 @@ def fit_curve_with_twist(x, y, n_order=7, xn1=0.5, xn2=1.0):
     '''
     Using least square method to fit a CST curve
 
-    >>> coef, chord, twist = fit_curve_with_twist(x, y, n_order, xn1, xn2)
+    >>> coef, chord, twist, thick = fit_curve_with_twist(x, y, n_order, xn1, xn2)
 
     ### Input:
     ```text
@@ -1219,6 +1254,7 @@ def fit_curve_with_twist(x, y, n_order=7, xn1=0.5, xn2=1.0):
     coef:   CST parameters, ndarray
     chord:  distance between two ends of the curve
     twist:  degree, +z axis
+    thick:  maximum relative thickness
     '''
     chord = np.sqrt((x[0]-x[-1])**2+(y[0]-y[-1])**2)
     twist = np.arctan((y[-1]-y[0])/(x[-1]-x[0]))*180/np.pi
@@ -1226,10 +1262,11 @@ def fit_curve_with_twist(x, y, n_order=7, xn1=0.5, xn2=1.0):
     x_ = (x - x[0])/chord
     y_ = (y - y[0])/chord
     x_, y_, _ = rotate(x_, y_, None, angle=-twist, axis='Z')
+    thick = np.max(y_, axis=0)
 
     coef = fit_curve(x_, y_, n_order=n_order, xn1=xn1, xn2=xn2)
-
-    return coef, chord, twist
+    
+    return coef, chord, twist, thick
 
 def output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False):
     '''

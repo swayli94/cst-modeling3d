@@ -87,6 +87,7 @@ class BasicSurface():
         self.half_s = other.half_s
         self.center = other.center.copy()
 
+
     def geo_secs(self, flip_x=False):
         '''
         Update surface sections
@@ -125,24 +126,42 @@ class BasicSurface():
                 surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
                 self.surfs.append(surf)
 
-    def Surf2Cylinder(self, flip=True):
+    @staticmethod
+    def section_surf(sec0, sec1, ns=101):
         '''
-        Bend the surface (surfs) to cylinder (turbomachinery).
-        The original surface is constructed by 2D sections.
+        Interplot surface section between curves
+
+        >>> surf = section_surf(sec0, sec1, ns)
+
+        ### Inputs:
+        ```text
+        sec0, sec1:     Section object
+        ns:             number of spanwise points
+        ```
+
+        ### Return: 
+        ```text
+        surf:   [surf_x, surf_y, surf_z]
+                list of ndarray [ns, nn]
+        ```
         '''
 
-        for surf in self.surfs:
-            ns = surf[0].shape[0]
-            for j in range(ns):
-                X = surf[0][j,:]
-                Y = surf[1][j,:]
-                Z = surf[2][j,:]
+        nn = sec0.x.shape[0]
+        surf_x = np.zeros((ns,nn))
+        surf_y = np.zeros((ns,nn))
+        surf_z = np.zeros((ns,nn))
+        
+        for i in range(ns):
+            tt = 1.0*i/(ns-1.0)
+            for j in range(nn):
+                surf_x[i,j] = (1-tt)*sec0.x[j] + tt*sec1.x[j]
+                surf_y[i,j] = (1-tt)*sec0.y[j] + tt*sec1.y[j]
+                surf_z[i,j] = (1-tt)*sec0.z[j] + tt*sec1.z[j]
 
-                x, y, z = toCylinder(X, Y, Z, flip=flip)
+        surf = [surf_x, surf_y, surf_z]
 
-                surf[0][j,:] = x.copy()
-                surf[1][j,:] = y.copy()
-                surf[2][j,:] = z.copy()
+        return surf
+
 
     def flip(self, axis='None', plane='None'):
         '''
@@ -232,179 +251,6 @@ class BasicSurface():
             for isec in range(len(self.surfs)):
                 self.surfs[isec][1] = -self.surfs[isec][1]
             self.center[1] = - self.center[1]
-
-    @staticmethod
-    def section_surf(sec0, sec1, ns=101):
-        '''
-        Interplot surface section between curves
-
-        >>> surf = section_surf(sec0, sec1, ns)
-
-        ### Inputs:
-        ```text
-        sec0, sec1:     Section object
-        ns:             number of spanwise points
-        ```
-
-        ### Return: 
-        ```text
-        surf:   [surf_x, surf_y, surf_z]
-                list of ndarray [ns, nn]
-        ```
-        '''
-
-        nn = sec0.x.shape[0]
-        surf_x = np.zeros((ns,nn))
-        surf_y = np.zeros((ns,nn))
-        surf_z = np.zeros((ns,nn))
-        
-        for i in range(ns):
-            tt = 1.0*i/(ns-1.0)
-            for j in range(nn):
-                surf_x[i,j] = (1-tt)*sec0.x[j] + tt*sec1.x[j]
-                surf_y[i,j] = (1-tt)*sec0.y[j] + tt*sec1.y[j]
-                surf_z[i,j] = (1-tt)*sec0.z[j] + tt*sec1.z[j]
-
-        surf = [surf_x, surf_y, surf_z]
-
-        return surf
-
-    def output_tecplot(self, fname=None, one_piece=False):
-        '''
-        Output the surface to *.dat in Tecplot format
-
-        ### Inputs:
-        ```text
-        fname:      the name of the file
-        one_piece:  True ~ combine the spanwise sections into one piece
-        ```
-        '''
-        # surf_x[ns,nt], ns => spanwise
-
-        if fname is None:
-            fname = self.name + '.dat'
-
-        n_sec   = 1 if self.l2d else self.n_sec-1
-        n_piece = len(self.surfs)
-        
-        with open(fname, 'w') as f:
-            f.write('Variables= X  Y  Z \n ')
-
-            nt = self.nn*2-1
-            ns = self.ns
-
-            if not one_piece:
-
-                for isec in range(n_piece):
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
-
-                    f.write('zone T="sec %d" i= %d j= %d \n'%(isec, nt, ns))
-
-                    for i in range(ns):
-                        for j in range(nt):
-                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
-                            
-            else:
-                
-                npoint = n_sec*(self.ns-1) + 1
-                
-                f.write('zone T="sec" i= %d j= %d \n'%(nt, npoint))
-
-                for isec in range(n_piece):
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
-
-                    if isec>=n_piece-2:
-                        i_add = 0
-                    else:
-                        i_add = 1
-
-                    for i in range(ns-i_add):
-                        for j in range(nt):
-                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
-
-    def output_plot3d(self, fname=None):
-        '''
-        Output the surface to *.grd in plot3d format
-
-        ### Inputs:
-        ```text
-        fname: the name of the file
-        ```
-        '''
-        if fname is None:
-            fname = self.name + '.grd'
-
-        n_sec   = 1 if self.l2d else self.n_sec-1
-        n_piece = len(self.surfs)
-
-        # X[ns][nn], ns => spanwise
-        X = self.surfs[0][0]
-        ns = X.shape[0]
-        nn = X.shape[1]
-        
-        with open(fname, 'w') as f:
-            f.write('%d \n '%(n_piece))     # Number of surfaces
-            for isec in range(n_piece):
-                f.write('%d %d 1\n '%(nn, ns))
-
-            for isec in range(n_piece):
-                X = self.surfs[isec][0]
-                ii = 0
-                for i in range(ns):
-                    for j in range(nn):
-                        f.write(' %.9f '%(X[i,j]))
-                        ii += 1
-                        if ii%3 == 0:
-                            f.write(' \n ')
-
-                Y = self.surfs[isec][1]
-                ii = 0
-                for i in range(ns):
-                    for j in range(nn):
-                        f.write(' %.9f '%(Y[i,j]))
-                        ii += 1
-                        if ii%3 == 0:
-                            f.write(' \n ')
-
-                Z = self.surfs[isec][2]
-                ii = 0
-                for i in range(ns):
-                    for j in range(nn):
-                        f.write(' %.9f '%(Z[i,j]))
-                        ii += 1
-                        if ii%3 == 0:
-                            f.write(' \n ')
-
-    def plot(self, fig_id=1, type='wireframe'):
-        '''
-        Plot surface
-
-        ### Inputs:
-        ```text
-        fig_id: ID of the figure
-        type:   wireframe, surface
-        ```
-        '''
-        fig = plt.figure(fig_id)
-        ax = Axes3D(fig)
-
-        for surf in self.surfs:
-            if type in 'wireframe':
-                ax.plot_wireframe(surf[0], surf[1], surf[2])
-            else:
-                ax.plot_surface(surf[0], surf[1], surf[2])
-
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_xlim3d(self.center[0]-self.half_s, self.center[0]+self.half_s)
-        ax.set_ylim3d(self.center[1]-self.half_s, self.center[1]+self.half_s)
-        ax.set_zlim3d(self.center[2]-self.half_s, self.center[2]+self.half_s)
-        plt.show()
 
     def smooth(self, isec0: int, isec1: int, smooth0=False, smooth1=False):
         '''
@@ -605,9 +451,298 @@ class BasicSurface():
                 self.surfs[i_surf][2][j,:] = zz.copy()
 
 
+    def Surf2Cylinder(self, flip=True, origin=None):
+        '''
+        Bend the surface (surfs) to cylinder (turbomachinery).
+        The original surface is constructed by 2D sections.
+
+        ### Inputs:
+        ```text
+        flip:   if True, flip X
+        origin: default None, i.e., the cylinder origin axis is Z-axis for all sections
+                otherwise, provide a list of actual cylinder origins, [O0, O1, ...]
+                list length is the number of sections
+                each element is the cylinder origin of that section, i.e., [xO, yO]
+                can be ndarray or list
+        ```
+        '''
+
+        if origin is None:
+            for surf in self.surfs:
+                ns = surf[0].shape[0]
+                for j in range(ns):
+                    x, y, z = toCylinder(surf[0][j,:], surf[1][j,:], surf[2][j,:], flip=flip)
+                    surf[0][j,:] = x.copy()
+                    surf[1][j,:] = y.copy()
+                    surf[2][j,:] = z.copy()
+
+            for sec in self.secs:
+                sec.x, sec.y, sec.z = toCylinder(sec.x, sec.y, sec.z, flip=flip)
+
+        else:
+
+            for i in range(self.n_sec-1):
+
+                surf = self.surfs[i]
+                ns = surf[0].shape[0]
+
+                for j in range(ns):
+                    tt = j/(ns-1.0)
+                    x0 = (1-tt)*origin[i][0] + tt*origin[i+1][0]
+                    y0 = (1-tt)*origin[i][1] + tt*origin[i+1][1]
+
+                    x, y, z = toCylinder(surf[0][j,:], surf[1][j,:], surf[2][j,:], flip=flip, origin=[x0,y0])
+
+                    surf[0][j,:] = x.copy()
+                    surf[1][j,:] = y.copy()
+                    surf[2][j,:] = z.copy()
+
+            for i in range(self.n_sec):
+                sec = self.secs[i]
+                sec.x, sec.y, sec.z = toCylinder(sec.x, sec.y, sec.z, flip=flip, origin=origin[i])
+
+    def read_cylinder_origins(self, fname):
+        '''
+        Read in orgins of each section from file
+
+        >>> origins = read_cylinder_origins(fname)
+
+        ### Inputs:
+        ```text
+        fname:  settings file name
+        ```
+        '''
+        if not os.path.exists(fname):
+            raise Exception(fname+' does not exist for surface read setting')
+        
+        key_dict = {'CylinderOrigin:': 4}
+
+        origins = []
+
+        found_surf = False
+        found_key = 0
+        with open(fname, 'r') as f:
+
+            lines = f.readlines()
+            iL = 0
+
+            while iL<len(lines):
+
+                line = lines[iL].split()
+
+                if len(line) < 1:
+                    iL += 1
+                    continue
+                
+                if not found_surf and len(line) > 1:
+                    if '[Surf]' in line[0] and self.name == line[1]:
+                        found_surf = True
+
+                elif found_surf and '[Surf]' in line[0]:
+                    break
+
+                elif found_surf and found_key == 0:
+                    if line[0] in key_dict:
+                        found_key = key_dict[line[0]]
+
+                elif found_surf and found_key == 4:
+                    for i in range(self.n_sec):
+                        iL += 1
+                        line = lines[iL].split()
+                        origins.append([float(line[0]), float(line[1])])
+
+                    found_key = 0
+
+                else:
+                    # Lines that are not relevant
+                    pass
+
+                iL += 1
+
+        return origins
+
+
+    def output_tecplot(self, fname=None, one_piece=False):
+        '''
+        Output the surface to *.dat in Tecplot format
+
+        ### Inputs:
+        ```text
+        fname:      the name of the file
+        one_piece:  True ~ combine the spanwise sections into one piece
+        ```
+        '''
+        # surf_x[ns,nt], ns => spanwise
+
+        if fname is None:
+            fname = self.name + '.dat'
+
+        n_sec   = 1 if self.l2d else self.n_sec-1
+        n_piece = len(self.surfs)
+        
+        with open(fname, 'w') as f:
+            f.write('Variables= X  Y  Z \n ')
+
+            nt = self.surfs[0][0].shape[1]
+            ns = self.ns
+
+            if not one_piece:
+
+                for isec in range(n_piece):
+                    surf_x = self.surfs[isec][0]
+                    surf_y = self.surfs[isec][1]
+                    surf_z = self.surfs[isec][2]
+
+                    f.write('zone T="sec %d" i= %d j= %d \n'%(isec, nt, ns))
+
+                    for i in range(ns):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
+                            
+            else:
+                
+                npoint = n_sec*(self.ns-1) + 1
+                
+                f.write('zone T="sec" i= %d j= %d \n'%(nt, npoint))
+
+                for isec in range(n_piece):
+                    surf_x = self.surfs[isec][0]
+                    surf_y = self.surfs[isec][1]
+                    surf_z = self.surfs[isec][2]
+
+                    if isec>=n_piece-2:
+                        i_add = 0
+                    else:
+                        i_add = 1
+
+                    for i in range(ns-i_add):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
+
+    def output_plot3d(self, fname=None):
+        '''
+        Output the surface to *.grd in plot3d format
+
+        ### Inputs:
+        ```text
+        fname: the name of the file
+        ```
+        '''
+        if fname is None:
+            fname = self.name + '.grd'
+
+        n_sec   = 1 if self.l2d else self.n_sec-1
+        n_piece = len(self.surfs)
+
+        # X[ns][nn], ns => spanwise
+        X = self.surfs[0][0]
+        ns = X.shape[0]
+        nn = X.shape[1]
+        
+        with open(fname, 'w') as f:
+            f.write('%d \n '%(n_piece))     # Number of surfaces
+            for isec in range(n_piece):
+                f.write('%d %d 1\n '%(nn, ns))
+
+            for isec in range(n_piece):
+                X = self.surfs[isec][0]
+                ii = 0
+                for i in range(ns):
+                    for j in range(nn):
+                        f.write(' %.9f '%(X[i,j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                Y = self.surfs[isec][1]
+                ii = 0
+                for i in range(ns):
+                    for j in range(nn):
+                        f.write(' %.9f '%(Y[i,j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                Z = self.surfs[isec][2]
+                ii = 0
+                for i in range(ns):
+                    for j in range(nn):
+                        f.write(' %.9f '%(Z[i,j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+    def output_section(self, fname=None, TwoD=True):
+        '''
+        Output the control sections
+
+        ### Inputs:
+        ```text
+        fname:  file name of the output file
+        TwoD:   if True, output the 2D unit curves
+                otherwise, output the 3D control sections
+        ```
+        '''
+        if fname is None:
+            fname = self.name + '-section.dat'
+
+        f = open(fname, 'w')
+
+        if TwoD:
+            f.write('Variables= X  Y \n ')
+            nn = self.secs[0].xx.shape[0]
+            for i in range(self.n_sec):
+                f.write('zone T="sec-u %d" i= %d \n'%(i, nn))
+                for j in range(nn):
+                    f.write('  %20.10f  %20.10f \n'%(self.secs[i].xx[j], self.secs[i].yu[j]))
+                f.write('zone T="sec-l %d" i= %d \n'%(i, nn))
+                for j in range(nn):
+                    f.write('  %20.10f  %20.10f \n'%(self.secs[i].xx[j], self.secs[i].yl[j]))
+
+        else:
+            f.write('Variables= X  Y  Z \n ')
+            nn = self.secs[0].x.shape[0]
+            for i in range(self.n_sec):
+                f.write('zone T="sec %d" i= %d \n'%(i, nn))
+                for j in range(nn):
+                    f.write('  %20.10f  %20.10f  %20.10f \n'%(
+                        self.secs[i].x[j], self.secs[i].y[j], self.secs[i].z[j]))
+
+        f.close()
+
+    def plot(self, fig_id=1, type='wireframe'):
+        '''
+        Plot surface
+
+        ### Inputs:
+        ```text
+        fig_id: ID of the figure
+        type:   wireframe, surface
+        ```
+        '''
+        fig = plt.figure(fig_id)
+        ax = Axes3D(fig)
+
+        for surf in self.surfs:
+            if type in 'wireframe':
+                ax.plot_wireframe(surf[0], surf[1], surf[2])
+            else:
+                ax.plot_surface(surf[0], surf[1], surf[2])
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim3d(self.center[0]-self.half_s, self.center[0]+self.half_s)
+        ax.set_ylim3d(self.center[1]-self.half_s, self.center[1]+self.half_s)
+        ax.set_zlim3d(self.center[2]-self.half_s, self.center[2]+self.half_s)
+        plt.show()
+
+
 class OpenSurface(BasicSurface):
     '''
     Open surface defined by multiple OpenSection objects
+
+    >>> OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, project=True)
     '''
     def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, project=True):
 

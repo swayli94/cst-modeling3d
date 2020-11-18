@@ -57,25 +57,21 @@ wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
 </div>
 
 
-## Class
+### (3) Blade
 
-### (1) Section
+```python
+from cst_modeling.surface import Surface
+blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, project=False)
+blade.read_setting('Fan.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.1, 0.05])
+blade.geo()
+blade.smooth(isec0=0, isec1=4)
+blade.smooth(isec0=4, isec1=5, smooth0=True)
+blade.Surf2Cylinder(flip=True)
+blade.output_tecplot(fname='Blade-simple.dat')
+```
 
-
-
-### (2) OpenSection
-
-
-
-### (3) BasicSurface
-
-
-
-### (4) Surface
-
-
-
-### (5) WingVariableCamber
-
-
+<div align=center>
+	<img src="example\blade\blade-simple-1.jpg" width="500"> <br>
+    Fig. Blade surface (green)
+</div>
 

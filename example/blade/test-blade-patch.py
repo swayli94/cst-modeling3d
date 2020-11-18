@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     #* ==========================================
     #* Suction side
-    blade1 = OpenSurface(n_sec=6, name='Blade-suction',nn=101, ns=51, project=False)
+    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, project=False)
 
     blade1.read_setting('Fan.txt')
 
@@ -16,7 +16,8 @@ if __name__ == "__main__":
     blade1.geo()
 
     # Smooth
-    blade1.smooth(isec0=0, isec1=5)
+    blade1.smooth(isec0=0, isec1=4)
+#   blade1.smooth(isec0=4, isec1=5, smooth0=True)
 
     # Convert back to cylinder
     blade1.Surf2Cylinder(flip=True, origin=origins)
@@ -26,7 +27,7 @@ if __name__ == "__main__":
 
     #* ==========================================
     #* Pressure side
-    blade2 = OpenSurface(n_sec=6, name='Blade-pressure',nn=101, ns=51, project=False)
+    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, project=False)
 
     blade2.read_setting('Fan.txt')
 
@@ -34,7 +35,8 @@ if __name__ == "__main__":
 
     blade2.geo()
 
-    blade2.smooth(isec0=0, isec1=5)
+    blade2.smooth(isec0=0, isec1=4)
+#   blade2.smooth(isec0=4, isec1=5, smooth0=True)
 
     blade2.Surf2Cylinder(flip=True, origin=origins)
 

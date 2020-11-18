@@ -860,7 +860,7 @@ class Surface(BasicSurface):
     '''
     Surface defined by multiple Section objects, i.e., foils
 
-    >>> Surface(n_sec=0, tail=0.0, name='Wing', nn=1001, ns=101, project=True)
+    >>> Surface(n_sec=0, name='Wing', nn=1001, ns=101, project=True)
 
     ### Inputs:
     ```text

@@ -104,8 +104,9 @@ fairing.output_tecplot(fname='Fairing-simple.dat')
 ```
 
 <div align=center>
-    <img src="example\fairing\Fairing-simple.jpg" width="400"><br>
+    <img src="example\fairing\fairing-simple.jpg" width="400"><br>
     Fig. Simple fairing
 </div>
+
 
 

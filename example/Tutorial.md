@@ -644,7 +644,7 @@ with open('ori-sections.dat', 'r') as f:
 
 ### 4.4 blade with suction side and pressure side
 
-In many cases, the chord lengths of the suction and pressure side are different, and the cylinder axes are not always Z-axis. The suction side and the pressure side need to be constructed separately.  Then, use **OpenSurface** to construct the suction and pressure surfaces. The relevant settings are listed below. See *test-blade-patch.py*.
+In many cases, the chord lengths of the suction and pressure side are different, and the cylinder axes are not always Z-axis. The suction side and the pressure side need to be constructed separately.  Then, use **OpenSurface** to construct the suction and pressure surfaces. The relevant settings are listed below. See *test-blade-split.py*.
 
 ```text
  ==========================================

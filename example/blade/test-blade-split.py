@@ -11,13 +11,10 @@ if __name__ == "__main__":
 
     blade1.read_setting('Fan.txt')
 
+    origins = None
     origins = blade1.read_cylinder_origins('Fan.txt')
 
     blade1.geo()
-
-    # Smooth
-    blade1.smooth(isec0=0, isec1=4)
-#   blade1.smooth(isec0=4, isec1=5, smooth0=True)
 
     # Convert back to cylinder
     blade1.Surf2Cylinder(flip=True, origin=origins)
@@ -34,9 +31,6 @@ if __name__ == "__main__":
     origins = blade2.read_cylinder_origins('Fan.txt')
 
     blade2.geo()
-
-    blade2.smooth(isec0=0, isec1=4)
-#   blade2.smooth(isec0=4, isec1=5, smooth0=True)
 
     blade2.Surf2Cylinder(flip=True, origin=origins)
 

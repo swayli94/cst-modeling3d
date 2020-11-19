@@ -262,11 +262,6 @@ class BasicSurface():
         smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
         ```
         '''
-        #* Section index
-        i0 = isec0
-        i1 = isec1
-        jump = 1
-
         #* Do not have neighboring surfaces
         if isec0 == 0:
             smooth0 = False
@@ -281,13 +276,13 @@ class BasicSurface():
             xx = []
             yy = []
             zz = []
-            for i_surf in range(i0, i1, jump):
+            for i_surf in range(isec0, isec1):
                 xx.append(self.surfs[i_surf][0][0,ip])
                 yy.append(self.surfs[i_surf][1][0,ip])
                 zz.append(self.surfs[i_surf][2][0,ip])
-            xx.append(self.surfs[i_surf][0][-1,ip])
-            yy.append(self.surfs[i_surf][1][-1,ip])
-            zz.append(self.surfs[i_surf][2][-1,ip])
+            xx.append(self.surfs[isec1-1][0][-1,ip])
+            yy.append(self.surfs[isec1-1][1][-1,ip])
+            zz.append(self.surfs[isec1-1][2][-1,ip])
 
             #* Construct spanwise spline curve
             bcx0 = (2,0.0)
@@ -295,7 +290,7 @@ class BasicSurface():
             bcy0 = (2,0.0)
             bcy1 = (2,0.0)
             if smooth0:
-                ii = i0-jump
+                ii = isec0-1
                 dz = self.surfs[ii][2][-1,ip] - self.surfs[ii][2][-2,ip]
                 dxz0 = (self.surfs[ii][0][-1,ip] - self.surfs[ii][0][-2,ip])/dz
                 dyz0 = (self.surfs[ii][1][-1,ip] - self.surfs[ii][1][-2,ip])/dz
@@ -303,7 +298,7 @@ class BasicSurface():
                 bcy0 = (1,dyz0)
 
             if smooth1:
-                ii = i1+jump
+                ii = isec1+1
                 dz = self.surfs[ii][2][1,ip] - self.surfs[ii][2][0,ip]
                 dxz1 = (self.surfs[ii][0][1,ip] - self.surfs[ii][0][0,ip])/dz
                 dyz1 = (self.surfs[ii][1][1,ip] - self.surfs[ii][1][0,ip])/dz
@@ -314,7 +309,7 @@ class BasicSurface():
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
 
             #* Use the spanwise spline to update the spanwise geometry
-            for i_surf in range(i0, i1, jump):
+            for i_surf in range(isec0, isec1):
                 nn = self.surfs[i_surf][0].shape[0]
                 for j in range(nn):
                     zi = self.surfs[i_surf][2][j,ip]
@@ -487,6 +482,9 @@ class BasicSurface():
                 ns = surf[0].shape[0]
 
                 for j in range(ns):
+
+                    #! This linear interplotation of origins
+                    #! causes non-smooth surface even when the smooth function is used
                     tt = j/(ns-1.0)
                     x0 = (1-tt)*origin[i][0] + tt*origin[i+1][0]
                     y0 = (1-tt)*origin[i][1] + tt*origin[i+1][1]

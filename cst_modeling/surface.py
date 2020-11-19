@@ -126,6 +126,31 @@ class BasicSurface():
                 surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
                 self.surfs.append(surf)
 
+    def geo_axisymmetric(self, phi, flip_x=False, update_sec=True):
+        '''
+        Generate axisymmetric surface geometry
+
+        ### Inputs:
+        ```text
+        phi:        list or ndarray, position angle of control sections
+        flip_x:     True ~ flip section.xx in reverse order
+        update_sec: True ~ update sections
+        ```
+        '''
+        if update_sec:
+            self.geo_secs(flip_x=flip_x)
+
+        self.surfs = []
+
+        if self.l2d:
+            raise Exception('Axisymmetric geometry can not be 2D surface')
+
+        else:
+            for i in range(self.n_sec-1):
+                surf = self.section_surf_axisymmetric(self.secs[i], self.secs[i+1], phi[i], phi[i+1], ns=self.ns)
+                self.surfs.append(surf)
+
+
     @staticmethod
     def section_surf(sec0, sec1, ns=101):
         '''
@@ -153,14 +178,64 @@ class BasicSurface():
         
         for i in range(ns):
             tt = 1.0*i/(ns-1.0)
-            for j in range(nn):
-                surf_x[i,j] = (1-tt)*sec0.x[j] + tt*sec1.x[j]
-                surf_y[i,j] = (1-tt)*sec0.y[j] + tt*sec1.y[j]
-                surf_z[i,j] = (1-tt)*sec0.z[j] + tt*sec1.z[j]
+            surf_x[i,:] = (1-tt)*sec0.x + tt*sec1.x
+            surf_y[i,:] = (1-tt)*sec0.y + tt*sec1.y
+            surf_z[i,:] = (1-tt)*sec0.z + tt*sec1.z
 
         surf = [surf_x, surf_y, surf_z]
 
         return surf
+
+    @staticmethod
+    def section_surf_axisymmetric(sec0, sec1, phi0: float, phi1: float, ns=101):
+        '''
+        Interplot axisymmetric surface section between curves
+
+        >>> surf = section_surf_axisymmetric(sec0, sec1, ns)
+
+        ### Inputs:
+        ```text
+        sec0, sec1:     Section object
+        phi0, phi1:     angle (degree) about X-axis (X-Y plane is 0 degree)
+        ns:             number of spanwise points
+        ```
+
+        ### Return: 
+        ```text
+        surf:   [surf_x, surf_y, surf_z]
+                list of ndarray [ns, nn]
+        ```
+        '''
+        nn = sec0.x.shape[0]
+        surf_x = np.zeros((ns,nn))
+        surf_y = np.zeros((ns,nn))
+        surf_z = np.zeros((ns,nn))
+        xx = np.zeros(nn)
+        yy = np.zeros(nn)
+        zz = np.zeros(nn)
+
+        R = np.sqrt(sec0.yLE**2+sec0.zLE**2)
+        
+        for i in range(ns):
+
+            tt    = 1.0*i/(ns-1.0)
+            t0    = 1-tt
+
+            xLE   = t0*sec0.xLE + tt*sec1.xLE
+            yLE_  = t0*sec0.yLE + tt*sec1.yLE
+            zLE_  = t0*sec0.zLE + tt*sec1.zLE
+
+            angle = t0*phi0 + tt*phi1
+            yLE   = R*np.cos(angle/180.0*np.pi)
+            zLE   = R*np.sin(angle/180.0*np.pi)
+
+            xx = t0*sec0.x + tt*sec1.x
+            yy = t0*sec0.y + tt*sec1.y + (yLE-yLE_)
+            zz = t0*sec0.z + tt*sec1.z + (zLE-zLE_)
+
+            surf_x[i,:], surf_y[i,:], surf_z[i,:] = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE], axis='X')
+
+        return [surf_x, surf_y, surf_z]
 
 
     def flip(self, axis='None', plane='None'):
@@ -316,6 +391,121 @@ class BasicSurface():
                     self.surfs[i_surf][0][j,ip] = curve_x(zi)
                     self.surfs[i_surf][1][j,ip] = curve_y(zi)
     
+    def smooth_axisymmetric(self, isec0: int, isec1: int, phi, linear_TEx=True, RTE=None, RTE_=None, func_trans=None):
+        '''
+        Smooth the axisymmetric curve between isec0 and isec1
+
+        ### Inputs:
+        ```text
+        isec0, isec1:   the starting and ending section index of the smooth region
+        phi:            list or ndarray, position angle of control sections: isec0 ~ isec1
+
+        linear_TEx:     if True, the x coordinates of trailing edge curve are piece-wise 
+                        linear distribution. Otherwise, they can be nonlinear distribution 
+                        due to the leading edge curve
+
+        RTE:            default None, then the trailing edge curve in YZ plane is generated
+                        by the layout parameters. If provided a float, then the trailing 
+                        edge curve in YZ plane is set to a circle. Its origin is (0,0), 
+                        radius is RTE
+        RTE_:           if RTE_ is provided, it means the control section is close sections
+                        i.e., both upper and lower surfaces of the control section exist
+                        Then, RTE_ is the inner circle radius
+
+        func_trans:     optional function: ratio = func_trans(tx)
+                        ratio is a float (0~1), representing the extent of the YZ-plane 
+                        curve being similar to a circle. When ratio is 1, the curve is the 
+                        specified circle of which the radius is RTE.
+                        tx is a float  (0~1), representing the relative x-axis location of 
+                        the YZ-plane curve
+                        default None, means ratio = tx
+        ```
+        '''
+        periodic = False
+        if np.abs(phi[0]+phi[-1]-360.0)<1E-3:
+            periodic = True
+
+        #* First, smooth the X-axis position of each section
+        xx = []
+        for i in range(isec0, isec1+1):
+            xx.append(self.secs[i].xLE)
+
+        if periodic:
+            curve_x = CubicSpline(phi, xx, bc_type='periodic')
+        else:
+            curve_x = CubicSpline(phi, xx)
+
+        for i_surf in range(isec0, isec1):
+
+            sec0 = self.secs[i_surf]
+            sec1 = self.secs[i_surf+1]
+
+            for j in range(self.ns):
+
+                tt    = 1.0*j/(self.ns-1.0)
+                xLE_  = (1-tt)*sec0.xLE   + tt*sec1.xLE
+                chord = (1-tt)*sec0.chord + tt*sec1.chord
+
+                angle = (1-tt)*phi[i_surf] + tt*phi[i_surf+1]
+                xLE   = curve_x(angle)  # type: float
+
+                if linear_TEx:
+                    self.surfs[i_surf][0][j,:] = (self.surfs[i_surf][0][j,:]-xLE_)/chord*(chord-xLE+xLE_) + xLE
+                else:
+                    self.surfs[i_surf][0][j,:] += xLE - xLE_
+
+        #* Second, smooth the radius distribution in the circumferential direction
+        #  For each point in the section curve (nn)
+        nn = self.secs[0].x.shape[0]
+        for ip in range(nn):
+
+            # Collect the circumferential control points
+            # Must use surfs data instead of secs data, since only the surfs data is rotated
+            rr = []
+            for i_surf in range(isec0, isec1):
+                y_ = self.surfs[i_surf][1][0,ip]
+                z_ = self.surfs[i_surf][2][0,ip]
+                r_ = np.sqrt(y_**2+z_**2)
+                rr.append(r_)
+            y_ = self.surfs[i_surf][1][-1,ip]
+            z_ = self.surfs[i_surf][2][-1,ip]
+            r_ = np.sqrt(y_**2+z_**2)
+            rr.append(r_)
+
+            if periodic:
+                curve_r = CubicSpline(phi, rr, bc_type='periodic')
+            else:
+                curve_r = CubicSpline(phi, rr)
+        
+            # Use the circumferential spline to update the circumferential geometry
+            for i_surf in range(isec0, isec1):
+                for j in range(self.ns):
+
+                    tt    = 1.0*j/(self.ns-1.0)
+                    angle = (1-tt)*phi[i_surf] + tt*phi[i_surf+1]
+                    R     = curve_r(angle)  # type: float
+
+                    if isinstance(RTE, float):
+                        chord = (1-tt)*self.secs[i_surf].chord + tt*self.secs[i_surf+1].chord
+                        xLE_  = (1-tt)*self.secs[i_surf].xLE   + tt*self.secs[i_surf+1].xLE
+                        xLE   = curve_x(angle)  # type: float
+                        tx = (self.surfs[i_surf][0][j,ip]-xLE)/(chord-xLE+xLE_)
+                        
+                        if func_trans is not None:
+                            tx = func_trans(tx)
+
+                        if isinstance(RTE_, float):
+                            if ip>nn/2.0:
+                                R = (1-tx)*R + tx*RTE
+                            else:
+                                R = (1-tx)*R + tx*RTE_
+                        else:
+                            R = (1-tx)*R + tx*RTE
+
+                    self.surfs[i_surf][1][j,ip] = R*np.cos(angle/180.0*np.pi)
+                    self.surfs[i_surf][2][j,ip] = R*np.sin(angle/180.0*np.pi)
+    
+
     def bend(self, isec0: int, isec1: int, leader=None, kx=None, ky=None, rot_x=False):
         '''
         Bend surfaces by a guide curve, i.e., leader.

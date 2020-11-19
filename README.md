@@ -32,9 +32,10 @@ x, yu, yl, t0, R0 = cst_foil(1001, cst_u, cst_l, x=None, t=None, tail=0.0)
 ```
 
 <div align=center>
-	<img src="example\airfoil\airfoil.png" width="300"> <br>
+	<img src="example\airfoil\airfoil.png" width="400"> <br>
     Fig. A clean airfoil
 </div>
+
 
 
 ### (2) Wing
@@ -71,7 +72,26 @@ blade.output_tecplot(fname='Blade-simple.dat')
 ```
 
 <div align=center>
-	<img src="example\blade\blade-simple-1.jpg" width="500"> <br>
+	<img src="example\blade\blade-simple-1.jpg" width="300"> <br>
     Fig. Blade surface (green)
 </div>
+
+### (4) Nacelle
+
+```python
+nacelle = Surface(n_sec=7, name='Nacelle', nn=51, ns=51)
+nacelle.read_setting('Nacelle.txt', tail=0.02)
+phi = [0.0, 90.0, 135.0, 180.0, 225.0, 270.0, 360.0]
+nacelle.geo_axisymmetric(phi)
+nacelle.smooth_axisymmetric(0, 6, phi, linear_TEx=True, RTE=0.8, RTE_=0.78)
+nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
+```
+
+<div align=center>
+    <img src="example\nacelle\nacelle.jpg" width="280">
+    <img src="example\nacelle\nacelle-frontview.jpg" width="280"> <br>
+    Fig. A real nacelle (left: 3D view; right: side view)
+</div>
+
+
 

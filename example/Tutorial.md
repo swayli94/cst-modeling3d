@@ -490,7 +490,7 @@ wing.output_plot3d(fname=None)
 
 The blade surface is a multi-section surface, which is defined by an object of **Surface** class or **OpenSurface**. The **Surface** class contains several **Section** objects that define the control sections of the surface. The **OpenSurface** class contains several **OpenSection** objects.
 
-### 4.2 simple blade
+### 4.1 simple blade
 
 Build a simple blade.
 
@@ -675,11 +675,56 @@ In many cases, the chord lengths of the suction and pressure side are different,
 
 
 
+## 5. Nacelle
 
+The nacelle surface is a multi-section surface, which is defined by an object of **Surface** class or **OpenSurface**. The **Surface** class contains several **Section** objects that define the control sections of the surface. The **OpenSurface** class contains several **OpenSection** objects.
 
+### 5.1 simple nacelle
 
+```python
+nacelle = Surface(n_sec=5, name='Nacelle-simple', nn=201, ns=101)
+nacelle.read_setting('Nacelle.txt', tail=0.1)
+phi = [0.0, 90.0, 180.0, 270.0, 360.0]
+nacelle.geo_axisymmetric(phi)
+nacelle.smooth_axisymmetric(0, 4, phi, linear_TE=True)
+nacelle.output_tecplot(fname='Nacelle-simple.dat')
+```
 
+The control file of the nacelle configuration and nacelle section geometry is 'Nacelle.txt'. The relevant settings are listed under the name of 'Nacelle-simple'.
 
+<div align=center>
+    <img src="nacelle\nacelle-simple.jpg" width="280">
+    <img src="nacelle\nacelle-sideview.jpg" width="280"> <br>
+    Fig. Simple nacelle (left: 3D view; right: side view)
+</div>
 
+The black solid curves are the control sections. The nacelle has smooth surfaces.
 
+In order to have a closed surface, there are five control sections in the configuration definition, even though only four control sections are effective. In other words, the first and last control section must be the same, so that the surface can be closed. The *phi* is a list of position angle of control sections, the length of *phi* must be *n_sec*.
+
+### 5.2 real nacelle
+
+Real nacelles have asymmetry geometries. However, the outlet is usually a circle.
+
+```python
+def func_trans(tx, x_cri=0.6):
+    if tx < x_cri:
+        ratio = 0.0
+    else:
+        ratio = ((tx-x_cri)/(1-x_cri))**20
+    return ratio
+
+nacelle = Surface(n_sec=7, name='Nacelle', nn=51, ns=51)
+nacelle.read_setting('Nacelle.txt', tail=0.02)
+phi = [0.0, 90.0, 135.0, 180.0, 225.0, 270.0, 360.0]
+nacelle.geo_axisymmetric(phi)
+nacelle.smooth_axisymmetric(0, 6, phi, linear_TEx=True, RTE=0.8, RTE_=0.78, func_trans=func_trans)
+nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
+```
+
+<div align=center>
+    <img src="nacelle\nacelle.jpg" width="280">
+    <img src="nacelle\nacelle-frontview.jpg" width="280"> <br>
+    Fig. Real nacelle (left: 3D view; right: front view)
+</div>
 

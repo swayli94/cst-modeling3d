@@ -45,21 +45,30 @@ class Section:
         self.refine_u = None
         self.refine_l = None
 
+        #* Round tail
+        self.cst_flip_u = None
+        self.cst_flip_l = None
+
     def set_params(self, init=False, **kwargs):
         '''
-        Set parameters of the section \n
+        Set parameters of the section
 
-        Inputs:
-        ---
-        init:   True, set to default values \n
+        ### Inputs:
+        ```text
+        init:   True, set to default values
+        ```
 
-        kwargs:
-        ---
-        xLE, yLE, zLE, chord, twist, tail, thick (None) \n
+        ### kwargs:
+        ```text
+        xLE, yLE, zLE, chord, twist, tail, thick (None)
 
-        refine_fixed_t: True, fixed thickness when adding incremental curves \n
-        refine_u:       ndarray, cst coefficients of upper incremental curve \n
-        refine_l:       ndarray, cst coefficients of lower incremental curve \n
+        refine_fixed_t: True, fixed thickness when adding incremental curves
+        refine_u:       ndarray, cst coefficients of upper incremental curve
+        refine_l:       ndarray, cst coefficients of lower incremental curve
+
+        cst_flip_u:     ndarray, cst coefficients of upper flipped incremental curve
+        cst_flip_l:     ndarray, cst coefficients of lower flipped incremental curve
+        ```
         '''
         if init:
             self.xLE = 0.0
@@ -109,6 +118,16 @@ class Section:
             if isinstance(aa_, np.ndarray):
                 self.refine_l = aa_.copy()
 
+        if 'cst_flip_u' in kwargs.keys():
+            aa_ = kwargs['cst_flip_u']
+            if isinstance(aa_, np.ndarray):
+                self.cst_flip_u = aa_.copy()
+
+        if 'cst_flip_l' in kwargs.keys():
+            aa_ = kwargs['cst_flip_l']
+            if isinstance(aa_, np.ndarray):
+                self.cst_flip_l = aa_.copy()
+
     def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, proj=True):
         '''
         Generating the section (3D) by cst_foil. 
@@ -130,13 +149,33 @@ class Section:
             nn, self.cst_u, self.cst_l, t=self.thick, tail=self.tail)
 
         #* Refine the airfoil by incremental curves
+        yu_i = np.zeros(nn)
+        yl_i = np.zeros(nn)
+
+        if isinstance(self.refine_u, np.ndarray):
+            _, y_tmp = cst_curve(nn, self.refine_u, x=self.xx)
+            yu_i += y_tmp
+
+        if isinstance(self.refine_l, np.ndarray):
+            _, y_tmp = cst_curve(nn, self.refine_l, x=self.xx)
+            yl_i += y_tmp
+
+        #* Add round tail with incremental curves
+        if isinstance(self.cst_flip_u, np.ndarray):
+            _, y_tmp = cst_curve(nn, self.cst_flip_u, x=1.0-self.xx)
+            yu_i += y_tmp
+
+        if isinstance(self.cst_flip_l, np.ndarray):
+            _, y_tmp = cst_curve(nn, self.cst_flip_l, x=1.0-self.xx)
+            yl_i += y_tmp
+
+        #* Whether fixed maximum thickness
         if self.refine_fixed_t:
             t0 = self.thick
         else:
             t0 = None
 
-        if (self.refine_u is not None) or (self.refine_l is not None):
-            self.yu, self.yl = foil_increment(self.xx, self.yu, self.yl, self.refine_u, self.refine_l, t=t0)
+        self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=t0)
 
         #* Transform to 3D
         if flip_x:
@@ -176,9 +215,10 @@ class Section:
         self.z = other.z.copy()
 
         self.refine_fixed_t = other.refine_fixed_t
-        self.refine_u = copy.deepcopy(other.refine_u)
-        self.refine_l = copy.deepcopy(other.refine_l)
-
+        self.refine_u   = copy.deepcopy(other.refine_u)
+        self.refine_l   = copy.deepcopy(other.refine_l)
+        self.cst_flip_u = copy.deepcopy(other.cst_flip_u)
+        self.cst_flip_l = copy.deepcopy(other.cst_flip_l)
 
 class OpenSection:
     '''
@@ -205,18 +245,24 @@ class OpenSection:
         #* Refine airfoil
         self.refine = None
 
+        #* Round tail
+        self.cst_flip = None
+
     def set_params(self, init=False, **kwargs):
         '''
-        Set parameters of the section \n
+        Set parameters of the section
 
-        Inputs:
-        ---
-        init:   True, set to default values \n
+        ### Inputs:
+        ```text
+        init:   True, set to default values
+        ```
 
-        kwargs:
-        ---
-        xLE, yLE, zLE, chord, twist, thick (None) \n
-        refine: ndarray, cst coefficients of incremental curve \n
+        ### kwargs:
+        ```text
+        xLE, yLE, zLE, chord, twist, thick (None)
+        refine:     ndarray, cst coefficients of incremental curve
+        cst_flip:   ndarray, cst coefficients of flipped incremental curve
+        ```
         '''
         if init:
             self.xLE = 0.0
@@ -249,6 +295,11 @@ class OpenSection:
             if isinstance(aa_, np.ndarray):
                 self.refine = aa_.copy()
 
+        if 'cst_flip' in kwargs.keys():
+            aa_ = kwargs['cst_flip']
+            if isinstance(aa_, np.ndarray):
+                self.cst_flip = aa_.copy()
+
     def section(self, cst=None, nn=1001, flip_x=False, proj=True):
         '''
         Generating the section (3D) by cst_curve. 
@@ -266,8 +317,14 @@ class OpenSection:
 
         self.xx, self.yy = cst_curve(nn, self.cst)
 
+        #* Refine the geometry with an incremental curve
         if isinstance(self.refine, np.ndarray):
             _, y_i = cst_curve(nn, self.refine, x=self.xx)
+            self.yy += y_i
+
+        #* Add round tail with an incremental curve
+        if isinstance(self.cst_flip, np.ndarray):
+            _, y_i = cst_curve(nn, self.cst_flip, x=1.0-self.xx)
             self.yy += y_i
 
         #* Apply thickness
@@ -305,7 +362,8 @@ class OpenSection:
         self.y = other.y.copy()
         self.z = other.z.copy()
 
-        self.refine = copy.deepcopy(other.refine)
+        self.refine   = copy.deepcopy(other.refine)
+        self.cst_flip = copy.deepcopy(other.cst_flip)
 
 
 #* ===========================================
@@ -585,11 +643,39 @@ def foil_increment(x, yu, yl, coef_upp, coef_low, t=None):
     if coef_upp is not None:
         _, yu_i = cst_curve(nn, coef_upp, x=x)
     else:
-        yu_i = np.zeros(nn)
+        yu_i = None
 
     if coef_upp is not None:
         _, yl_i = cst_curve(nn, coef_low, x=x)
     else:
+        yl_i = None
+
+    yu_, yl_ = foil_increment_curve(x, yu, yl, yu_i=yu_i, yl_i=yl_i, t=t)
+
+    return yu_, yl_
+
+def foil_increment_curve(x, yu, yl, yu_i=None, yl_i=None, t=None):
+    '''
+    Add cst curve by incremental curves
+
+    >>> yu_, yl_ = foil_increment_curve(x, yu, yl, yu_i, yl_i, t=None)
+
+    ### Inputs:
+    ```text
+    x, yu, yl:  baseline airfoil (ndarray)
+    yu_i, yl_i: incremental curves (ndarray)
+    t:          relative maximum thickness (optional)
+    ```
+
+    ### Return: 
+    yu_, yl_ (ndarray)
+    '''
+    nn = len(x)
+
+    if not isinstance(yu_i, np.ndarray):
+        yu_i = np.zeros(nn)
+
+    if not isinstance(yl_i, np.ndarray):
         yl_i = np.zeros(nn)
 
     x_   = x.copy()

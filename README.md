@@ -92,6 +92,20 @@ nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
     <img src="example\nacelle\nacelle-frontview.jpg" width="280"> <br>
     Fig. A real nacelle (left: 3D view; right: side view)
 </div>
+### (5) Fairing
 
+```python
+fairing = OpenSurface(n_sec=3, name='Fairing-simple', nn=51, ns=51, project=False)
+fairing.read_setting('Fairing.txt')
+phi = [0.0, 90.0, 180.0]
+fairing.geo_axisymmetric(phi)
+fairing.smooth_axisymmetric(0, 2, phi, linear_TEx=True)
+fairing.output_tecplot(fname='Fairing-simple.dat')
+```
+
+<div align=center>
+    <img src="example\fairing\Fairing-simple.jpg" width="400"><br>
+    Fig. Simple fairing
+</div>
 
 

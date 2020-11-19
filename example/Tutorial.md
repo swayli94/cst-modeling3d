@@ -728,3 +728,61 @@ nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
     Fig. Real nacelle (left: 3D view; right: front view)
 </div>
 
+
+## 6. Fairing
+
+The fairing surface is a multi-section surface, which is defined by an object of **OpenSurface**.
+
+```python
+from cst_modeling.surface import OpenSurface
+fairing = OpenSurface(n_sec=3, name='Fairing-simple', nn=51, ns=51, project=False)
+fairing.read_setting('Fairing.txt')
+phi = [0.0, 90.0, 180.0]
+fairing.geo_axisymmetric(phi)
+fairing.smooth_axisymmetric(0, 2, phi, linear_TEx=True)
+fairing.output_tecplot(fname='Fairing-simple.dat')
+```
+
+The control file of the nacelle configuration and nacelle section geometry is 'Fairing.txt'. The relevant settings are listed under the name of 'Fairing-simple'.
+
+<div align=center>
+    <img src="fairing\Fairing-simple.jpg" width="400"><br>
+    Fig. Simple fairing
+</div>
+
+The round trailing edge is defined with *CST_flip* in the control file. The *CST_flip* defines the incremental curve added to the baseline curve constructed with parameters in *CST_coefs*. In contrast to *CST_refine*, *CST_flip* adds incremental curves that are in the reverse direction in X-axis. In other words, the first CST parameter describes the shape around the trailing edge, and the slope at the trailing edge is infinite. 
+
+```text
+ ==========================================
+ [Surf] Fairing-simple
+ ==========================================
+ ---------------------------------------------------
+ Layout: LE XYZ(m),  chord(m), twist(deg), rel-thick
+ ---------------------------------------------------
+    0.0   0.0   0.0     3.0        0.0        0.20
+    0.0   0.0   0.0     3.0        0.0        0.12
+    0.0   0.0   0.0     3.0        0.0        0.20
+ ---------------------------------------------------
+ CST_coefs:
+ ---------------------------------------------------
+ Section 1---------------
+    0.8   0.3   1.0   0.2   1.0   1.0   1.0
+ Section 2---------------
+    0.8   0.2   0.6   1.0   1.0   1.0   1.0
+ Section 3---------------
+    1.0   1.0   0.0   1.0
+ ---------------------------------------------------
+ CST_flip:
+ ---------------------------------------------------
+  n_cst 
+  10   
+ Section 1---------------
+    0.4
+ Section 2---------------
+    0.4
+ Section 3---------------
+    0.3
+```
+
+
+

@@ -703,7 +703,7 @@ class BasicSurface():
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'CylinderOrigin:': 4}
+        key_dict = {'CylinderOrigin:': 9}
 
         origins = []
 
@@ -733,7 +733,7 @@ class BasicSurface():
                     if line[0] in key_dict:
                         found_key = key_dict[line[0]]
 
-                elif found_surf and found_key == 4:
+                elif found_surf and found_key == 9:
                     for i in range(self.n_sec):
                         iL += 1
                         line = lines[iL].split()
@@ -951,7 +951,7 @@ class OpenSurface(BasicSurface):
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
 
         found_surf = False
         found_key = 0
@@ -1033,6 +1033,32 @@ class OpenSurface(BasicSurface):
 
                     found_key = 0
 
+                elif found_surf and found_key == 4:
+                    iL += 2
+                    line = lines[iL].split()
+                    n_cst_refine = int(line[0])
+
+                    if n_cst_refine <= 0:
+                        iL += self.n_sec*3
+                        found_key = 0
+                        continue
+
+                    for i in range(self.n_sec):
+
+                        iL += 2
+                        line1 = lines[iL].split()
+                        cst_r = np.zeros(n_cst_refine)
+
+                        i1 = 0
+                        for j in range(n_cst_refine):
+                            if i1<len(line1):
+                                cst_r[j] = float(line1[i1])
+                                i1 += 1
+
+                        self.secs[i].set_params(cst_flip=cst_r)
+
+                    found_key = 0
+
                 else:
                     # Lines that are not relevant
                     pass
@@ -1098,7 +1124,7 @@ class Surface(BasicSurface):
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
 
         found_surf = False
         found_key = 0
@@ -1202,6 +1228,44 @@ class Surface(BasicSurface):
                             refine_fixed_t=True,
                             refine_u=cst_ur,
                             refine_l=cst_lr,
+                        )
+
+                    found_key = 0
+
+                elif found_surf and found_key == 4:
+                    iL += 2
+                    line = lines[iL].split()
+                    n_cst_refine = int(line[0])
+
+                    if n_cst_refine <= 0:
+                        iL += self.n_sec*3
+                        found_key = 0
+                        continue
+
+                    for i in range(self.n_sec):
+
+                        iL += 2
+                        line1 = lines[iL].split()
+
+                        iL += 1
+                        line2 = lines[iL].split()
+
+                        cst_ur = np.zeros(n_cst_refine)
+                        cst_lr = np.zeros(n_cst_refine)
+
+                        i1 = 0
+                        i2 = 0
+                        for j in range(n_cst_refine):
+                            if i1<len(line1):
+                                cst_ur[j] = float(line1[i1])
+                                i1 += 1
+                            if i2<len(line2):
+                                cst_lr[j] = float(line2[i2])
+                                i2 += 1
+
+                        self.secs[i].set_params(
+                            cst_flip_u=cst_ur,
+                            cst_flip_l=cst_lr,
                         )
 
                     found_key = 0

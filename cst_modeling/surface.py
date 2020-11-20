@@ -10,9 +10,9 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import CubicSpline
 
-from cst_modeling.foil import (OpenSection, Section, cst_foil_fit, output_foil,
-                               rotate, stretch_fixed_point, toCylinder,
-                               transform)
+from cst_modeling.foil import (BasicSection, OpenSection, Section,
+                               cst_foil_fit, output_foil, rotate,
+                               stretch_fixed_point, toCylinder, transform)
 
 
 class BasicSurface():
@@ -27,7 +27,7 @@ class BasicSurface():
         self.name  = name       # type: str
         self.nn    = nn         # type: int
         self.ns    = ns         # type: int
-        self.secs  = [ Section() for _ in range(n_) ]
+        self.secs  = [ BasicSection() for _ in range(n_) ]
         self.surfs = []         # type: list[list]
         self.project = project  # type: bool
 
@@ -666,7 +666,7 @@ class BasicSurface():
 
         else:
 
-            for i in range(self.n_sec-1):
+            for i in range(len(self.surfs)):
 
                 surf = self.surfs[i]
                 ns = surf[0].shape[0]
@@ -990,7 +990,7 @@ class OpenSurface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick = float(line[5])
+                            self.secs[i].thick_set = float(line[5])
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -1163,7 +1163,7 @@ class Surface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick = float(line[5])
+                            self.secs[i].thick_set = float(line[5])
 
                         if isinstance(tail, float):
                             self.secs[i].tail  = tail/self.secs[i].chord
@@ -1172,8 +1172,8 @@ class Surface(BasicSurface):
                         else:
                             raise Exception('tail must be a float or a list with length = section number')
                         
-                        if self.secs[i].thick <= 0.0:
-                            self.secs[i].thick = None
+                        if self.secs[i].thick_set <= 0.0:
+                            self.secs[i].thick_set = None
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -1410,6 +1410,32 @@ class Surface(BasicSurface):
                     for i in range(ns-i_add):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
+
+
+class ArbitrarySurface(BasicSurface):
+    '''
+    Construct multi-section surface with BasicSection objects.
+
+    The surface is interploted by sec.xx and sec.yy
+
+    >>> ArbitrarySurface(n_sec=0, name='Wing', nn=1001, ns=101, project=True)
+    '''
+
+    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, project=True):
+
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+
+    def geo_secs(self, flip_x=False):
+        '''
+        ### Null function
+        
+        Originally this function should update surface sections. However, 
+        for ArbitrarySurface objects, this function does nothing.
+        Since the control sections are manually defined outside the object.
+        '''
+        if flip_x:
+            for i in range(self.n_sec):
+                self.secs[i].xx = np.flip(self.secs[i].xx)
 
 
 #* ===========================================

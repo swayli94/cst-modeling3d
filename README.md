@@ -8,15 +8,11 @@ Reference: Kulfan, B. M., “Universal parametric geometry representation method
 
 The curves, e.g., foil's upper and lower surfaces, are constructed via CST method. The multi-section surface is interpolated from several control sections.
 
-
-
 ## Installation
 
 ``` bash
 pip install cst-modeling3d
 ```
-
-
 
 ## Example
 
@@ -36,10 +32,7 @@ x, yu, yl, t0, R0 = cst_foil(1001, cst_u, cst_l, x=None, t=None, tail=0.0)
     Fig. A clean airfoil
 </div>
 
-
-
 ### (2) Wing
-
 
 ```python
 from cst_modeling.surface import Surface
@@ -56,7 +49,6 @@ wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
 	<img src="example\wing\wing-tip.jpg" width="500"> <br>
     Fig. Wing surface and wing tip
 </div>
-
 
 ### (3) Blade
 
@@ -90,8 +82,9 @@ nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
 <div align=center>
     <img src="example\nacelle\nacelle.jpg" width="280">
     <img src="example\nacelle\nacelle-frontview.jpg" width="280"> <br>
-    Fig. A real nacelle (left: 3D view; right: side view)
+    Fig. A real nacelle (left: 3D view; right: front view)
 </div>
+
 ### (5) Fairing
 
 ```python

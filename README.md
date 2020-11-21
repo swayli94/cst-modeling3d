@@ -100,6 +100,8 @@ fairing.output_tecplot(fname='Fairing-simple.dat')
     <img src="example\fairing\fairing-simple.jpg" width="400"><br>
     Fig. Simple fairing
 </div>
+
+
 ### (6) Fuselage
 
 The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.

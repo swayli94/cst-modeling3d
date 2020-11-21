@@ -13,7 +13,7 @@ if __name__ == "__main__":
     #* Nose
     #* ============================================
 
-    nose = BasicSurface(n_sec=5, name='Nose', nn=201, ns=51, project=False)
+    nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, project=False)
     nose.read_setting('Fuselage.txt')
 
     #* Top curve
@@ -38,16 +38,16 @@ if __name__ == "__main__":
     nose.secs[-1].xx = xx/xc[-1]
     nose.secs[-1].yy = yy/xc[-1]
 
-    #* Side curve and bottom curve
+    #* Side top curves
     xc = np.array([0.00,  2.00,  6.00])
-    yc = np.array([0.00, -0.40, -1.00])
+    yc = np.array([0.00, -0.70, -2.20])
 
     curv = CubicSpline(xc, yc, bc_type=((1, 0.0), (1, 0.0)))
 
     xx = np.linspace(xc[0], xc[-1], num=nose.nn)
     yy = curv(xx)
 
-    an = 2.0
+    an = 1.2
     bn = 0.8
     for i in range(xx.shape[0]):
         if xx[i] <= an:
@@ -58,17 +58,40 @@ if __name__ == "__main__":
     nose.secs[1].xx = xx/xc[-1]
     nose.secs[1].yy = yy/xc[-1]
 
-    nose.secs[2].xx = xx/xc[-1]
-    nose.secs[2].yy = yy/xc[-1]
-
     nose.secs[-2].xx = nose.secs[1].xx
     nose.secs[-2].yy = nose.secs[1].yy
 
-    phi = [0.0, 90.0, 180.0, 270.0, 360.0]
+    #* Side curve and bottom curve
+    xc = np.array([0.00,  2.00,  6.00])
+    yc = np.array([0.00, -0.60, -1.40])
+
+    curv = CubicSpline(xc, yc, bc_type=((1, 0.0), (1, 0.0)))
+
+    xx = np.linspace(xc[0], xc[-1], num=nose.nn)
+    yy = curv(xx)
+
+    an = 2.0
+    bn = 1.2
+    for i in range(xx.shape[0]):
+        if xx[i] <= an:
+            yy[i] -= np.sqrt(1-(xx[i]/an-1)**2)*bn
+        else:
+            yy[i] -= bn
+
+    nose.secs[2].xx = xx/xc[-1]
+    nose.secs[2].yy = yy/xc[-1]
+
+    nose.secs[-3].xx = nose.secs[2].xx
+    nose.secs[-3].yy = nose.secs[2].yy
+
+    nose.secs[3].xx = xx/xc[-1]
+    nose.secs[3].yy = yy/xc[-1]
+
+    phi = [0.0, 30.0, 90.0, 180.0, 270.0, 330.0, 360.0]
 
     nose.geo_axisymmetric(phi)
 
-    nose.smooth_axisymmetric(0, 4, phi, linear_TEx=True)
+    nose.smooth_axisymmetric(0, 6, phi, linear_TEx=True)
 
     nose.output_tecplot(fname='nose.dat')
 
@@ -83,7 +106,7 @@ if __name__ == "__main__":
     Y = (Y - Y[0]) / scale
     Z = Z / scale
 
-    output_curve(Y, Z, fname='nose-end.dat', ID=0)
+    output_curve(Y, Z, fname='tube-section.dat', ID=0)
 
     #* ============================================
     #* Tube and aft body

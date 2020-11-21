@@ -85,24 +85,8 @@ nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
     Fig. A real nacelle (left: 3D view; right: front view)
 </div>
 
-### (5) Fairing
 
-```python
-fairing = OpenSurface(n_sec=3, name='Fairing-simple', nn=51, ns=51, project=False)
-fairing.read_setting('Fairing.txt')
-phi = [0.0, 90.0, 180.0]
-fairing.geo_axisymmetric(phi)
-fairing.smooth_axisymmetric(0, 2, phi, linear_TEx=True)
-fairing.output_tecplot(fname='Fairing-simple.dat')
-```
-
-<div align=center>
-    <img src="example\fairing\fairing-simple.jpg" width="400"><br>
-    Fig. Simple fairing
-</div>
-
-
-### (6) Fuselage
+### (5) Fuselage
 
 The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.
 
@@ -111,4 +95,13 @@ The fuselage contains nose, tube, and aft body. The nose is a defined by a **Bas
     Fig. Simple fuselage
 </div>
 
+
+### (6) Fairing
+
+In order to get smooth transition on the fuselage, the fairing surface defined by an object of **BasicSurface**. The curves at both ends are directly extracted from the fuselage geometry, so that the fairing can fit the fuselage.
+
+<div align=center>
+    <img src="example\fairing\fairing-fuselage.jpg" width="400"><br>
+    Fig. Simple fairing
+</div>
 

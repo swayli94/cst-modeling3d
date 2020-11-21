@@ -729,7 +729,52 @@ nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
 </div>
 
 
-## 6. Fairing
+## 6. Fuselage
+
+The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.
+
+```python
+from cst_modeling.surface import BasicSurface
+
+#* ============================================
+#* Nose
+#* ============================================
+nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, project=False)
+nose.read_setting('Fuselage.txt')
+
+#* Define control section curves (unit chord length)
+#  ...
+
+#* Construct surface
+phi = [0.0, 30.0, 90.0, 180.0, 270.0, 330.0, 360.0]
+nose.geo_axisymmetric(phi)
+nose.smooth_axisymmetric(0, 6, phi, linear_TEx=True)
+nose.output_tecplot(fname='nose.dat')
+
+#* ============================================
+#* Tube and aft body
+#* ============================================
+tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, project=False)
+tube.read_setting('Fuselage.txt')
+    
+#* Define control section curves (unit chord length)
+#  ...
+
+#* Construct surface
+tube.geo()
+tube.smooth(1, 2, smooth0=True)
+tube.flip(axis='+Z +Y')
+tube.translate(dX=6.0, dY=3.8)
+tube.output_tecplot(fname='tube.dat')
+```
+
+<div align=center>
+    <img src="fuselage\fuselage.jpg" width="400"><br>
+    Fig. Simple fuselage
+</div>
+
+
+## 7. Fairing
 
 The fairing surface is a multi-section surface, which is defined by an object of **OpenSurface**.
 
@@ -749,6 +794,7 @@ The control file of the nacelle configuration and nacelle section geometry is 'F
     <img src="fairing\fairing-simple.jpg" width="400"><br>
     Fig. Simple fairing
 </div>
+
 
 The round trailing edge is defined with *CST_flip* in the control file. The *CST_flip* defines the incremental curve added to the baseline curve constructed with parameters in *CST_coefs*. In contrast to *CST_refine*, *CST_flip* adds incremental curves that are in the reverse direction in X-axis. In other words, the first CST parameter describes the shape around the trailing edge, and the slope at the trailing edge is infinite. 
 
@@ -784,53 +830,10 @@ The round trailing edge is defined with *CST_flip* in the control file. The *CST
     0.3
 ```
 
-
-
-## 7. Fuselage
-
-The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.
-
-```python
-from cst_modeling.surface import BasicSurface
-
-#* ============================================
-#* Nose
-#* ============================================
-nose = BasicSurface(n_sec=5, name='Nose', nn=201, ns=51, project=False)
-nose.read_setting('Fuselage.txt')
-
-#* Define control section curves (unit chord length)
-#  ...
-
-#* Construct surface
-phi = [0.0, 90.0, 180.0, 270.0, 360.0]
-nose.geo_axisymmetric(phi)
-nose.smooth_axisymmetric(0, 4, phi, linear_TEx=True)
-nose.output_tecplot(fname='nose.dat')
-
-#* ============================================
-#* Tube and aft body
-#* ============================================
-tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, project=False)
-tube.read_setting('Fuselage.txt')
-    
-#* Define control section curves (unit chord length)
-#  ...
-
-#* Construct surface
-tube.geo()
-tube.smooth(1, 2, smooth0=True)
-tube.flip(axis='+Z +Y')
-tube.translate(dX=6.0, dY=3.8)
-tube.output_tecplot(fname='tube.dat')
-```
+In order to get smooth transition on the fuselage, the fairing surface defined by an object of **BasicSurface**. The curves at both ends are directly extracted from the fuselage geometry, so that the fairing can fit the fuselage.
 
 <div align=center>
-    <img src="fuselage\fuselage.jpg" width="400"><br>
-    Fig. Simple fuselage
+    <img src="fairing\fairing-fuselage.jpg" width="400"><br>
+    Fig. Fairing on a fuselage
 </div>
-
-
-
-
 

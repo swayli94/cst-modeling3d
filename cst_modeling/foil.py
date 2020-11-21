@@ -29,9 +29,9 @@ class BasicSection():
 
         #* 2D unit curve
         self.xx  = None
-        self.yy  = None
-        self.yu  = None
-        self.yl  = None
+        self.yy  = None     # open curve
+        self.yu  = None     # upper surface of closed curve
+        self.yl  = None     # lower surface of closed curve
 
         #* 3D section
         self.x = np.zeros(1)
@@ -81,15 +81,41 @@ class BasicSection():
         if 'thick' in kwargs.keys():
             self.thick_set = kwargs['thick']
 
-    def section(self):
+    def section(self, nn=1001, flip_x=False, proj=True):
         '''
         ### Functions:
         ```text
-        1. Construct 2D unit curve
+        1. Construct 2D unit curve (null in the BasicSection)
         2. Transform to 3D curve
         ```
+
+        ### Inputs:
+        ```text
+        nn:     total amount of points
+        flip_x: True ~ flip section.xx in reverse order
+        proj:   True => for unit airfoil, the rotation keeps the projection length the same
+        ```
         '''
-        raise NotImplementedError
+        if not isinstance(self.xx, np.ndarray):
+            raise Exception('The 2D curve has not been constructed')
+
+        #* Transform to 3D
+        if flip_x:
+            self.xx = np.flip(self.xx)
+
+        if isinstance(self.yy, np.ndarray):
+            self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
+                scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
+
+            self.z = np.ones_like(self.x)*self.zLE
+
+        if isinstance(self.yu, np.ndarray):
+            xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
+                scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
+
+            self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
+            self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
+            self.z = np.ones_like(self.x)*self.zLE
 
     def copyfrom(self, other):
         '''
@@ -236,15 +262,7 @@ class Section(BasicSection):
         self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.thick_set)
 
         #* Transform to 3D
-        if flip_x:
-            self.xx = np.flip(self.xx)
-
-        xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
-            scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
-
-        self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
-        self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
-        self.z = np.ones(2*nn-1)*self.zLE
+        super().section(flip_x=flip_x, proj=proj)
 
     def copyfrom(self, other):
         '''
@@ -352,13 +370,7 @@ class OpenSection(BasicSection):
             self.thick = self.thick_set
 
         #* Transform to 3D
-        if flip_x:
-            self.xx = np.flip(self.xx)
-
-        self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
-            scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
-
-        self.z = np.ones(nn)*self.zLE
+        super().section(flip_x=flip_x, proj=proj)
 
     def copyfrom(self, other):
         '''
@@ -1407,15 +1419,27 @@ def output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False):
                 line = line + '  %.9f  %.9f  %.9f'%(curv_l[i], thickness[i], camber[i])
             f.write(line+'\n')
 
+def output_curve(x, y, fname='curve.dat', ID=0):
+    '''
+    Output airfoil data to tecplot ASCII format file
 
+    ### Inputs:
+    ```text
+    x, y:   current curve (ndarray)
+    ID:     >0 append to existed file. 0: write header
+    ```
+    '''
+    nn = x.shape[0]
 
+    if ID == 0:
+        with open(fname, 'w') as f:
+            f.write('Variables= X  Y  \n ')
 
-
-
-
-
-
-
+    with open(fname, 'a') as f:
+        f.write('zone T="%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
+            f.write('   %.9f  %.9f \n'%(x[i], y[i]))
+        f.write('\n')
 
 
 

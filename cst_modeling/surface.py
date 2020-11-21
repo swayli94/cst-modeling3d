@@ -17,10 +17,12 @@ from cst_modeling.foil import (BasicSection, OpenSection, Section,
 
 class BasicSurface():
     '''
-    Basic functions of Surface classes
+    Construct multi-section surface with BasicSection objects.
+
+    >>> BasicSurface(n_sec=0, name='Surf', nn=1001, ns=101, project=True)
     '''
 
-    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, project=True):
+    def __init__(self, n_sec=0, name='Surf', nn=1001, ns=101, project=True):
 
         n_ = max(1, n_sec)
         self.l2d   = n_ == 1    # type: bool
@@ -45,9 +47,72 @@ class BasicSurface():
         List of section zLE
         '''
         return [round(sec.zLE,5) for sec in self.secs]
-    
+
     def read_setting(self, fname: str):
-        raise NotImplementedError
+        '''
+        Read in Surface layout parameters from file
+
+        ### Inputs:
+        ```text
+        fname:  control file name
+        ```
+        '''
+        if not os.path.exists(fname):
+            raise Exception(fname+' does not exist for surface setting')
+        
+        key_dict = {'Layout:': 1}
+
+        found_surf = False
+        found_key = 0
+        with open(fname, 'r') as f:
+
+            lines = f.readlines()
+            iL = 0
+
+            while iL<len(lines):
+
+                line = lines[iL].split()
+
+                if len(line) < 1:
+                    iL += 1
+                    continue
+                
+                if not found_surf and len(line) > 1:
+                    if '[Surf]' in line[0] and self.name == line[1]:
+                        found_surf = True
+
+                elif found_surf and '[Surf]' in line[0]:
+                    break
+
+                elif found_surf and found_key == 0:
+                    if line[0] in key_dict:
+                        found_key = key_dict[line[0]]
+
+                elif found_surf and found_key == 1:
+                    for i in range(self.n_sec):
+                        iL += 1
+                        line = lines[iL].split()
+                        self.secs[i].xLE   = float(line[0])
+                        self.secs[i].yLE   = float(line[1])
+                        self.secs[i].zLE   = float(line[2])
+                        self.secs[i].chord = float(line[3])
+                        self.secs[i].twist = float(line[4])
+
+                        if len(line) >= 6:
+                            self.secs[i].thick_set = float(line[5])
+
+                        if self.l2d:
+                            self.secs[i].zLE = 0.0
+
+                    found_key = 0
+
+                else:
+                    # Lines that are not relevant
+                    pass
+
+                iL += 1
+        
+        self.layout_center()
 
     def layout_center(self):
         '''
@@ -326,6 +391,37 @@ class BasicSurface():
             for isec in range(len(self.surfs)):
                 self.surfs[isec][1] = -self.surfs[isec][1]
             self.center[1] = - self.center[1]
+
+    def translate(self, dX=0.0, dY=0.0, dZ=0.0):
+        '''
+        Translate surface coordinates
+
+        >>> translate(dX=0.0, dY=0.0, dZ=0.0)
+        '''
+        for surf in self.surfs:
+            surf[0] += dX
+            surf[1] += dY
+            surf[2] += dZ
+
+        self.center[0] += dX
+        self.center[1] += dY
+        self.center[2] += dZ
+
+    def scale(self, scale=1.0, X0=0.0, Y0=0.0, Z0=0.0):
+        '''
+        Scale surface coordinates about (X0, Y0, Z0)
+
+        >>> scale(scale=1.0, X0=0.0, Y0=0.0, Z0=0.0)
+        '''
+        for surf in self.surfs:
+            surf[0] = (surf[0]-X0)*scale + X0
+            surf[1] = (surf[1]-Y0)*scale + Y0
+            surf[2] = (surf[2]-Z0)*scale + Z0
+
+        self.center[0] = (self.center[0]-X0)*scale + X0
+        self.center[1] = (self.center[1]-Y0)*scale + Y0
+        self.center[2] = (self.center[2]-Z0)*scale + Z0
+
 
     def smooth(self, isec0: int, isec1: int, smooth0=False, smooth1=False):
         '''
@@ -1410,32 +1506,6 @@ class Surface(BasicSurface):
                     for i in range(ns-i_add):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
-
-
-class ArbitrarySurface(BasicSurface):
-    '''
-    Construct multi-section surface with BasicSection objects.
-
-    The surface is interploted by sec.xx and sec.yy
-
-    >>> ArbitrarySurface(n_sec=0, name='Wing', nn=1001, ns=101, project=True)
-    '''
-
-    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, project=True):
-
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
-
-    def geo_secs(self, flip_x=False):
-        '''
-        ### Null function
-        
-        Originally this function should update surface sections. However, 
-        for ArbitrarySurface objects, this function does nothing.
-        Since the control sections are manually defined outside the object.
-        '''
-        if flip_x:
-            for i in range(self.n_sec):
-                self.secs[i].xx = np.flip(self.secs[i].xx)
 
 
 #* ===========================================

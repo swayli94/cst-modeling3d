@@ -746,7 +746,7 @@ fairing.output_tecplot(fname='Fairing-simple.dat')
 The control file of the nacelle configuration and nacelle section geometry is 'Fairing.txt'. The relevant settings are listed under the name of 'Fairing-simple'.
 
 <div align=center>
-    <img src="fairing\Fairing-simple.jpg" width="400"><br>
+    <img src="fairing\fairing-simple.jpg" width="400"><br>
     Fig. Simple fairing
 </div>
 
@@ -783,6 +783,54 @@ The round trailing edge is defined with *CST_flip* in the control file. The *CST
  Section 3---------------
     0.3
 ```
+
+
+
+## 7. Fuselage
+
+The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.
+
+```python
+from cst_modeling.surface import BasicSurface
+
+#* ============================================
+#* Nose
+#* ============================================
+nose = BasicSurface(n_sec=5, name='Nose', nn=201, ns=51, project=False)
+nose.read_setting('Fuselage.txt')
+
+#* Define control section curves (unit chord length)
+#  ...
+
+#* Construct surface
+phi = [0.0, 90.0, 180.0, 270.0, 360.0]
+nose.geo_axisymmetric(phi)
+nose.smooth_axisymmetric(0, 4, phi, linear_TEx=True)
+nose.output_tecplot(fname='nose.dat')
+
+#* ============================================
+#* Tube and aft body
+#* ============================================
+tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, project=False)
+tube.read_setting('Fuselage.txt')
+    
+#* Define control section curves (unit chord length)
+#  ...
+
+#* Construct surface
+tube.geo()
+tube.smooth(1, 2, smooth0=True)
+tube.flip(axis='+Z +Y')
+tube.translate(dX=6.0, dY=3.8)
+tube.output_tecplot(fname='tube.dat')
+```
+
+<div align=center>
+    <img src="fuselage\fuselage.jpg" width="400"><br>
+    Fig. Simple fuselage
+</div>
+
+
 
 
 

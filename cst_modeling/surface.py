@@ -157,6 +157,12 @@ class BasicSurface():
         '''
         Update surface sections
 
+        ### Functions:
+        ```text
+        1. Construct 2D unit curve (null in the BasicSection)
+        2. Transform to 3D curve
+        ```
+
         ### Inputs:
         ```text
         flip_x:     True ~ flip section.xx in reverse order

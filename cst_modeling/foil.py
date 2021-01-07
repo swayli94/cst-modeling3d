@@ -91,7 +91,7 @@ class BasicSection():
 
         ### Inputs:
         ```text
-        nn:     total amount of points
+        nn:     total amount of points (it's here for function BasicSurface.geo_secs)
         flip_x: True ~ flip section.xx in reverse order
         proj:   True => for unit airfoil, the rotation keeps the projection length the same
         ```
@@ -99,16 +99,18 @@ class BasicSection():
         if not isinstance(self.xx, np.ndarray):
             raise Exception('The 2D curve has not been constructed')
 
-        #* Transform to 3D
+        #* Flip xx
         if flip_x:
             self.xx = np.flip(self.xx)
 
+        #* Transform to 3D for open section
         if isinstance(self.yy, np.ndarray):
             self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
                 scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
 
             self.z = np.ones_like(self.x)*self.zLE
 
+        #* Transform to 3D for closed section
         if isinstance(self.yu, np.ndarray):
             xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
                 scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
@@ -222,6 +224,12 @@ class Section(BasicSection):
         '''
         Generating the section (3D) by cst_foil. 
 
+        ### Functions:
+        ```text
+        1. Construct 2D unit curve (null in the BasicSection)
+        2. Transform to 3D curve
+        ```
+
         ### Inputs:
         ```text
         nn:     total amount of points
@@ -231,10 +239,12 @@ class Section(BasicSection):
         proj:   True => for unit airfoil, the rotation keeps the projection length the same
         ```
         '''
+        #* Update CST parameters
         if isinstance(cst_u, np.ndarray) and isinstance(cst_l, np.ndarray):
             self.cst_u = cst_u.copy()
             self.cst_l = cst_l.copy()
 
+        #* Construct airfoil with CST parameters
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick_set, tail=self.tail)
 
@@ -340,6 +350,12 @@ class OpenSection(BasicSection):
         '''
         Generating the section (3D) by cst_curve. 
 
+        ### Functions:
+        ```text
+        1. Construct 2D unit curve (null in the BasicSection)
+        2. Transform to 3D curve
+        ```
+
         ### Inputs:
         ```text
         nn:     total amount of points
@@ -348,9 +364,11 @@ class OpenSection(BasicSection):
         proj:   True => for unit airfoil, the rotation keeps the projection length the same
         ```
         '''
+        #* Update CST parameters
         if isinstance(cst, np.ndarray):
             self.cst = cst.copy()
 
+        #* Construct curve with CST parameters
         self.xx, self.yy = cst_curve(nn, self.cst)
 
         #* Refine the geometry with an incremental curve

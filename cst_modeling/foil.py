@@ -480,20 +480,27 @@ def cst_foil_fit(xu, yu, xl, yl, n_order=7):
     cst_l = fit_curve(xl, yl, n_order=n_order)
     return cst_u, cst_l
 
-def foil_bump_modify(x, yu, yl, xc: float, h: float, s: float, side=1, n_order=0):
+def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
+            xc: float, h: float, s: float, side=1, n_order=0,
+            return_cst=False, keep_tmax=True):
     '''
     Add bumps on the airfoil
 
-    >>> yu_new, yl_new = foil_bump_modify(x, yu, yl, xc, h, s, side, n_order)
+    >>> yu_new, yl_new (, cst_u, cst_l) = foil_bump_modify(
+    >>>         x: np.array, yu: np.array, yl: np.array, 
+    >>>         xc: float, h: float, s: float, side=1,
+    >>>         n_order=0, return_cst=False, keep_tmax=True)
 
     ### Inputs:
     ```text
-    x, yu, yl: current airfoil (ndarray)
-    xc:        x of the bump center
-    h:         relative height of the bump (to maximum thickness)
-    s:         span of the bump
-    side:      +1/-1 upper/lower side of the airfoil
-    n_order:   if specified (>0), then use CST to fit the new foil
+    x, yu, yl:  current airfoil (ndarray)
+    xc:         x of the bump center
+    h:          relative height of the bump (to maximum thickness)
+    s:          span of the bump
+    side:       +1/-1 upper/lower side of the airfoil
+    n_order:    if specified (>0), then use CST to fit the new foil
+    return_cst: if True, also return cst_u, cst_l when n_order > 0
+    keep_tmax:  if True, keep the maximum thickness unchanged
     ```
 
     ### Return:
@@ -516,25 +523,34 @@ def foil_bump_modify(x, yu, yl, xc: float, h: float, s: float, side=1, n_order=0
     else:
         yl_new = add_bump(x, yl_new, xc, h*t0, s, kind=kind)
 
-    it = np.argmax(yu_new-yl_new)
-    tu = np.abs(yu_new[it])
-    tl = np.abs(yl_new[it])
+    if keep_tmax:
 
-    if side > 0:
-        rl = (t0-tu)/tl
-        yl_new = rl * np.array(yl_new)
-    else:
-        ru = (t0-tl)/tu
-        yu_new = ru * np.array(yu_new)
+        it = np.argmax(yu_new-yl_new)
+        tu = np.abs(yu_new[it])
+        tl = np.abs(yl_new[it])
+
+        if side > 0:
+            rl = (t0-tu)/tl
+            yl_new = rl * np.array(yl_new)
+        else:
+            ru = (t0-tl)/tu
+            yu_new = ru * np.array(yu_new)
+
+        t0 = None
 
     if n_order > 0:
         # CST reverse
         tail = yu[-1] - yl[-1]
-
-        c_upp, c_low = cst_foil_fit(x, yu_new, x, yl_new, n_order=n_order)
-        _, yu_new, yl_new, _, _ = cst_foil(len(x),c_upp,c_low,x=x, t=t0,tail=tail)
-
-    return yu_new, yl_new
+        cst_u, cst_l = cst_foil_fit(x, yu_new, x, yl_new, n_order=n_order)
+        _, yu_new, yl_new, _, _ = cst_foil(x.shape[0], cst_u, cst_l, x=x, t=t0, tail=tail)
+    else:
+        cst_u = None
+        cst_l = None
+    
+    if return_cst:
+        return yu_new, yl_new, cst_u, cst_l
+    else:
+        return yu_new, yl_new
 
 def foil_tcc(x, yu, yl, info=True):
     '''

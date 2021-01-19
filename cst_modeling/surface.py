@@ -612,20 +612,26 @@ class BasicSurface():
         '''
         Bend surfaces by a guide curve, i.e., leader.
 
+        >>> bend(isec0: int, isec1: int, leader=None, 
+        >>>         kx=None, ky=None, rot_x=False)
+
         ### Inputs:
         ```text
         isec0:      the index of start section
         isec1:      the index of end section
-        leader:     list of points (and chord length) in the guide curve. [[x,y,z(,c)], [x,y,z(,c)]]
+        leader:     list of points (and chord length) in the guide curve. 
+                    [[x,y,z(,c)], [x,y,z(,c)], ...]
         axis:       Z-axis, spanwise direction
         kx:         X-axis slope (dx/dz) at both ends [kx0, kx1]
         ky:         Y-axis slope (dy/dz) at both ends [ky0, ky1]
-        rot_x:      True ~ rotate sections in x-axis to make the section vertical to the leader
+        rot_x:      if True, rotate sections in x-axis to 
+                    make the section vertical to the leader
         ```
 
         ### Note:
         ```text
-        The leader is a list of points to define a spline curve describing the leading edge curve.
+        The leader is a list of points to define the spline curve that 
+        describes the leading edge curve. 
         Regenerate the surface between section isec0 and isec1
         X is the flow direction (chord direction)
         ```
@@ -687,7 +693,7 @@ class BasicSurface():
         #* Bend surfaces
         i0 = isec0
         i1 = isec1
-
+        
         for i_surf in range(i0, i1):
 
             sec0 = self.secs[i_surf]
@@ -709,6 +715,7 @@ class BasicSurface():
                 xx  = self.surfs[i_surf][0][j,:]
                 yy  = self.surfs[i_surf][1][j,:]
                 zz  = self.surfs[i_surf][2][j,:]
+                nn  = xx.shape[0]
 
                 zLE = zz[0]
                 xLE = leader_x(zLE)
@@ -717,16 +724,36 @@ class BasicSurface():
                 tt  = 1.0*j/(ns-1.0)
                 x0  = (1-tt)*sec0.xLE + tt*sec1.xLE
                 y0  = (1-tt)*sec0.yLE + tt*sec1.yLE
+                c0  = (1-tt)*sec0.chord + tt*sec1.chord
 
                 # Translation
-                c0  = (1-tt)*sec0.chord + tt*sec1.chord
                 if spline_chord:
-                    xx, _, yy, _ = transform(xx, xx, yy, yy, dx=xLE-x0, dy=yLE-y0, x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
+                    xx, _, yy, _ = transform(xx, xx, yy, yy, dx=xLE-x0, dy=yLE-y0, 
+                                        x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
                 else:
-                    # The location of trailing edge (xTE, yTE) is fixed
-                    xTE = xx[-1]
-                    yTE = yy[-1]
-                    xx, yy = stretch_fixed_point(xx, yy, dx=xLE-x0, dy=yLE-y0, xm=x0, ym=y0, xf=xTE, yf=yTE )
+                    
+                    i_half = int(np.floor(nn/2.0))
+
+                    if abs(xx[i_half]-x0)>1e-6 or abs(yy[i_half]-y0)>1e-6:
+                        #* The location of curve end is fixed
+                        xx, yy = stretch_fixed_point(xx, yy, dx=xLE-x0, dy=yLE-y0, 
+                                        xm=x0, ym=y0, xf=xx[-1], yf=yy[-1])
+
+                    else:
+                        #* The locations of the trailing edge of upper and lower surface are fixed
+                        xu = xx[i_half:]
+                        xl = xx[:i_half+1]
+                        yu = yy[i_half:]
+                        yl = yy[:i_half+1]
+
+                        xu, yu = stretch_fixed_point(xu, yu, dx=xLE-x0, dy=yLE-y0, 
+                                        xm=x0, ym=y0, xf=xu[-1], yf=yu[-1])
+
+                        xl, yl = stretch_fixed_point(xl, yl, dx=xLE-x0, dy=yLE-y0, 
+                                        xm=x0, ym=y0, xf=xl[0], yf=yl[0])
+
+                        xx = np.concatenate((xl,xu[1:]), axis=0)
+                        yy = np.concatenate((yl,yu[1:]), axis=0)
 
                 # Rotation of x-axis (dy/dz)
                 if rot_x:

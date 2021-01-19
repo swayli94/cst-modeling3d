@@ -1102,14 +1102,18 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
     ```text
     xu, xl, yu, yl:  current curve or unit airfoil (ndarray)
     scale:      scale factor, e.g., chord length
-    rot:        rotate angle (deg), +z direction for x-y plane, e.g., twist angle
-    x0, y0:     rotation center (scaler)
+    rot:        rotate angle (deg), +z direction for x-y plane, 
+                e.g., twist angle
+    x0, y0:     rotation and scale center
     dx, dy:     translation, e.g., leading edge location
-    proj:       True => for unit airfoil, the rotation keeps the projection length the same
+    proj:       if True, for unit airfoil, the rotation keeps 
+                the projection length the same
     ```
 
     ### Return: 
+    ```text
     xu_new, xl_new, yu_new, yl_new (ndarray)
+    ```
     '''
     #* Translation
     xu_new = dx + xu

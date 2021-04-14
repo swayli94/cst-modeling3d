@@ -86,9 +86,9 @@ This function allows the airfoil has non-zero tail thickness.
 
 Also allows the airfoil chord length not equals to one.
 
-```pytho
+```python
 from cst_modeling.foil import cst_foil_fit
-cst_u, cst_l = cst_foil_fit(x, yu, x, yl, n_order=n_cst)
+cst_u, cst_l = cst_foil_fit(x, yu, x, yl, n_cst=n_cst)
 # The cst_u, cst_l are ndarrays [n_cst]
 ```
 
@@ -133,7 +133,7 @@ xc:         x location of the bump center
 h:          bump height (can be either positive or negetive)
 s:          bump width
 side:       1/-1, modification to the upper/lower surface
-n_order:    if specified (>0), then use CST to fit the new foil
+n_cst:      if specified (>0), then use CST to fit the new foil
 ```
 
 <div align=center>
@@ -637,7 +637,7 @@ with open('ori-sections.dat', 'r') as f:
         #  xx[0], yy[0], zz[0]
 
         #* CST coefficients, chord length, twist, and relative thickness
-        cst, chord, twist, thick = fit_curve_with_twist(xx, yy, n_order=7)
+        cst, chord, twist, thick = fit_curve_with_twist(xx, yy, n_cst=7)
 ```
 
 

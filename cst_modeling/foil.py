@@ -481,7 +481,7 @@ def cst_foil_fit(xu, yu, xl, yl, n_cst=7):
     return cst_u, cst_l
 
 def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
-            xc: float, h: float, s: float, side=1, n_order=0,
+            xc: float, h: float, s: float, side=1, n_cst=0,
             return_cst=False, keep_tmax=True):
     '''
     Add bumps on the airfoil
@@ -489,7 +489,7 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
     >>> yu_new, yl_new (, cst_u, cst_l) = foil_bump_modify(
     >>>         x: np.array, yu: np.array, yl: np.array, 
     >>>         xc: float, h: float, s: float, side=1,
-    >>>         n_order=0, return_cst=False, keep_tmax=True)
+    >>>         n_cst=0, return_cst=False, keep_tmax=True)
 
     ### Inputs:
     ```text
@@ -498,8 +498,8 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
     h:          relative height of the bump (to maximum thickness)
     s:          span of the bump
     side:       +1/-1 upper/lower side of the airfoil
-    n_order:    if specified (>0), then use CST to fit the new foil
-    return_cst: if True, also return cst_u, cst_l when n_order > 0
+    n_cst:      if specified (>0), then use CST to fit the new foil
+    return_cst: if True, also return cst_u, cst_l when n_cst > 0
     keep_tmax:  if True, keep the maximum thickness unchanged
     ```
 
@@ -538,10 +538,10 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
 
         t0 = None
 
-    if n_order > 0:
+    if n_cst > 0:
         # CST reverse
         tail = yu[-1] - yl[-1]
-        cst_u, cst_l = cst_foil_fit(x, yu_new, x, yl_new, n_order=n_order)
+        cst_u, cst_l = cst_foil_fit(x, yu_new, x, yl_new, n_cst=n_cst)
         _, yu_new, yl_new, _, _ = cst_foil(x.shape[0], cst_u, cst_l, x=x, t=t0, tail=tail)
     else:
         cst_u = None
@@ -764,16 +764,16 @@ def foil_increment_curve(x, yu, yl, yu_i=None, yl_i=None, t=None):
 
     return yu_, yl_
 
-def naca_to_cst(NACA_series: str, n_order=7, nn=101):
+def naca_to_cst(NACA_series: str, n_cst=7, nn=101):
     '''
     Get CST parameters of a NACA series airfoil
 
-    >>> cst_u, cst_l = naca_to_cst(NACA_series, n_order, nn)
+    >>> cst_u, cst_l = naca_to_cst(NACA_series, n_cst, nn)
 
     ### Inputs:
     ```text
     NACA_series:    4 or 5 digit NACA number string
-    n_order:        number of CST parameters
+    n_cst:          number of CST parameters
     nn:             total amount of points
     ```
 
@@ -794,7 +794,7 @@ def naca_to_cst(NACA_series: str, n_order=7, nn=101):
         xl[i] = xx[nn+i-1]
         yl[i] = yy[nn+i-1]
 
-    cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_order=n_order)
+    cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=n_cst)
 
     return cst_u, cst_l
 
@@ -1025,13 +1025,13 @@ def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0):
     elif x.shape[0] != nn:
         raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
     
-    n_order = coef.shape[0]
+    n_cst = coef.shape[0]
     y = np.zeros(nn)
     for ip in range(nn):
         s_psi = 0.0
-        for i in range(n_order):
-            xk_i_n = factorial(n_order-1)/factorial(i)/factorial(n_order-1-i)
-            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_order-1-i)
+        for i in range(n_cst):
+            xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
+            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i)
 
         C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
         y[ip] = C_n1n2*s_psi
@@ -1401,7 +1401,7 @@ def fit_curve(x: np.array, y: np.array, n_cst=7, xn1=0.5, xn2=1.0):
 
     ### Attributes:
     ```text
-    Array A: A[nn, n_order], nn=len(x)
+    Array A: A[nn, n_cst], nn=len(x)
     Array b: b[nn]
     ```
 
@@ -1442,7 +1442,7 @@ def fit_curve_with_twist(x, y, n_cst=7, xn1=0.5, xn2=1.0):
 
     ### Attributes:
     ```text
-    Array A: A[nn, n_order], nn=len(x)
+    Array A: A[nn, n_cst], nn=len(x)
     Array b: b[nn]
     ```
 
@@ -1482,7 +1482,7 @@ def fit_curve_partial(x: np.array, y: np.array, ip0=0, ip1=0,
 
     ### Attributes:
     ```text
-    Array A: A[nn, n_order], nn=len(x)
+    Array A: A[nn, n_cst], nn=len(x)
     Array b: b[nn]
     ```
 

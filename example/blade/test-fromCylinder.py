@@ -59,7 +59,7 @@ if __name__ == "__main__":
             ZLE = zz[0]
 
             #* CST coefficients
-            cst, chord, twist, thick = fit_curve_with_twist(xx, yy, n_order=7)
+            cst, chord, twist, thick = fit_curve_with_twist(xx, yy, n_cst=7)
             CST.append(cst)
 
             print(np.array([XLE, YLE, ZLE, chord, twist, thick]))

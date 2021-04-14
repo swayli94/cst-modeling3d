@@ -40,14 +40,14 @@ if __name__ == "__main__":
 
 
     #* Fit an airfoil
-    cst_u_, cst_l_ = cst_foil_fit(x, yu, x, yl, n_order=n_cst)
+    cst_u_, cst_l_ = cst_foil_fit(x, yu, x, yl, n_cst=n_cst)
 
     print(cst_u_)
     print(cst_l_)
     print()
 
     yu_ = yu * 1.2
-    cst_u_, cst_l_ = cst_foil_fit(x, yu_, x, yl, n_order=n_cst)
+    cst_u_, cst_l_ = cst_foil_fit(x, yu_, x, yl, n_cst=n_cst)
 
     print(cst_u_)
     print(cst_l_)

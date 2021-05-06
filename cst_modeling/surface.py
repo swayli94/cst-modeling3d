@@ -152,6 +152,51 @@ class BasicSurface():
         self.half_s = other.half_s
         self.center = other.center.copy()
 
+    def linear_interpolate_z(self, z: float, key='x'):
+        '''
+        Linear interpolation of key by given z
+
+        >>> key_value = linear_interpolate_z(z: float, key='x')
+
+        ### Inputs:
+        ```text
+        z:      location of the value
+        key:    The value to be interpolated
+                'x' or 'X'
+                'y' or 'Y'
+                'c' or 'C' or 'chord'
+                't' or 'thick' or 'thickness'
+                'twist'
+        ```
+        '''
+        #* Find the adjacent control sections
+        i_sec = self.n_sec
+        for i in range(self.n_sec-1):
+            if (z-self.secs[i].zLE)*(z-self.secs[i+1].zLE)<0 or z==self.secs[i].zLE:
+                i_sec = i
+
+        if i_sec >= self.n_sec:
+            raise Exception('z is not within the surface: ', z, self.secs[0].zLE, self.secs[-1].zLE)
+
+        #* Linear interpolation
+        tt = (z-self.secs[i_sec].zLE)/(self.secs[i_sec+1].zLE-self.secs[i_sec].zLE)
+        key_value = None
+
+        if key == 'x' or key == 'X':
+            key_value = (1-tt)*self.secs[i_sec].xLE + tt*self.secs[i_sec+1].xLE
+        elif key == 'y' or key == 'Y':
+            key_value = (1-tt)*self.secs[i_sec].yLE + tt*self.secs[i_sec+1].yLE
+        elif key == 'c' or key == 'C' or  key == 'chord':
+            key_value = (1-tt)*self.secs[i_sec].chord + tt*self.secs[i_sec+1].chord
+        elif key == 't' or key == 'thick' or key == 'thickness':
+            key_value = (1-tt)*self.secs[i_sec].thick + tt*self.secs[i_sec+1].thick
+        elif key == 'twist':
+            key_value = (1-tt)*self.secs[i_sec].twist + tt*self.secs[i_sec+1].twist
+        else:
+            raise Exception('Unknown key:', key)
+
+        return key_value
+
 
     def geo_secs(self, flip_x=False):
         '''
@@ -608,12 +653,12 @@ class BasicSurface():
                     self.surfs[i_surf][2][j,ip] = R*np.sin(angle/180.0*np.pi)
     
 
-    def bend(self, isec0: int, isec1: int, leader=None, kx=None, ky=None, rot_x=False):
+    def bend(self, isec0: int, isec1: int, leader=None, kx=None, ky=None, kc=None, rot_x=False):
         '''
         Bend surfaces by a guide curve, i.e., leader.
 
         >>> bend(isec0: int, isec1: int, leader=None, 
-        >>>         kx=None, ky=None, rot_x=False)
+        >>>         kx=None, ky=None, kc=None, rot_x=False)
 
         ### Inputs:
         ```text
@@ -624,6 +669,7 @@ class BasicSurface():
         axis:       Z-axis, spanwise direction
         kx:         X-axis slope (dx/dz) at both ends [kx0, kx1]
         ky:         Y-axis slope (dy/dz) at both ends [ky0, ky1]
+        kc:         Chord  slope (dc/dz) at both ends [kc0, kc1]
         rot_x:      if True, rotate sections in x-axis to 
                     make the section vertical to the leader
         ```
@@ -646,20 +692,37 @@ class BasicSurface():
         #* Control points of the leader curve
         leader_points = []
         spline_chord = False
-        if not leader is None:
-            if len(leader[0]) == 4:
-                # chord length specified
+        if not kc is None:
+            spline_chord = True
+        elif not leader is None:
+            if len(leader[0])==4:
                 spline_chord = True
-                for i in range(isec0, isec1+1):
-                    leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE, self.secs[i].chord])
-            else:
-                for i in range(isec0, isec1+1):
-                    leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE])
-            for point in leader:
-                leader_points.append(point)
+
+        if spline_chord:
+            for i in range(isec0, isec1+1):
+                leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE, self.secs[i].chord])
         else:
             for i in range(isec0, isec1+1):
                 leader_points.append([self.secs[i].xLE, self.secs[i].yLE, self.secs[i].zLE])
+
+        #* Manually provided leader points
+        if not leader is None:
+            if (spline_chord and len(leader[0])==4) or (not spline_chord and len(leader[0])==3):
+                # Need c and provide c // Don't need c and have no c
+                for point in leader:
+                    leader_points.append(point)
+            elif spline_chord and len(leader[0])==3:
+                # Need c but have no c
+                for point in leader:
+                    chord  = self.linear_interpolate_z(point[2], key='chord')
+                    point_ = point.append(chord)
+                    leader_points.append(point)
+
+            else:
+                print('spline_chord', spline_chord)
+                print('len(leader[0])', len(leader[0]))
+                print('kc', kc)
+                raise Exception('Should not happen')
 
         leader_points.sort(key=sortZ)
 
@@ -687,8 +750,10 @@ class BasicSurface():
         else:
             leader_y = CubicSpline(u, w, bc_type=((1,ky[0]), (1,ky[1])))
 
-        if spline_chord:
+        if spline_chord and kc is None:
             leader_c = CubicSpline(u, c)
+        elif not kc is None:
+            leader_c = CubicSpline(u, c, bc_type=((1,kc[0]), (1,kc[1])))
 
         #* Bend surfaces
         i0 = isec0
@@ -721,26 +786,39 @@ class BasicSurface():
                 xLE = leader_x(zLE)
                 yLE = leader_y(zLE)
 
+                # Original leading edge coordinates
                 tt  = 1.0*j/(ns-1.0)
                 x0  = (1-tt)*sec0.xLE + tt*sec1.xLE
                 y0  = (1-tt)*sec0.yLE + tt*sec1.yLE
                 c0  = (1-tt)*sec0.chord + tt*sec1.chord
 
-                # Translation
+                #*  Rotation of x-axis (dy/dz)
+                if rot_x:
+                    angle = -np.arctan(leader_y(zLE, 1))/np.pi*180.0
+                    #xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE])
+                    xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[x0, y0, zLE])
+
+                #*  Translation
                 if spline_chord:
                     xx, _, yy, _ = transform(xx, xx, yy, yy, dx=xLE-x0, dy=yLE-y0, 
                                         x0=xLE, y0=yLE, scale=leader_c(zLE)/c0)
+
                 else:
                     
                     i_half = int(np.floor(nn/2.0))
 
                     if abs(xx[i_half]-x0)>1e-6 or abs(yy[i_half]-y0)>1e-6:
-                        #* The location of curve end is fixed
+                        #*  The location of curve end is fixed
+                        #   Single piece of open curve to be bent
                         xx, yy = stretch_fixed_point(xx, yy, dx=xLE-x0, dy=yLE-y0, 
                                         xm=x0, ym=y0, xf=xx[-1], yf=yy[-1])
 
                     else:
-                        #* The locations of the trailing edge of upper and lower surface are fixed
+                        #*  The locations of the trailing edge of upper and lower surface are fixed
+                        #   An airfoil (containing both upper and lower surfaces) to be bent
+                        #   Original leading edge:  x0, xu[0], xl[-1]
+                        #   New leading edge:       xLE
+                        #   Original trailing edge: xu[-1], xl[0]
                         xu = xx[i_half:]
                         xl = xx[:i_half+1]
                         yu = yy[i_half:]
@@ -754,11 +832,6 @@ class BasicSurface():
 
                         xx = np.concatenate((xl,xu[1:]), axis=0)
                         yy = np.concatenate((yl,yu[1:]), axis=0)
-
-                # Rotation of x-axis (dy/dz)
-                if rot_x:
-                    angle = -np.arctan(leader_y(zLE, 1))/np.pi*180.0
-                    xx, yy, zz = rotate(xx, yy, zz, angle=angle, origin=[xLE, yLE, zLE])
 
                 self.surfs[i_surf][0][j,:] = xx.copy()
                 self.surfs[i_surf][1][j,:] = yy.copy()

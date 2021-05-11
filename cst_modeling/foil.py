@@ -1591,7 +1591,7 @@ def read_curves(fname='curve.dat'):
 
     xs = []
     ys = []
-    with open('original.dat', 'r') as f:
+    with open(fname, 'r') as f:
         lines = f.readlines()
 
         for line in lines:

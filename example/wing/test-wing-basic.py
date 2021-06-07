@@ -1,6 +1,6 @@
 
 
-from cst_modeling.surface import Surface
+from cst_modeling.surface import Surface, plot3d_to_igs
 
 
 if __name__ == "__main__":
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     #  Each section's upper/lower surface are constructed by CST method
     #  The chord-wise has nn points in the upper/lower surface
     #  The span-wise has ns points in each surface between two adjcent sections
-    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=51)
+    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=52)
 
 
     #* Read settings from file 'Wing.txt'
@@ -36,6 +36,8 @@ if __name__ == "__main__":
     wing.output_plot3d(fname='Wing-basic.grd', split=True)
 
     wing.output_section(fname='Wing-basic-sec.dat', TwoD=False)
+
+    plot3d_to_igs(fname='Wing-basic')
 
 
     #* Plot the wing surface on screen

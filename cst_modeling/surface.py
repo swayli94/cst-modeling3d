@@ -1040,7 +1040,7 @@ class BasicSurface():
                     for j in range(nn):
                         f.write(' %.9f '%(X[i,j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nn-1):
                             f.write(' \n ')
 
                 Y = self.surfs[isec][1]
@@ -1049,7 +1049,7 @@ class BasicSurface():
                     for j in range(nn):
                         f.write(' %.9f '%(Y[i,j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nn-1):
                             f.write(' \n ')
 
                 Z = self.surfs[isec][2]
@@ -1058,7 +1058,7 @@ class BasicSurface():
                     for j in range(nn):
                         f.write(' %.9f '%(Z[i,j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nn-1):
                             f.write(' \n ')
 
     def output_section(self, fname=None, TwoD=True):
@@ -1653,7 +1653,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(X[i,j+nt-1]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
                 ii = 0
@@ -1661,7 +1661,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(Y[i,j+nt-1]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
                 ii = 0
@@ -1669,7 +1669,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(Z[i,j+nt-1]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
                 #* Lower surface
@@ -1678,7 +1678,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(X[i,nt-1-j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
                 ii = 0
@@ -1686,7 +1686,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(Y[i,nt-1-j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
                 ii = 0
@@ -1694,7 +1694,7 @@ class Surface(BasicSurface):
                     for j in range(nt):
                         f.write(' %.9f '%(Z[i,nt-1-j]))
                         ii += 1
-                        if ii%3 == 0:
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
                             f.write(' \n ')
 
 #* ===========================================
@@ -1746,7 +1746,7 @@ def read_block_plot3d(lines, iLine0, ni, nj, nk):
     '''
     Read block data from lines
 
-    >>> xyz = read_block_plot3d(lines, iLine0, ni, nj, nk)
+    >>> xyz, iLine0_new = read_block_plot3d(lines, iLine0, ni, nj, nk)
 
     ### Inputs:
     ```text
@@ -1781,7 +1781,9 @@ def read_block_plot3d(lines, iLine0, ni, nj, nk):
 
                     xyz[i,j,k,m] = float(line[ii])
 
-    return xyz
+    iLine0_new = ll
+
+    return xyz, iLine0_new
 
 #* ===========================================
 #* Format transfer
@@ -1842,7 +1844,10 @@ def plot3d_to_igs(fname='igs'):
         f.write(' %7d %7d %7d %7d %7d %7d %7d %7d'%(iType, iLineStart, 0, 0, 0, 0, 0, 0))
         f.write(' %1d %1d %1d %1dD %6d\n'%(0, 0, 0, 0, ib*2+1))
         f.write(' %7d %7d %7d %7d %7d'%(iType, 0, 0, iLineEnd, 0))
-        f.write('                BSp Surf%1d %6dD %6d\n'%(ib+1, 0, ib*2+2))
+        if ib<9:
+            f.write('                BSp Surf%1d      0D %6d\n'%(ib+1, ib*2+2))
+        else:
+            f.write('                BSp Surf%2d     0D %6d\n'%(ib+1, ib*2+2))
 
     #* Data section
     iLine = 0
@@ -1878,7 +1883,7 @@ def plot3d_to_igs(fname='igs'):
                 f.write('%19.10e, %51dP %6d\n'%(1.0, ib*2+1, iLine))
 
         # Node coordinates
-        xyz = read_block_plot3d(lines, kLine, ni, nj, nk)
+        xyz, kLine = read_block_plot3d(lines, kLine, ni, nj, nk)
         for k in range(nk):
             for j in range(nj):
                 for i in range(ni):

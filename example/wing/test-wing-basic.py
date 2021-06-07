@@ -33,6 +33,7 @@ if __name__ == "__main__":
     # split is an option for splitting to upper and lower surfaces
     wing.output_tecplot(fname='Wing-basic.dat', one_piece=False, split=True)
 
+    wing.output_plot3d(fname='Wing-basic.grd', split=True)
 
     wing.output_section(fname='Wing-basic-sec.dat', TwoD=False)
 

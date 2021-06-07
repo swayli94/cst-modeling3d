@@ -1021,7 +1021,6 @@ class BasicSurface():
         if fname is None:
             fname = self.name + '.grd'
 
-        n_sec   = 1 if self.l2d else self.n_sec-1
         n_piece = len(self.surfs)
 
         # X[ns][nn], ns => spanwise
@@ -1613,6 +1612,90 @@ class Surface(BasicSurface):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
 
+    def output_plot3d(self, fname=None, split=False):
+        '''
+        Output the surface to *.grd in plot3d format
+
+        ### Inputs:
+        ```text
+        fname:      the name of the file
+        split:      if True, split to upper and lower surfaces
+        ```
+        '''
+        if not split:
+            super().output_plot3d(fname=fname)
+            return
+
+        if fname is None:
+            fname = self.name + '.grd'
+
+        n_piece = len(self.surfs)
+
+        # surf_x[ns,nt], ns => spanwise
+        ns = self.ns
+        nt = self.nn
+
+        with open(fname, 'w') as f:
+
+            f.write('%d \n '%(n_piece*2))   # Number of surfaces
+            for isec in range(n_piece*2):
+                f.write('%d %d 1\n '%(nt, ns))
+
+            for isec in range(n_piece):
+
+                X = self.surfs[isec][0]
+                Y = self.surfs[isec][1]
+                Z = self.surfs[isec][2]
+
+                #* Upper surface
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(X[i,j+nt-1]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Y[i,j+nt-1]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Z[i,j+nt-1]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                #* Lower surface
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(X[i,nt-1-j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Y[i,nt-1-j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Z[i,nt-1-j]))
+                        ii += 1
+                        if ii%3 == 0:
+                            f.write(' \n ')
 
 #* ===========================================
 #* Static functions

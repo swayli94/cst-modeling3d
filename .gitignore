@@ -4,7 +4,7 @@ dist/
 build/
 .vscode/
 
-
+temp*
 
 *.txt
 *.dat

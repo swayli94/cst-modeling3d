@@ -501,6 +501,7 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
     n_cst:      if specified (>0), then use CST to fit the new foil
     return_cst: if True, also return cst_u, cst_l when n_cst > 0
     keep_tmax:  if True, keep the maximum thickness unchanged
+                scale the opposite side of 'side' to keep thickness
     ```
 
     ### Return:
@@ -529,6 +530,7 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
         tu = np.abs(yu_new[it])
         tl = np.abs(yl_new[it])
 
+        #* Scale the opposite side
         if side > 0:
             rl = (t0-tu)/tl
             yl_new = rl * np.array(yl_new)

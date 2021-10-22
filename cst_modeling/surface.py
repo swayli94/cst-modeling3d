@@ -1789,6 +1789,60 @@ def read_block_plot3d(lines, iLine0, ni, nj, nk):
 #* Format transfer
 #* ===========================================
 
+def output_plot3d(X: list, Y: list, Z: list, fname: str):
+    '''
+    Output surface to fname in plot3d format
+
+    ### Inputs:
+    ```text
+    X, Y, Z:    list of ndarray [ns,nn]
+                n0: number of surfaces
+                ns: number of spanwise points
+                nn: number of curve points
+    fname:      the name of the file (*.grd)
+    ```
+    '''
+
+    n0 = len(X)
+
+    with open(fname, 'w') as f:
+        f.write('%d \n '%(n0))     # Number of surfaces
+        for isec in range(n0):
+            ns = X[isec].shape[0]
+            nn = X[isec].shape[1]
+            f.write('%d %d 1\n '%(nn, ns))
+
+        for isec in range(n0):
+            ii = 0
+            ns = X[isec].shape[0]
+            nn = X[isec].shape[1]
+            for i in range(ns):
+                for j in range(nn):
+                    f.write(' %.9f '%(X[isec][i,j]))
+                    ii += 1
+                    if ii%3==0 or (i==ns-1 and j==nn-1):
+                        f.write(' \n ')
+
+            ii = 0
+            ns = Y[isec].shape[0]
+            nn = Y[isec].shape[1]
+            for i in range(ns):
+                for j in range(nn):
+                    f.write(' %.9f '%(Y[isec][i,j]))
+                    ii += 1
+                    if ii%3==0 or (i==ns-1 and j==nn-1):
+                        f.write(' \n ')
+
+            ii = 0
+            ns = Z[isec].shape[0]
+            nn = Z[isec].shape[1]
+            for i in range(ns):
+                for j in range(nn):
+                    f.write(' %.9f '%(Z[isec][i,j]))
+                    ii += 1
+                    if ii%3==0 or (i==ns-1 and j==nn-1):
+                        f.write(' \n ')
+
 def plot3d_to_igs(fname='igs'):
     '''
     Converts Plot3d surface grid file [fname.grd] to IGES file [fname.igs].

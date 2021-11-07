@@ -1731,6 +1731,40 @@ def interplot_sec(sec0: Section, sec1: Section, ratio: float):
 
     return sec
 
+def surf_axisymmetric(xx: np.ndarray, yy: np.ndarray, phi0=0.0, phi1=360.0, ns=1001):
+    '''
+    Axisymmetric surface between curves
+
+    >>> surf = surf_axisymmetric(xx, yy, phi0=0.0, phi1=360.0, ns=1001)
+
+    ### Inputs:
+    ```text
+    xx, yy:         generatrix profile
+    phi0, phi1:     angle (degree) about X-axis (X-Y plane is 0 degree)
+    ns:             number of spanwise points
+    ```
+
+    ### Return: 
+    ```text
+    surf:   [surf_x, surf_y, surf_z]
+            list of ndarray [ns, nn]
+    ```
+    '''
+    nn = xx.shape[0]
+    surf_x = np.zeros((ns,nn))
+    surf_y = np.zeros((ns,nn))
+    surf_z = np.zeros((ns,nn))
+    zz = np.zeros(nn)
+
+    for i in range(ns):
+
+        tt    = 1.0*i/(ns-1.0)
+        angle = (1-tt)*phi0 + tt*phi1
+
+        surf_x[i,:], surf_y[i,:], surf_z[i,:] = rotate(xx, yy, zz, angle=angle, axis='X')
+
+    return [surf_x, surf_y, surf_z]
+
 def list_mul(list_, coef=1.0):
     '''
     Multiply each element in the list by coef

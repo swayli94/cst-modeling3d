@@ -1002,6 +1002,28 @@ def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
 
     return c
 
+def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
+    '''
+    Point distribution on x-axis [0, 1]. (More points at both ends)
+
+    >>> xx = dist_clustcos(n, a0, a1, beta)
+
+    ### Inputs:
+    ```text
+    nn:     total amount of points
+    a0:     parameter for distributing points near x=0
+    a1:     parameter for distributing points near x=1
+    beta:   parameter for distribution points 
+    ```
+    '''
+    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
+    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
+    yt = np.linspace(0.0, 1.0, num=nn)
+    a  = np.pi*(a0*(1-yt)+a1*yt)
+    xx = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
+
+    return xx
+
 def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0):
     '''
     Generating single curve based on CST method.

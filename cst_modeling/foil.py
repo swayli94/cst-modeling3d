@@ -1305,6 +1305,55 @@ def curve_intersect(x1, y1, x2, y2):
 
     return i1, i2, points
 
+def intersect_point(p1, p2, p3, p4):
+    '''
+    Calculate intersection point of two segments p1p2 & p3p4
+    
+    ### Inputs:
+    ```text
+    px: ndarray [2] or [:,2]
+    ```
+    
+    ### Return:
+    ```text
+    pi: ndarray [2] or [:,2]
+    ```
+    '''
+    if len(p1.shape)==1:
+        a1 = p2[1]-p1[1]
+        b1 = p1[0]-p2[0]
+        c1 = p1[0]*p2[1]-p2[0]*p1[1]
+        a2 = p4[1]-p3[1]
+        b2 = p3[0]-p4[0]
+        c2 = p3[0]*p4[1]-p4[0]*p3[1]
+        dd = a1*b2-a2*b1
+
+        if dd==0:
+            return None
+        else:
+            x0 = (c1*b2-c2*b1)/dd
+            y0 = (c2*a1-c1*a2)/dd
+            return np.array([x0,y0])
+    
+    else:
+        
+        a1 = p2[:,1]-p1[:,1]
+        b1 = p1[:,0]-p2[:,0]
+        c1 = p1[:,0]*p2[:,1]-p2[:,0]*p1[:,1]
+        a2 = p4[:,1]-p3[:,1]
+        b2 = p3[:,0]-p4[:,0]
+        c2 = p3[:,0]*p4[:,1]-p4[:,0]*p3[:,1]
+        dd = a1*b2-a2*b1
+
+        if np.any(dd==0):
+            print('Parallel segments')
+            return None
+        else:
+            x0 = (c1*b2-c2*b1)/dd
+            y0 = (c2*a1-c1*a2)/dd
+            pi = np.concatenate((x0, y0), axis=1)
+            return pi
+    
 def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
     '''
     Linearly stretch a curve when certain point is fixed

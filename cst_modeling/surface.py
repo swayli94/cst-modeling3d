@@ -8,6 +8,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
+from numpy.matrixlib.defmatrix import matrix
 from scipy.interpolate import CubicSpline
 
 from cst_modeling.foil import (BasicSection, OpenSection, Section,
@@ -1819,11 +1820,49 @@ def read_block_plot3d(lines, iLine0, ni, nj, nk):
 
     return xyz, iLine0_new
 
+def intersect_vec_plane(V0, V1, P0, P1, P3):
+    '''
+    Calculate the intersection point of a vector and a plane
+    
+    >>> xi, t1, t3, rv = intersect_vec_plane(V0, V1, P0, P1, P3)
+    
+    ### Inputs:
+    ```text
+    V0, V1:     ndarray [3], coordinates of vector: V01
+    P0, P1, P3: ndarray [3], coordinates of three points of plane P0123
+    ```
+    
+    ### Return:
+    ```text
+    xi:     ndarray [3], intersection point
+    t1, t3: ratio of xi in P01, P03 direction
+    ss:     ratio of xi in V01 direction
+    ```
+    '''
+    nR  = V1 - V0
+    l0  = np.linalg.norm(nR) + 1E-20
+    nR  = nR / l0
+    
+    A = np.zeros((3,3))
+    A[:,0] = P1-P0
+    A[:,1] = P3-P0
+    A[:,2] = - nR
+    B = V0-P0
+    
+    Sol = np.linalg.solve(A, B)
+    
+    t1 = Sol[0]
+    t3 = Sol[1]
+    rv = Sol[2]/l0
+    xi = V0 + nR*Sol[2]
+
+    return xi, t1, t3, rv
+
 #* ===========================================
 #* Format transfer
 #* ===========================================
 
-def output_plot3d(X: list, Y: list, Z: list, fname: str):
+def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0):
     '''
     Output surface to fname in plot3d format
 
@@ -1852,7 +1891,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str):
             nn = X[isec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(X[isec][i,j]))
+                    f.write(' %.9f '%(X[isec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
@@ -1862,7 +1901,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str):
             nn = Y[isec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(Y[isec][i,j]))
+                    f.write(' %.9f '%(Y[isec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
@@ -1872,7 +1911,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str):
             nn = Z[isec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(Z[isec][i,j]))
+                    f.write(' %.9f '%(Z[isec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')

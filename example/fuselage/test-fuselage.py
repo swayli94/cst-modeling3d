@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from cst_modeling.foil import output_curve
+from cst_modeling.basic import output_curve
 from cst_modeling.surface import BasicSurface
 
 from scipy.interpolate import CubicSpline

@@ -6,10 +6,9 @@ import numpy as np
 from numpy.linalg import lstsq
 
 from scipy.special import factorial
-import basic
 
-from naca import naca
-from basic import BasicSection
+from .naca import naca
+from .basic import BasicSection, rotate, interplot_basic_sec, interplot_from_curve
 
 
 #* ===========================================
@@ -408,8 +407,8 @@ def unify_foil(xu, yu, xl, yl):
     twist = np.arctan(yTE/xTE)*180/np.pi
     chord = np.sqrt(xTE**2+yTE**2)
 
-    xu_, yu_, _ = basic.rotate(xu_, yu_, None, angle=-twist, axis='Z')
-    xl_, yl_, _ = basic.rotate(xl_, yl_, None, angle=-twist, axis='Z')
+    xu_, yu_, _ = rotate(xu_, yu_, None, angle=-twist, axis='Z')
+    xl_, yl_, _ = rotate(xl_, yl_, None, angle=-twist, axis='Z')
 
     #* Scale
     yu_ = yu_ / xu_[-1]
@@ -536,7 +535,7 @@ def interplot_sec(sec0: Section, sec1: Section, ratio: float):
 
     >>> sec = interplot_sec(sec0, sec1, ratio)
     '''
-    sec = basic.interplot_basic_sec(sec0, sec1, ratio)
+    sec = interplot_basic_sec(sec0, sec1, ratio)
 
     sec.tail  = (1-ratio)*sec0.tail  + ratio*sec1.tail
     sec.RLE   = (1-ratio)*sec0.RLE   + ratio*sec1.RLE
@@ -594,8 +593,8 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
 
     # Calculate leading edge radius
     x_RLE = 0.005
-    yu_RLE = basic.interplot_from_curve(x_RLE, x_, yu)
-    yl_RLE = basic.interplot_from_curve(x_RLE, x_, yl)
+    yu_RLE = interplot_from_curve(x_RLE, x_, yu)
+    yl_RLE = interplot_from_curve(x_RLE, x_, yl)
     R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
 
     return x_, yu, yl, t0, R0
@@ -844,7 +843,7 @@ def fit_curve_with_twist(x, y, n_cst=7, xn1=0.5, xn2=1.0):
 
     x_ = (x - x[0])/chord
     y_ = (y - y[0])/chord
-    x_, y_, _ = basic.rotate(x_, y_, None, angle=-twist, axis='Z')
+    x_, y_, _ = rotate(x_, y_, None, angle=-twist, axis='Z')
     thick = np.max(y_, axis=0)
 
     coef = fit_curve(x_, y_, n_cst=n_cst, xn1=xn1, xn2=xn2)

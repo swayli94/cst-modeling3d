@@ -3,10 +3,9 @@ Construct surface with sections/open-sections
 '''
 import os
 import numpy as np
-import basic
-import foil
-from basic import BasicSurface
-from foil import OpenSection, Section
+
+from .basic import BasicSurface, rotate
+from .foil import OpenSection, Section, interplot_sec
 
 
 #* ===========================================
@@ -411,7 +410,7 @@ class Surface(BasicSurface):
                         found = True
                 
                 if found:
-                    sec_add = foil.interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
+                    sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
                     self.secs.insert(j+1, sec_add)
                     break
 
@@ -618,7 +617,7 @@ def surf_axisymmetric(xx: np.ndarray, yy: np.ndarray, phi0=0.0, phi1=360.0, ns=1
         tt    = 1.0*i/(ns-1.0)
         angle = (1-tt)*phi0 + tt*phi1
 
-        surf_x[i,:], surf_y[i,:], surf_z[i,:] = basic.rotate(xx, yy, zz, angle=angle, axis='X')
+        surf_x[i,:], surf_y[i,:], surf_z[i,:] = rotate(xx, yy, zz, angle=angle, axis='X')
 
     return [surf_x, surf_y, surf_z]
 

@@ -599,14 +599,15 @@ class BasicSurface():
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
 
-    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False):
+    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None):
         '''
         Smooth the spanwise curve between i_sec0 and i_sec1
 
         ### Inputs:
         ```text
-        i_sec0, i_sec1:       the starting and ending section index of the smooth region
+        i_sec0, i_sec1:     the starting and ending section index of the smooth region
         smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
+        dyn0:               (dy/dz)|n, set the slope of y-z curve at the end of section 0
         ```
         '''
         #* Do not have neighboring surfaces
@@ -636,6 +637,7 @@ class BasicSurface():
             bcx1 = (2,0.0)
             bcy0 = (2,0.0)
             bcy1 = (2,0.0)
+            
             if smooth0:
                 ii = i_sec0-1
                 dz = self.surfs[ii][2][-1,ip] - self.surfs[ii][2][-2,ip]
@@ -643,7 +645,7 @@ class BasicSurface():
                 dyz0 = (self.surfs[ii][1][-1,ip] - self.surfs[ii][1][-2,ip])/dz
                 bcx0 = (1,dxz0)
                 bcy0 = (1,dyz0)
-
+                
             if smooth1:
                 ii = i_sec1+1
                 dz = self.surfs[ii][2][1,ip] - self.surfs[ii][2][0,ip]
@@ -653,6 +655,25 @@ class BasicSurface():
                 bcy1 = (1,dyz1)
 
             curve_x = CubicSpline(zz, xx, bc_type=(bcx0, bcx1))
+            
+            if isinstance(dyn0, float) or isinstance(dyn0, int):
+
+                if abs(dyn0)<=1e-6:
+                    
+                    if ip < n_point-1:
+                        _x1 = self.surfs[i_sec0][0][0,ip+1] - self.surfs[i_sec0][0][0,ip]
+                        _y1 = self.surfs[i_sec0][1][0,ip+1] - self.surfs[i_sec0][1][0,ip]
+                        _z2 = self.surfs[i_sec0][2][1,ip]   - self.surfs[i_sec0][2][0,ip]
+                        _x2 = curve_x(self.surfs[i_sec0][2][1,ip]) - self.surfs[i_sec0][0][0,ip]
+                        _rr = _x2/_x1
+                        _yz = _y1/_z2 * np.clip(_x2/_x1, -1, 1)
+                        bcy0 = (1,_yz)
+                    else:
+                        bcy0 = (1,_yz)
+                else:
+                    
+                    bcy0 = (1,dyn0)
+
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
 
             #* Use the spanwise spline to update the spanwise geometry

@@ -7,6 +7,11 @@ import numpy as np
 from .basic import BasicSurface, rotate
 from .foil import OpenSection, Section, interplot_sec
 
+#!---------------------------------------------------
+#! For compatibility with v1
+from .basic import output_plot3d, plot3d_to_igs
+#!---------------------------------------------------
+
 
 #* ===========================================
 #* CST surfaces

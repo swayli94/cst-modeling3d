@@ -10,6 +10,11 @@ from scipy.special import factorial
 from .naca import naca
 from .basic import BasicSection, rotate, interplot_basic_sec, interplot_from_curve
 
+#!---------------------------------------------------
+#! For compatibility with v1
+from .basic import intersect_point, transform, fromCylinder, toCylinder
+#!---------------------------------------------------
+
 
 #* ===========================================
 #* CST sections

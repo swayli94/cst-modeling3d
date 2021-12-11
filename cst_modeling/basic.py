@@ -599,7 +599,7 @@ class BasicSurface():
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
 
-    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None):
+    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None, ratio_end=10):
         '''
         Smooth the spanwise curve between i_sec0 and i_sec1
 
@@ -665,7 +665,6 @@ class BasicSurface():
                         _y1 = self.surfs[i_sec0][1][0,ip+1] - self.surfs[i_sec0][1][0,ip]
                         _z2 = self.surfs[i_sec0][2][1,ip]   - self.surfs[i_sec0][2][0,ip]
                         _x2 = curve_x(self.surfs[i_sec0][2][1,ip]) - self.surfs[i_sec0][0][0,ip]
-                        _rr = _x2/_x1
                         _yz = _y1/_z2 * np.clip(_x2/_x1, -1, 1)
                         bcy0 = (1,_yz)
                     else:
@@ -675,14 +674,19 @@ class BasicSurface():
                     bcy0 = (1,dyn0)
 
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
+            
+            #* Smoothly change to the original geometry at both ends of the curve (ip=0, n_point-1)
+            r1 = self.smooth_ratio_function(-ip/(n_point-1)*10,    a=ratio_end)
+            r2 = self.smooth_ratio_function((ip/(n_point-1)-1)*10, a=ratio_end)
+            ratio = r1+r2
 
             #* Use the spanwise spline to update the spanwise geometry
             for i_surf in range(i_sec0, i_sec1):
                 nn = self.surfs[i_surf][0].shape[0]
                 for j in range(nn):
                     zi = self.surfs[i_surf][2][j,ip]
-                    self.surfs[i_surf][0][j,ip] = curve_x(zi)
-                    self.surfs[i_surf][1][j,ip] = curve_y(zi)
+                    self.surfs[i_surf][0][j,ip] = (1-ratio)*curve_x(zi) + ratio*self.surfs[i_surf][0][j,ip]
+                    self.surfs[i_surf][1][j,ip] = (1-ratio)*curve_y(zi) + ratio*self.surfs[i_surf][1][j,ip]
     
     def smooth_axisymmetric(self, i_sec0: int, i_sec1: int, phi, linear_TEx=True, RTE=None, RTE_=None, func_trans=None):
         '''
@@ -798,6 +802,16 @@ class BasicSurface():
                     self.surfs[i_surf][1][j,ip] = R*np.cos(angle/180.0*np.pi)
                     self.surfs[i_surf][2][j,ip] = R*np.sin(angle/180.0*np.pi)
     
+    @staticmethod
+    def smooth_ratio_function(x, a=4):
+        '''
+        x<=0, y: 0 -> 1
+        '''
+        y1 = 1.0/(1.0+np.exp(-a*x-2))
+        y2 = 1.0 + a/4*x
+        rr = x < -2/a
+        return rr*y1 + (1-rr)*y2
+
 
     def bend(self, i_sec0: int, i_sec1: int, leader=None, kx=None, ky=None, kc=None, rot_x=False):
         '''

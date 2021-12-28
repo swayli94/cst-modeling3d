@@ -761,6 +761,7 @@ def cst_foil_fit(xu, yu, xl, yl, n_cst=7):
 
     This function allows the airfoil has non-zero tail thickness.
     Also allows the airfoil chord length not equals to one.
+    #! But yu[0] yl[0] should be 0
 
     >>> cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=7)
 
@@ -781,6 +782,8 @@ def cst_foil_fit(xu, yu, xl, yl, n_cst=7):
 def fit_curve(x: np.array, y: np.array, n_cst=7, xn1=0.5, xn2=1.0):
     '''
     Using least square method to fit a CST curve
+    
+    #! Note: y[0] should be 0
 
     >>> coef = fit_curve(x, y, n_cst, xn1, xn2)
 
@@ -802,7 +805,7 @@ def fit_curve(x: np.array, y: np.array, n_cst=7, xn1=0.5, xn2=1.0):
     nn = x.shape[0]
     L  = x[-1] - x[0]   # type: float
     x_ = (x-x[0])/L     # scaling x to 0~1
-    y_ = (y-y[0])/L     # scaling according to L
+    y_ = (y-y[0])/L     # scaling according to L #! This means y[0] should be 0
     b  = y_.copy()
 
     for ip in range(nn):

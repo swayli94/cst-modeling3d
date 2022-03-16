@@ -1610,6 +1610,64 @@ def read_curves(fname='curve.dat'):
 
     return xs, ys
 
+def read_tecplot(fname='tecplot.dat'):
+    '''
+    Read a tecplot format data file
+    
+    ### Return: 
+    ```text
+    data:       list of ndarray [ni,nj,nk,nv], data of all zones
+    name_var:   list, name of variables
+    ```
+    '''
+    name_var = []
+    data = []
+    n_var = 0
+    
+    with open(fname, 'r') as f:
+        
+        lines = f.readlines()
+        nLine = len(lines)
+        iLine = 0
+    
+        while iLine < nLine:
+            
+            line = lines[iLine].split()
+            if len(line) == 0:
+                iLine += 1
+                continue
+            
+            if line[0] == 'Variables=':
+                name_var = line[1:]
+                n_var = len(name_var)
+                iLine += 1
+                continue
+            elif line[0] == 'Variables':
+                name_var = line[2:]
+                n_var = len(name_var)
+                iLine += 1
+                continue
+        
+            if line[0] == 'zone':
+                ni = int(line[2])
+                nj = int(line[4])
+                nk = int(line[6])
+
+                data_ = np.zeros((ni,nj,nk,n_var))
+                iLine += 1
+                
+                for k in range(nk):
+                    for j in range(nj):
+                        for i in range(ni):
+                            line = lines[iLine].split()
+                            iLine += 1
+                            for v in range(n_var):
+                                data_[i,j,k,v] = float(line[v])
+                                
+                data.append(data_.copy())
+                continue
+
+    return data, name_var
 
 #* ===========================================
 #* Intersection and interplotation
@@ -1730,7 +1788,7 @@ def intersect_vec_plane(V0, V1, P0, P1, P3):
     ```text
     xi:     ndarray [3], intersection point
     t1, t3: ratio of xi in P01, P03 direction
-    ss:     ratio of xi in V01 direction
+    rv:     ratio of xi in V01 direction
     ```
     '''
     nR  = V1 - V0
@@ -1752,6 +1810,74 @@ def intersect_vec_plane(V0, V1, P0, P1, P3):
 
     return xi, t1, t3, rv
 
+def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False):
+    '''
+    Calculate the intersection curve of a surface and a plane
+    
+    >>> curve, ij_curve = intersect_vec_plane(surface, P0, P1, P3)
+    
+    ### Inputs:
+    ```text
+    surface:        ndarray [ni,nj,3], coordinates of surface
+    P0, P1, P3:     ndarray [3], coordinates of three points of plane P0123
+    within_bounds:  if True, only keep the curve within the bounds of P0123
+    ```
+    
+    ### Return:
+    ```text
+    curve:      list, intersection curve
+    ij_curve:   list, the index of nearest point in surface to each point of curve
+    ```
+    '''
+
+    ni = surface.shape[0]
+    nj = surface.shape[1]
+    norm = np.cross(P1-P0, P3-P0)
+    norm = norm/np.linalg.norm(norm)
+    
+    curve = []
+    ij_curve = []
+
+    #* To locate points in both sides of the plane
+    norm_dis = np.dot(surface-P0, norm) # [ni,nj]
+    
+    for j in range(nj):
+        for i in range(ni):
+            
+            if norm_dis[i,j]==0:
+                ij_curve.append([i,j])
+                curve.append(surface[i,j,:].copy())
+                continue
+            
+            if i<ni-1:
+                if norm_dis[i,j]*norm_dis[i+1,j]<0 :
+                    
+                    xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i+1,j,:], P0, P1, P3)
+                    
+                    if rv<=0.0 or rv>=1.0:
+                        raise Exception('norm product should guarantee rv in (0,1)')
+                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>0.0):
+                        continue
+                    else:
+                        ij_curve.append([i,j])
+                        curve.append(xi.copy())
+                        continue
+
+            if j<nj-1:
+                if norm_dis[i,j]*norm_dis[i,j+1]<0 :
+                    
+                    xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i,j+1,:], P0, P1, P3)
+                    
+                    if rv<=0.0 or rv>=1.0:
+                        raise Exception('norm product should guarantee rv in (0,1)')
+                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>0.0):
+                        continue
+                    else:
+                        ij_curve.append([i,j])
+                        curve.append(xi.copy())
+                        continue
+
+    return curve, ij_curve
 
 #* ===========================================
 #* Format transfer

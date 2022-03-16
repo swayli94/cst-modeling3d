@@ -4,6 +4,9 @@ Interface for BLWF58
 Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
+import numpy as np
+from .basic import read_tecplot
+
 
 class BLWF():
     '''
@@ -74,18 +77,19 @@ class BLWF():
 
         return
 
-    def read_surface(self, fname='surface-aircraft.dat'):
+    @staticmethod
+    def read_tecplot(fname='surface-aircraft.dat'):
         '''
-        Read the surface.dat of the baseline aircraft CFL3D result.
+        Read the baseline aircraft CFL3D result.
+        
+        ### Return: 
+        ```text
+        data:       list of ndarray [ni,nj,nk,nv], data of all zones
+        name_var:   list, name of variables
+        ```
         '''
-
-
-
-
-
-
-
-
+        return read_tecplot(fname)
+    
 
 
 

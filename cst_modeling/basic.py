@@ -1920,6 +1920,7 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
     ```text
     xi, yt:     ndarray [n], 2D coordinates of the points
     avg_dir:    ndarray [2], specified average direction
+                once specified, the start point is fixed for the curve
     cri_break:  critical ratio to decide whether the point is the end point of the curve
     cri_dup:    critical distance to drop duplicated points
     ```
@@ -1950,7 +1951,17 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
                 avg_dir += np.array([dxi,dyt])
     
         avg_dir = avg_dir/np.linalg.norm(avg_dir)
-    
+        
+        ii = np.argmax(np.abs(avg_dir))
+        if avg_dir[ii]<0:
+            avg_dir = -avg_dir
+
+        fix_start = False
+        
+    else:
+        
+        fix_start = True
+            
     #* Find the potential start point
     dd = np.dot(np.array(points)[:,:2], avg_dir)
     ii = np.argmin(dd)
@@ -1989,13 +2000,13 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
         direction_l = np.dot(data[i_l,:]-last_point,  avg_dir)[0]
         direction_s = np.dot(data[i_s,:]-start_point, avg_dir)[0]
         
-        if min_dis2last<=min_dis2start and (direction_l>0 or min_dis2last<=cri_break*ls):
+        if (min_dis2last<=min_dis2start or fix_start) and (direction_l>0 or min_dis2last<=cri_break*ls):
             # Append to the last point in the average direction
             new_curve.append(points[i_l])
             points.pop(i_l)
             continue
             
-        if min_dis2start<=min_dis2last and (direction_s<0 or min_dis2start<=cri_break*ls):
+        if min_dis2start<=min_dis2last and (direction_s<0 or min_dis2start<=cri_break*ls) and not fix_start:
             # Add before the start point in the opposite of the average direction
             new_curve = [points[i_s]] + new_curve
             points.pop(i_s)
@@ -2075,6 +2086,46 @@ def join_curves(curves: list, cri_dup=1e-6):
             new_curve = np.concatenate((new_curve, add_curve),axis=0)
 
         curves.pop(jj_min)
+        
+    return new_curve
+
+def reconstruct_curve_by_length(curve: np.ndarray, n:int):
+    '''
+    Reconstruct the curve with equidistant points
+    
+    ### Inputs:
+    ```text
+    curve:  ndarray [:,3], curve coordinates
+    n:      number of points
+    ```
+    
+    ### Return:
+    ```text
+    new_curve:  ndarray [n,3]
+    ```
+    '''
+    
+    #* Parametric curve: x(t), y(t), z(t), t in [0,1]
+    n0 = curve.shape[0]
+    l0 = 0.0
+    tt = np.zeros(n0)
+    for i in range(n0-1):
+        l0 += np.linalg.norm(curve[i+1,:]-curve[i,:])
+        tt[i+1] = l0
+    tt = tt/l0
+    
+    #* Reconstruction
+    fx = interp1d(tt, curve[:,0], kind='cubic')
+    fy = interp1d(tt, curve[:,1], kind='cubic')
+    fz = interp1d(tt, curve[:,2], kind='cubic')
+    
+    new_curve = np.zeros((n,3))
+    
+    for i in range(n):
+        t = i/(n-1.0)
+        new_curve[i,0] = fx(t)
+        new_curve[i,1] = fy(t)
+        new_curve[i,2] = fz(t)
         
     return new_curve
     

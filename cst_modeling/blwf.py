@@ -5,7 +5,7 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
 import numpy as np
-from .basic import read_tecplot, intersect_surface_plane, rearrange_points
+from .basic import read_tecplot, intersect_surface_plane, rearrange_points, reconstruct_curve_by_length
 
 
 def output_curve(curve, fname='curves.dat', append=False):
@@ -109,10 +109,24 @@ class BLWF():
         '''
         return read_tecplot(fname)
     
-    def define_fuselage(self, zone_id: list, n_slice: int, 
+    def define_fuselage(self, zone_id: list, n_slice: int, n_point=0,
                         fname='surface-aircraft.dat', index_xyz=[0,1,2]):
         '''
         Extract fuselage sections
+        
+        ### Inputs:
+        ```text
+        zone_id:    list, index of zones in the tecplot format file, start from 0
+        n_slice:    number of sections in the X-axis
+        n_point:    number of points to reconstruct the section curve, 0 means no reconstruction
+        fname:      file name
+        index_xyz:  index of variables in file for XYZ
+        ```
+        
+        ### Return:
+        ```text
+        fuselage_sections:  list of ndarray [:,3]
+        ```
         '''
 
         #* Read surface data
@@ -168,10 +182,180 @@ class BLWF():
 
             _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
             curve = np.array([curves[ii] for ii in old_index])
+            
+            #* Interploate section curves
+            if n_point>0:
+                curve = reconstruct_curve_by_length(curve, n_point)
 
             fuselage_sections.append(curve.copy())
 
         return fuselage_sections
+
+    def define_vertical_tail(self, zone_id: list, n_slice: int, n_point=0,
+                        fname='surface-aircraft.dat', index_xyz=[0,1,2]):
+        '''
+        Extract vertical tail sections
+        
+        ### Inputs:
+        ```text
+        zone_id:    list, index of zones in the tecplot format file, start from 0
+        n_slice:    number of sections in the X-axis
+        n_point:    number of points to reconstruct the section curve, 0 means no reconstruction
+        fname:      file name
+        index_xyz:  index of variables in file for XYZ
+        ```
+        
+        ### Return:
+        ```text
+        tail_sections:  list of ndarray [:,3]
+        ```
+        '''
+        #* Read surface data
+        data_, _ = read_tecplot(fname)
+        if len(zone_id)==0:
+            data = data_
+        else:
+            data = [data_[i] for i in zone_id]
+        
+        #* Extract range of vertical tail
+        x_min = 1000.0
+        x_max =-1000.0
+        y_min = 1000.0
+        y_max =-1000.0
+
+        for data_ in data:
+            
+            x_min = min(x_min, np.min(data_[:,:,:,index_xyz[0]]))
+            x_max = max(x_max, np.max(data_[:,:,:,index_xyz[0]]))
+            y_min = min(y_min, np.min(data_[:,:,:,index_xyz[1]]))
+            y_max = max(y_max, np.max(data_[:,:,:,index_xyz[1]]))
+
+        lx = x_max-x_min
+        ly = y_max-y_min
+        
+        #* Intersect sections
+        Ys = np.linspace(y_min+0.1*ly, y_max-0.001*ly, n_slice, endpoint=True)
+        tail_sections = []
+
+        for kk in range(len(Ys)):
+
+            P0 = np.array([x_min-0.01*lx, Ys[kk],     0.0])
+            P1 = np.array([x_max+0.01*lx, Ys[kk],     0.0])
+            P3 = np.array([x_min-0.01*lx, Ys[kk], -0.5*lx])
+            
+            curves = []
+            xi_curves = []
+            yt_curves = []
+            
+            for data_ in data:
+                
+                surface = np.concatenate((data_[:,:,:,index_xyz[0]:index_xyz[0]+1],
+                            data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
+                            data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
+                surface = surface.squeeze()
+                curve, _, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=True)
+                
+                if len(curve) > 0:
+                    curves += curve
+                    xi_curves += xi_curve.tolist()
+                    yt_curves += yt_curve.tolist()
+
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
+            curve = np.array([curves[ii] for ii in old_index])
+            
+            #* Interploate section curves
+            if n_point>0:
+                curve = reconstruct_curve_by_length(curve, n_point)
+
+            tail_sections.append(curve.copy())
+
+        return tail_sections
+
+    def define_wing(self, zone_id: list, n_slice: int, n_point=0, avg_dir=None, ratio_z=0.01,
+                        fname='surface-aircraft.dat', index_xyz=[0,1,2]):
+        '''
+        Extract wing or horizontal tail sections
+        
+        ### Inputs:
+        ```text
+        zone_id:    list, index of zones in the tecplot format file, start from 0
+        n_slice:    number of sections in the X-axis
+        n_point:    number of points to reconstruct the section curve, 0 means no reconstruction
+        avg_dir:    ndarray [2], specified average direction
+        ratio_z:    ratio to control the range of slices in Z-axis
+        fname:      file name
+        index_xyz:  index of variables in file for XYZ
+        ```
+        
+        ### Return:
+        ```text
+        wing_sections:  list of ndarray [:,3]
+        ```
+        '''
+        #* Read surface data
+        data_, _ = read_tecplot(fname)
+        if len(zone_id)==0:
+            data = data_
+        else:
+            data = [data_[i] for i in zone_id]
+        
+        #* Extract range of vertical tail
+        x_min = 1000.0
+        x_max =-1000.0
+        y_min = 1000.0
+        y_max =-1000.0
+        z_min = 0.0
+        z_max =-1000.0
+        for data_ in data:
+            
+            x_min = min(x_min, np.min(data_[:,:,:,index_xyz[0]]))
+            x_max = max(x_max, np.max(data_[:,:,:,index_xyz[0]]))
+            y_min = min(y_min, np.min(data_[:,:,:,index_xyz[1]]))
+            y_max = max(y_max, np.max(data_[:,:,:,index_xyz[1]]))
+            z_min = min(z_min, np.min(data_[:,:,:,index_xyz[2]]))
+            z_max = max(z_max, np.max(data_[:,:,:,index_xyz[2]]))
+
+        lx = x_max-x_min
+        ly = y_max-y_min
+        lz = z_max-z_min
+        
+        #* Intersect sections
+        Zs = np.linspace(z_min+0.001*lz, z_max-ratio_z*lz, n_slice, endpoint=True)
+        wing_sections = []
+
+        for kk in range(len(Zs)):
+            
+            P0 = np.array([x_min-0.01*lx, y_min-0.01*ly, Zs[kk]])
+            P1 = np.array([x_max+0.01*lx, y_min-0.01*ly, Zs[kk]])
+            P3 = np.array([x_min-0.01*lx, y_max+0.01*ly, Zs[kk]])
+            
+            curves = []
+            xi_curves = []
+            yt_curves = []
+            
+            for data_ in data:
+                
+                surface = np.concatenate((data_[:,:,:,index_xyz[0]:index_xyz[0]+1],
+                            data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
+                            data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
+                surface = surface.squeeze()
+                curve, _, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=True)
+                
+                if len(curve) > 0:
+                    curves += curve
+                    xi_curves += xi_curve.tolist()
+                    yt_curves += yt_curve.tolist()
+
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=avg_dir)
+            curve = np.array([curves[ii] for ii in old_index])
+            
+            #* Interploate section curves
+            if n_point>0:
+                curve = reconstruct_curve_by_length(curve, n_point)
+
+            wing_sections.append(curve.copy())
+
+        return wing_sections
 
 
     def write_input_file(self, fname='blwf.in'):

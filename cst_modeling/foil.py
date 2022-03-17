@@ -595,6 +595,12 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     for i in range(nn):
         yu[i] += 0.5*tail*x_[i]
         yl[i] -= 0.5*tail*x_[i]
+        
+    # Update t0 after adding tail
+    if t is None:
+        thick = yu-yl
+        it = np.argmax(thick)
+        t0 = thick[it]
 
     # Calculate leading edge radius
     x_RLE = 0.005

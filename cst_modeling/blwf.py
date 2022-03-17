@@ -5,7 +5,26 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
 import numpy as np
-from .basic import read_tecplot
+from .basic import read_tecplot, intersect_surface_plane, rearrange_points
+
+
+def output_curve(curve, fname='curves.dat', append=False):
+    
+    if append:
+        f = open(fname, 'a')
+    else:
+        f = open(fname, 'w')
+        f.write('Variables= X Y Z\n')
+    
+    if isinstance(curve, np.ndarray):
+        
+        n = curve.shape[0]
+        if n>1:
+            f.write('zone i= %d\n'%(n))
+            for i in range(n):
+                f.write('%20.10f  %20.10f  %20.10f\n'%(curve[i,0],curve[i,1],curve[i,2]))
+            
+    f.close()
 
 
 class BLWF():
@@ -90,17 +109,84 @@ class BLWF():
         '''
         return read_tecplot(fname)
     
-
-
-
-
-
-
-
-
-
-
+    def define_fuselage(self, zone_id: list, n_slice: int, 
+                        fname='surface-aircraft.dat', index_xyz=[0,1,2]):
+        '''
         
+        '''
+
+        #* Read surface data
+        data_, _ = read_tecplot(fname)
+        if len(zone_id)==0:
+            data = data_
+        else:
+            data = [data_[i] for i in zone_id]
+        
+        #* Extract range of fuselage
+        x_min = 1000.0
+        x_max =-1000.0
+        y_min = 1000.0
+        y_max =-1000.0
+        z_min = 0.0
+        for data_ in data:
+            
+            x_min = min(x_min, np.min(data_[:,:,:,index_xyz[0]]))
+            x_max = max(x_max, np.max(data_[:,:,:,index_xyz[0]]))
+            y_min = min(y_min, np.min(data_[:,:,:,index_xyz[1]]))
+            y_max = max(y_max, np.max(data_[:,:,:,index_xyz[1]]))
+            z_min = min(z_min, np.min(data_[:,:,:,index_xyz[2]]))
+            
+        lx = x_max-x_min
+        ly = y_max-y_min
+        
+        #* Intersect sections
+        Xs = np.linspace(x_min+0.05*lx, x_max-0.05*lx, n_slice, endpoint=True)
+        fuselage_sections = []
+
+        for kk in range(len(Xs)):
+
+            P0 = np.array([Xs[kk], y_min-0.05*ly,   0.0])
+            P1 = np.array([Xs[kk], y_min-0.05*ly, z_min])
+            P3 = np.array([Xs[kk], y_max+0.05*ly,   0.0])
+            
+            curves = []
+            xi_curves = []
+            yt_curves = []
+            
+            for data_ in data:
+                
+                surface = data_[:,:,:,:3].squeeze()
+                curve, _, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=True)
+                
+                if len(curve) > 0:
+                    curves += curve
+                    xi_curves += xi_curve.tolist()
+                    yt_curves += yt_curve.tolist()
+
+            print('============')
+            print('k=', kk)
+            print()
+
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
+            curve = np.array([curves[ii] for ii in old_index])
+
+            fuselage_sections.append(curve.copy())
+            
+            if kk==5:
+                
+                output_curve(curve, fname='curve-debug.dat', append=False)
+
+                xi_ = np.array([xi_curves[ii] for ii in old_index])
+                yt_ = np.array([yt_curves[ii] for ii in old_index])
+                
+                n = curve.shape[0]
+                curve_ = np.concatenate((xi_[:,None], yt_[:,None], np.zeros([n,1])), axis=1)
+                
+                output_curve(curve_, fname='curve-xiyt.dat', append=False)
+
+                raise Exception
+
+        return fuselage_sections
 
 
     def write_input_file(self, fname='blwf.in'):

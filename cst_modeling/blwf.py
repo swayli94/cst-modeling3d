@@ -112,7 +112,7 @@ class BLWF():
     def define_fuselage(self, zone_id: list, n_slice: int, 
                         fname='surface-aircraft.dat', index_xyz=[0,1,2]):
         '''
-        
+        Extract fuselage sections
         '''
 
         #* Read surface data
@@ -140,7 +140,7 @@ class BLWF():
         ly = y_max-y_min
         
         #* Intersect sections
-        Xs = np.linspace(x_min+0.05*lx, x_max-0.05*lx, n_slice, endpoint=True)
+        Xs = np.linspace(x_min+0.01*lx, x_max-0.01*lx, n_slice, endpoint=True)
         fuselage_sections = []
 
         for kk in range(len(Xs)):
@@ -155,7 +155,10 @@ class BLWF():
             
             for data_ in data:
                 
-                surface = data_[:,:,:,:3].squeeze()
+                surface = np.concatenate((data_[:,:,:,index_xyz[0]:index_xyz[0]+1],
+                            data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
+                            data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
+                surface = surface.squeeze()
                 curve, _, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=True)
                 
                 if len(curve) > 0:
@@ -163,28 +166,10 @@ class BLWF():
                     xi_curves += xi_curve.tolist()
                     yt_curves += yt_curve.tolist()
 
-            print('============')
-            print('k=', kk)
-            print()
-
             _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
             curve = np.array([curves[ii] for ii in old_index])
 
             fuselage_sections.append(curve.copy())
-            
-            if kk==5:
-                
-                output_curve(curve, fname='curve-debug.dat', append=False)
-
-                xi_ = np.array([xi_curves[ii] for ii in old_index])
-                yt_ = np.array([yt_curves[ii] for ii in old_index])
-                
-                n = curve.shape[0]
-                curve_ = np.concatenate((xi_[:,None], yt_[:,None], np.zeros([n,1])), axis=1)
-                
-                output_curve(curve_, fname='curve-xiyt.dat', append=False)
-
-                raise Exception
 
         return fuselage_sections
 

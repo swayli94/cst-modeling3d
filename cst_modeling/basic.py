@@ -1972,7 +1972,7 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
         i_l = np.argmin(d2l)
         min_dis2last = d2l[i_l]
         
-        if d2l[i_l]<cri_dup:
+        if min_dis2last<cri_dup:
             points.pop(i_l)
             continue
         
@@ -1986,68 +1986,22 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
             points.pop(i_s)
             continue
         
-        # calculate the projected distance to the last point
-        if len(new_curve)>2:
-            last_point1 = np.array(new_curve[-2])[None,:2]  # [1,2]
-            dir_forward = last_point - last_point1          # [1,2]
-            dir_forward = dir_forward/np.linalg.norm(dir_forward)
-            dis_forward = np.dot(data-last_point, dir_forward.squeeze())
-            jj = np.where(dis_forward>0, dis_forward, np.inf).argmin()
-            min_dis_forward = dis_forward[jj]
-        else:
-            jj = 0
-            min_dis_forward = 1.0E6
-        
         direction_l = np.dot(data[i_l,:]-last_point,  avg_dir)[0]
         direction_s = np.dot(data[i_s,:]-start_point, avg_dir)[0]
         
-        if min_dis2last<min_dis2start and (direction_l>0 or d2l[i_l]<=cri_break*ls):
+        if min_dis2last<=min_dis2start and (direction_l>0 or min_dis2last<=cri_break*ls):
             # Append to the last point in the average direction
             new_curve.append(points[i_l])
-
-            print(len(new_curve), direction_l>0, d2l[i_l], points[i_l])
             points.pop(i_l)
             continue
             
-        if min_dis2last>min_dis2start and (direction_s<0 or d2s[i_s]<=cri_break*ls):
+        if min_dis2start<=min_dis2last and (direction_s<0 or min_dis2start<=cri_break*ls):
             # Add before the start point in the opposite of the average direction
             new_curve = [points[i_s]] + new_curve
-            
-            print(len(new_curve), direction_s<0, d2s[i_s], points[i_s])
             points.pop(i_s)
             continue
         
-        # check if this is the end point
-        if min_dis_forward<d2l[i_l]*2 and min_dis_forward>0:
-            # When the next nearest point is in the opposite direction and the distance is quite large,
-            # check whether there is also a near enough point in the current direction
-            new_curve.append(points[jj])
-            
-            
-            print(len(new_curve), direction_l>0, d2l[jj], points[jj], min_dis_forward)
-            points.pop(jj)
-            
-        else:
-            # the last point is the end point of the curve
-            # the remaining points need to be attached in the opposite direction
-            print('last point', len(new_curve), direction_l>0, d2l[ii], points[ii])
-            break
-            
-    #* Append curve in the opposite direction of the average direction
-    while len(points)>0:
-        
-        # calculate distance to the last point
-        last_point = np.array(new_curve[0])[None,:2]    # [1,2]
-        data = np.array(points)[:,:2]                   # [:,2]
-        dd = np.linalg.norm(data-last_point, axis=1)    # [:]
-        ii = np.argmin(dd)
-
-        new_curve = [points[ii]] + new_curve
-        
-        
-        print(len(new_curve), dd[ii], points[ii])
-        
-        points.pop(ii)
+        cri_break = cri_break * 1.1
         
     new_curve = np.array(new_curve)
     old_index = new_curve[:,2].astype(int)

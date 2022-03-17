@@ -1814,7 +1814,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     '''
     Calculate the intersection curve of a surface and a plane
     
-    >>> curve, ij_curve = intersect_vec_plane(surface, P0, P1, P3)
+    >>> curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3)
     
     ### Inputs:
     ```text
@@ -1827,6 +1827,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     ```text
     curve:      list, intersection curve
     ij_curve:   list, the index of nearest point in surface to each point of curve
+    xi_curve, yt_curve: ndarray [:], relative coordinates in the plane P0123, range in [0,1]
     ```
     '''
 
@@ -1837,6 +1838,8 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     
     curve = []
     ij_curve = []
+    xi_curve = []
+    yt_curve = []
 
     #* To locate points in both sides of the plane
     norm_dis = np.dot(surface-P0, norm) # [ni,nj]
@@ -1856,11 +1859,13 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
                     
                     if rv<=0.0 or rv>=1.0:
                         raise Exception('norm product should guarantee rv in (0,1)')
-                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>0.0):
+                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>1.0):
                         continue
                     else:
                         ij_curve.append([i,j])
                         curve.append(xi.copy())
+                        xi_curve.append(t1)
+                        yt_curve.append(t3)
                         continue
 
             if j<nj-1:
@@ -1870,14 +1875,207 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
                     
                     if rv<=0.0 or rv>=1.0:
                         raise Exception('norm product should guarantee rv in (0,1)')
-                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>0.0):
+                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>1.0):
                         continue
                     else:
                         ij_curve.append([i,j])
                         curve.append(xi.copy())
+                        xi_curve.append(t1)
+                        yt_curve.append(t3)
                         continue
 
-    return curve, ij_curve
+    #* Rearrange points in correct order
+    xi_curve = np.array(xi_curve)
+    yt_curve = np.array(yt_curve)
+    
+    if len(curve)>2:
+        _, old_index = rearrange_points(xi_curve, yt_curve)
+        
+        curve    = [curve[ii]    for ii in old_index]
+        ij_curve = [ij_curve[ii] for ii in old_index]
+        xi_curve = np.array([xi_curve[ii] for ii in old_index])
+        yt_curve = np.array([yt_curve[ii] for ii in old_index])
+
+    return curve, ij_curve, xi_curve, yt_curve
+
+def rearrange_points(xi, yt, avg_dir=None, cri_break=0.1, cri_dup=1e-6):
+    '''
+    Rearrange a list of points in a 2D curve.
+    
+    >>> new_curve, old_index = rearrange_points(xi, yt, avg_dir=None, cri_break=0.1)
+    
+    Assumption:
+    
+    1. it is an open curve with no intersections
+
+    2. most of the points are in the correct (local) order,
+     this gives us a average direction of the curve, which can 
+     help us find the starting/end point of the curve
+
+    3. the next point is its closest point or the closest point in the average direction
+    
+    4. drop duplicated points 
+    
+    ### Inputs:
+    ```text
+    xi, yt:     ndarray [n], 2D coordinates of the points
+    avg_dir:    ndarray [2], specified average direction
+    cri_break:  critical ratio to decide whether the point is the end point of the curve
+    cri_dup:    critical distance to drop duplicated points
+    ```
+    
+    ### Return:
+    ```text
+    new_curve:  ndarray [n,2]
+    old_index:  list, the index of point in the original curve
+    ```
+    '''
+    indexes = np.arange(0.0, len(xi), 1.0)
+    points  = np.array([xi, yt, indexes]).transpose()
+    points  = points.copy().tolist()    # [n,3]
+    n_point = len(points)
+    
+    cri_break = max(cri_break, 2.0/n_point)
+    
+    #* Calculate average direction
+    if not isinstance(avg_dir, np.ndarray):
+        
+        avg_dir = np.zeros(2)
+        
+        for i in range(len(xi)-1):
+            dxi = xi[i+1]-xi[i]
+            dyt = yt[i+1]-yt[i]
+            ll  = np.sqrt(dxi**2+dyt**2)
+            if ll > cri_dup:
+                avg_dir += np.array([dxi,dyt])
+    
+        avg_dir = avg_dir/np.linalg.norm(avg_dir)
+    
+    #* Find the potential start point
+    dd = np.dot(np.array(points)[:,:2], avg_dir)
+    ii = np.argmin(dd)
+    new_curve = [points[ii]]
+    points.pop(ii)
+    
+    #* Get the length scale of the curve
+    jj = np.argmax(dd)
+    ls = dd[jj]-dd[ii]
+
+    #* Append curve in the average direction
+    while len(points)>0:
+        
+        # calculate distance to the last point
+        last_point = np.array(new_curve[-1])[None,:2]   # [1,2]
+        data = np.array(points)[:,:2]                   # [:,2]
+        dd = np.linalg.norm(data-last_point, axis=1)    # [:]
+        ii = np.argmin(dd)
+        
+        if dd[ii]<cri_dup:
+            points.pop(ii)
+            continue
+        
+        # check if this is the end point
+        direction = np.dot(data[ii,:]-last_point, avg_dir)
+        
+        if direction>0 or dd[ii]<=cri_break*ls:
+            
+            new_curve.append(points[ii])
+            points.pop(ii)
+            
+        else:
+            # the last point is the end point of the curve
+            # the remaining points need to be attached in the opposite direction
+            break
+            
+    #* Append curve in the opposite direction of the average direction
+    while len(points)>0:
+        
+        # calculate distance to the last point
+        last_point = np.array(new_curve[0])[None,:2]    # [1,2]
+        data = np.array(points)[:,:2]                   # [:,2]
+        dd = np.linalg.norm(data-last_point, axis=1)    # [:]
+        ii = np.argmin(dd)
+        
+        new_curve = [points[ii]] + new_curve
+        points.pop(ii)
+        
+    new_curve = np.array(new_curve)
+    old_index = new_curve[:,2].astype(int)
+
+    return new_curve[:,:2], old_index.tolist()
+
+def join_curves(curves: list, cri_dup=1e-6):
+    '''
+    Join several curves into one piece
+    
+    ### Inputs:
+    ```text
+    curves:     list [ndarray [:,3]]
+    cri_dup:    critical distance to drop duplicated points
+    ```
+    '''
+    new_curve = curves[0].copy()    # [:,3]
+    
+    curves = copy.deepcopy(curves)
+    curves.pop(0)
+    
+    while len(curves)>0:
+        
+        d00 = []
+        d01 = []
+        d10 = []
+        d11 = []
+        
+        for cur in curves:
+            
+            print(new_curve.shape, cur.shape)
+
+            d00.append(np.linalg.norm(new_curve[ 0,:]-cur[ 0,:]))
+            d01.append(np.linalg.norm(new_curve[ 0,:]-cur[-1,:]))
+            d10.append(np.linalg.norm(new_curve[-1,:]-cur[ 0,:]))
+            d11.append(np.linalg.norm(new_curve[-1,:]-cur[-1,:]))
+            
+        min_ds = [np.min(d00), np.min(d01), np.min(d10), np.min(d11)]
+        ii_min = np.argmin(min_ds)
+
+        if ii_min == 0:
+            
+            jj_min    = np.argmin(d00)
+            add_curve = curves[jj_min].copy()
+            new_curve = np.flip(new_curve, axis=0)
+            
+        elif ii_min == 1:
+            
+            jj_min    = np.argmin(d01)
+            add_curve = curves[jj_min].copy()
+            new_curve = np.flip(new_curve, axis=0)
+            add_curve = np.flip(add_curve, axis=0)
+            
+        elif ii_min == 2:
+            
+            jj_min    = np.argmin(d10)
+            add_curve = curves[jj_min].copy()
+            
+        elif ii_min == 3:
+            
+            jj_min    = np.argmin(d11)
+            add_curve = curves[jj_min].copy()
+            add_curve = np.flip(add_curve, axis=0)
+            
+        else:
+            raise Exception()
+        
+        if np.min(min_ds)<cri_dup:
+            new_curve = np.concatenate((new_curve, add_curve[1:,:]),axis=0)
+        else:
+            new_curve = np.concatenate((new_curve, add_curve),axis=0)
+
+        curves.pop(jj_min)
+        
+    return new_curve
+    
+    
+    
 
 #* ===========================================
 #* Format transfer

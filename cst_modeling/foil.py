@@ -30,6 +30,9 @@ class Section(BasicSection):
 
         self.tail = tail
         self.RLE = 0.0
+        
+        self.te_angle = 0.0     # trailing edge angle (degree)
+        self.te_slope = 0.0     # slope of the mean camber line at trailing edge (dy/dx)
 
         #* 2D unit airfoil
         self.cst_u = np.zeros(1)
@@ -108,6 +111,12 @@ class Section(BasicSection):
         #* Construct airfoil with CST parameters
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
             nn, self.cst_u, self.cst_l, t=self.thick_set, tail=self.tail)
+        
+        #* Trailing edge information
+        a1 = [self.xx[-1]-self.xx[-5], self.yu[-1]-self.yu[-5]]
+        a2 = [self.xx[-1]-self.xx[-5], self.yl[-1]-self.yl[-5]]
+        self.te_angle = np.arccos(np.dot(a1,a2)/np.linalg.norm(a1)/np.linalg.norm(a2))/np.pi*180.0
+        self.te_slope = 0.5*((self.yu[-1]+self.yl[-1])-(self.yu[-5]+self.yl[-5]))/(self.xx[-1]-self.xx[-5])
 
         #* Refine the airfoil by incremental curves
         yu_i = np.zeros(nn)

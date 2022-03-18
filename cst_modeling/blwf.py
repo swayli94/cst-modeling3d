@@ -59,40 +59,44 @@ class BLWF():
         self.xmin_t  = 0.0
 
         #* Wing sections
-        self.FNS    = 0
-        self.ZLE    = [0.0 for _ in range(self.FNS)]
-        self.XLE    = [0.0 for _ in range(self.FNS)]
-        self.YLE    = [0.0 for _ in range(self.FNS)]
-        self.CHORD  = [0.0 for _ in range(self.FNS)]
-        self.THICK  = [0.0 for _ in range(self.FNS)]
-        self.EPSIL  = [0.0 for _ in range(self.FNS)]
-        self.FSEC_W = [0.0 for _ in range(self.FNS)]
-        self.YSYM   = [0.0 for _ in range(self.FNS)]
+        self.FNS    = 0         # The number of span station, from root to tip, FNS < 51 
+        self.ZLE    = [0.0 for _ in range(self.FNS)]    # Span location
+        self.XLE    = [0.0 for _ in range(self.FNS)]    # X of leading edge
+        self.YLE    = [0.0 for _ in range(self.FNS)]    # Y of leading edge
+        self.CHORD  = [0.0 for _ in range(self.FNS)]    # Local chord
+        self.THICK  = [0.0 for _ in range(self.FNS)]    # Y coordinates are multiplied by THICK
+        self.EPSIL  = [0.0 for _ in range(self.FNS)]    # The angle through which the section is rotated to introduce twist.
+                                                        # This angle is measured in the free stream direction
+        self.FSEC_W = [1.0 for _ in range(self.FNS)]    # 1, the coordinates are read from the following lines
+        self.YSYM   = [0.0 for _ in range(self.FNS)]    # 0, both upper and lower surfaces are provided, from nose to tail
         self.NU     = [0   for _ in range(self.FNS)]
         self.NL     = [0   for _ in range(self.FNS)]
-        self.XSING  = [0.0 for _ in range(self.FNS)]
-        self.YSING  = [0.0 for _ in range(self.FNS)]
-        self.TRAIL  = [0.0 for _ in range(self.FNS)]
-        self.SLOPT  = [0.0 for _ in range(self.FNS)]
+        self.XSING  = [0.0 for _ in range(self.FNS)]    # Coordinates of the transformation singular line
+        self.YSING  = [0.0 for _ in range(self.FNS)]    # XSING = XU[0]+0.5*RLE, YSING=YU[0]=YL[0], RLE = nose profile radius
+        self.TRAIL  = [0.0 for _ in range(self.FNS)]    # The included angle at the trailing edge in degrees
+        self.SLOPT  = [0.0 for _ in range(self.FNS)]    # The tangent of the slope of the mean camber line at the trailing edge
         self.XU     = [[0.0 for _ in range(self.NU[i])] for i in range(self.FNS)]
         self.YU     = [[0.0 for _ in range(self.NU[i])] for i in range(self.FNS)]
         self.XL     = [[0.0 for _ in range(self.NL[i])] for i in range(self.FNS)]
-        self.YL     = [[0.0 for _ in range(self.NL[i])] for i in range(self.FNS)]
+        self.YL     = [[0.0 for _ in range(self.NL[i])] for i in range(self.FNS)]   # The trailing edge point may be different if the profile has an open tail
         
         #* Body sections
-        self.NSF    = 0
-        self.XLEF   = 0.0
-        self.YLEF   = 0.0 
-        self.XTEF   = 0.0
-        self.YTEF   = 0.0
-        self.XTEF0  = 0.0
-        self.XF     = [0.0 for _ in range(self.NSF)]
-        self.YF     = [0.0 for _ in range(self.NSF)]
-        self.RF     = [0.0 for _ in range(self.NSF)]
-        self.FSEC_B = [0.0 for _ in range(self.NSF)]
-        self.NS     = [0   for _ in range(self.NSF)]
-        self.YSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]
-        self.ZSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]
+        self.NSF    = 0         # number of the body intermediate sections, NSF < 60
+        self.XLEF   = 0.0       # coordinate of the leading point of the fuselage 
+        self.YLEF   = 0.0       # coordinate of the leading point of the fuselage
+        self.XTEF   = 0.0       # coordinate of the trailing point of the fuselage
+        self.YTEF   = 0.0       # coordinate of the trailing point of the fuselage
+        self.XTEF0  = 0.0       # coordinate of the initiation of the semi-infinite body tail (for computation)
+                                # XTEF0 < XTEF, XTEF0 ~ XTEF - 0.05*(XTEF-XLEF)
+                                # the tail radius constitutes ~5%-20% of the body radius. 
+
+        self.XF     = [0.0 for _ in range(self.NSF)]    # X location of the section
+        self.YF     = [0.0 for _ in range(self.NSF)]    # Y coordinates of the fuselage mid point, = 0.5*(YSF[0]+YSF[-1])
+        self.RF     = [0.0 for _ in range(self.NSF)]    # half-width of the fuselage section, = max(abs(ZSF))
+        self.FSEC_B = [1.0 for _ in range(self.NSF)]    # 1, the coordinates are read from the following lines
+        self.NS     = [0   for _ in range(self.NSF)]    # number of points, NS < 61
+        self.YSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]   # from negative to positive
+        self.ZSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]   # positive, symmetry is z=0
 
         return
 

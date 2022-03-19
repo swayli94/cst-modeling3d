@@ -449,7 +449,72 @@ class BLWF():
             self.YU.append(wing.secs[i].yu.tolist())
             self.XL.append(wing.secs[i].xx.tolist())
             self.YL.append(wing.secs[i].yl.tolist())
+    
+    def update_input_wing(self, fname='blwf.in'):
+        '''
+        Update the wing sections in blwf.in
+        '''
+        lines = []
+        with open(fname, 'r') as f0:
+            lines = f0.readlines()
         
+        for i in range(len(lines)):
+            if 'WING/BODY DATA' in lines[i]:
+                N1 = i-1
+            if 'XLEF' in lines[i] and 'YLEF' in lines[i]:
+                N3 = i
+        
+        f = open(fname, 'w')
+        def wt(string):
+            f.write(string+'\n')
+        
+        #* Line   1-215: fixed format, use original input file.
+        for i in range(215):
+            f.write(lines[i])
+        
+        #* Line 216-217
+        wt('[  XLEW  ][  YLEW  ]')
+        wt(' %9.4f %9.4f'%(self.XLEW, self.YLEW))
+        
+        #* Line 218-N1
+        for i in range(217,N1):
+            f.write(lines[i])
+            
+        #* Line: WING DATA
+        wt('--------------------------------------------------------------')
+        wt('      WING/BODY DATA')
+        wt('[ FNS ]')           # The number of span station at which the wing sections 
+        wt(' %.1f'%(self.FNS))  # are defined from the root to the wing tip. (FNS<51)
+        
+        N2 = N1+4
+        for i in range(self.FNS):
+            wt('[  ZLE   ][   XLE  ][   YLE  ][  CHORD ][  THICK ][  EPSIL ][  FSEC  ]')
+            wt(' %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f'%(
+                self.ZLE[i], self.XLE[i], self.YLE[i], self.CHORD[i], 
+                self.THICK[i], self.EPSIL[i], self.FSEC_W[i]))
+            wt('[  YSYM  ][   NU   ][   NL   ]')
+            wt(' %9.4f %9.4f %9.4f'%(
+                self.YSYM[i], self.NU[i], self.NL[i]))
+            wt('[  XSING ][  YSING ][  TRAIL ][  SLOPT ]')
+            wt(' %9.4f %9.4f %9.4f %9.4f'%(
+                self.XSING[i], self.YSING[i], self.TRAIL[i], self.SLOPT[i]))
+            wt('[   XU   ][   YU   ]')
+            for k in range(self.NU[i]):
+                wt(' %9.6f %9.6f'%(self.XU[i][k], self.YU[i][k]))
+            wt('[   XL   ][   YL   ]')
+            for k in range(self.NL[i]):
+                wt(' %9.6f %9.6f'%(self.XL[i][k], self.YL[i][k]))
+                
+            N2 += 8 + self.NU[i] + self.NL[i]
+        
+        if N3 < N2:
+            raise Exception('N3<N2')
+        
+        #* Line N3-END
+        for i in range(N3, len(lines)):
+            f.write(lines[i])
+        
+        f.close()
 
     def write_input_file(self, fname='blwf.in'):
         '''
@@ -812,7 +877,4 @@ class BLWF():
         wt('1.00000     0.00000')
 
         f.close()
-
-
-
 

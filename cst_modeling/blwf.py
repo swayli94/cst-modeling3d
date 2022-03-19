@@ -4,8 +4,10 @@ Interface for BLWF58
 Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
+from matplotlib.pyplot import axis
 import numpy as np
-from .basic import read_tecplot, intersect_surface_plane, rearrange_points, reconstruct_curve_by_length
+from .basic import (read_tecplot, intersect_surface_plane, 
+                    rearrange_points, reconstruct_curve_by_length, BasicSurface)
 
 
 def output_curve(curve, fname='curves.dat', append=False):
@@ -45,6 +47,8 @@ class BLWF():
     def __init__(self, name='BLWF Aircraft', ITH=0, ITV=0,
                 INAC1=0, INAC2=0, IGU=0, IGL=0):
         
+        self.fname_ref = 'blwf-ref.in'
+        
         self.name   = name
         self.ITH    = ITH
         self.ITV    = ITV
@@ -53,9 +57,10 @@ class BLWF():
         self.IGU    = IGU
         self.IGL    = IGL
         
-        self.xmax_wb = 0.0
+        #* Mesh plotting parameters for wing-body
+        self.xmax_wb = 0.0      #  Coordinates of window boundaries for a plot of wing/body grid view
         self.xmin_wb = 0.0
-        self.xmax_t  = 0.0
+        self.xmax_t  = 0.0      #  Coordinates of window boundaries for a plot of tail grid view
         self.xmin_t  = 0.0
 
         #* Wing sections
@@ -79,6 +84,9 @@ class BLWF():
         self.YU     = [[0.0 for _ in range(self.NU[i])] for i in range(self.FNS)]
         self.XL     = [[0.0 for _ in range(self.NL[i])] for i in range(self.FNS)]
         self.YL     = [[0.0 for _ in range(self.NL[i])] for i in range(self.FNS)]   # The trailing edge point may be different if the profile has an open tail
+        
+        self.XLEW   = 0.0       #  X-coordinate of the leading edge of the first input wing section in the body-fitted coordinate system
+        self.YLEW   = 0.0       #  X-coordinate of the leading edge of the first input wing section in the body-fitted coordinate system
         
         #* Body sections
         self.NSF    = 0         # number of the body intermediate sections, NSF < 60
@@ -192,6 +200,53 @@ class BLWF():
                 curve = reconstruct_curve_by_length(curve, n_point)
 
             fuselage_sections.append(curve.copy())
+            
+        #* Update BLWF parameters
+        self.xmax_wb = x_max + 0.05*lx
+        self.xmin_wb = x_min - 0.05*lx
+        
+        self.NSF    = n_slice
+        self.XLEF   = x_min
+        self.XTEF   = x_max
+        self.XTEF0  = x_max - 0.05*lx
+
+        min_x = 1000.0
+        max_x =-1000.0
+
+        for data_ in data:
+            
+            x_ = data_[:,:,:,index_xyz[0]]
+            y_ = data_[:,:,:,index_xyz[1]]
+            i_max = np.unravel_index(np.argmax(x_, axis=None), x_.shape)
+            i_min = np.unravel_index(np.argmin(x_, axis=None), x_.shape)
+            
+            if x_[i_min] < min_x:
+                min_x = x_[i_min]
+                self.YLEF = y_[i_min]
+            
+            if x_[i_max] > max_x:
+                max_x = x_[i_max]
+                self.YTEF = y_[i_max]
+                
+        self.FSEC_B = [1.0 for _ in range(self.NSF)]
+        
+        for i in range(self.NSF):
+            
+            curve = fuselage_sections[i]    # ndarray [n,3]
+            
+            if curve[0,1] > curve[-1,1]:
+                curve = np.flip(curve, axis=0)
+            
+            self.NS.append(curve.shape[0])
+            self.XF.append(Xs[i])
+            self.YF.append(0.5*(curve[0,1]+curve[-1,1]))
+            self.RF.append(np.max(np.abs(curve[:,2])))
+
+            self.YSF.append([])
+            self.ZSF.append([])
+            for k in range(curve.shape[0]):
+                self.YSF[i].append(curve[k,1])
+                self.ZSF[i].append(abs(curve[k,2]))
 
         return fuselage_sections
 
@@ -361,13 +416,47 @@ class BLWF():
 
         return wing_sections
 
+    def cst_wing(self, wing: BasicSurface):
+        '''
+        Define wing parameters with wing
+        '''
+        self.XLEW = wing.secs[0].xLE
+        self.YLEW = wing.secs[0].zLE
+        
+        self.FNS = wing.n_sec
+        
+        self.XLE    = [wing.secs[i].xLE - wing.secs[0].xLE for i in range(self.FNS)]
+        self.YLE    = [wing.secs[i].zLE - wing.secs[0].zLE for i in range(self.FNS)]
+        self.ZLE    = [wing.secs[i].yLE     for i in range(self.FNS)]
+        self.CHORD  = [wing.secs[i].chord   for i in range(self.FNS)]
+        
+        self.EPSIL  = [wing.secs[i].twist   for i in range(self.FNS)]
+        
+        self.THICK  = [1.0 for _ in range(self.FNS)]
+        self.FSEC_W = [1.0 for _ in range(self.FNS)]
+        self.YSYM   = [0.0 for _ in range(self.FNS)]
+        self.NU     = [wing.secs[i].xx.shape[0] for i in range(self.FNS)]
+        self.NL     = [wing.secs[i].xx.shape[0] for i in range(self.FNS)]
+        
+        self.XSING  = [0.5*wing.secs[i].RLE for i in range(self.FNS)]
+        self.YSING  = [0.0 for _ in range(self.FNS)]
+        
+        self.TRAIL  = [wing.secs[i].te_angle for i in range(self.FNS)]
+        self.SLOPT  = [wing.secs[i].te_slope for i in range(self.FNS)]
+        
+        for i in range(self.FNS):
+            self.XU.append(wing.secs[i].xx.tolist())
+            self.YU.append(wing.secs[i].yu.tolist())
+            self.XL.append(wing.secs[i].xx.tolist())
+            self.YL.append(wing.secs[i].yl.tolist())
+        
 
     def write_input_file(self, fname='blwf.in'):
         '''
         An example of BLWF input file
         '''
         lines = []
-        with open('blwf-ref.in', 'r') as f0:
+        with open(self.fname_ref, 'r') as f0:
             lines = f0.readlines()
         
         f = open(fname, 'w')
@@ -377,7 +466,7 @@ class BLWF():
         #* Line   1-186: fixed format, use reference input file.
         wt('   %s'%(self.name))
         for i in range(185):
-            wt(lines[i+1])
+            f.write(lines[i+1])
 
         ii = 185
         #* Line 187-201: MESH PLOTTING PARAMETERS
@@ -415,12 +504,16 @@ class BLWF():
                     xmin, xmax, ymin, ymax, zmin, zmax))
                 
             else:            
-                wt(lines[ii])
+                f.write(lines[ii])
 
-        #* Line 202-217: fixed format, use reference input file.
-        while ii<=216:
+        #* Line 202-215: fixed format, use reference input file.
+        while ii<=213:
             ii += 1
-            wt(lines[ii])
+            f.write(lines[ii])
+        
+        #* Line 216-217
+        wt('[  XLEW  ][  YLEW  ]')
+        wt(' %9.4f %9.4f'%(self.XLEW, self.YLEW))
 
         N1 = 217
 
@@ -564,41 +657,41 @@ class BLWF():
         wt('--------------------------------------------------------------')
         wt('      WING/BODY DATA')
         wt('[ FNS ]')           # The number of span station at which the wing sections 
-        wt(' %.0f'%(self.FNS))  # are defined from the root to the wing tip. (FNS<51)
+        wt(' %.1f'%(self.FNS))  # are defined from the root to the wing tip. (FNS<51)
         
         for i in range(self.FNS):
-            wt('[ ZLE ][ XLE ][ YLE ][ CHORD ][ THICK ][ EPSIL ][ FSEC ]')
-            wt(' %.6f %.6f %.6f %.6f %.6f %.6f %.6f'%(
+            wt('[  ZLE   ][   XLE  ][   YLE  ][  CHORD ][  THICK ][  EPSIL ][  FSEC  ]')
+            wt(' %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f'%(
                 self.ZLE[i], self.XLE[i], self.YLE[i], self.CHORD[i], 
                 self.THICK[i], self.EPSIL[i], self.FSEC_W[i]))
             wt('[  YSYM  ][   NU   ][   NL   ]')
-            wt(' %.6f %.6f %.6f'%(
+            wt(' %9.4f %9.4f %9.4f'%(
                 self.YSYM[i], self.NU[i], self.NL[i]))
             wt('[  XSING ][  YSING ][  TRAIL ][  SLOPT ]')
-            wt(' %.6f %.6f %.6f %.6f'%(
+            wt(' %9.4f %9.4f %9.4f %9.4f'%(
                 self.XSING[i], self.YSING[i], self.TRAIL[i], self.SLOPT[i]))
             wt('[   XU   ][   YU   ]')
             for k in range(self.NU[i]):
-                wt(' %.6f %.6f'%(self.XU[i][k], self.YU[i][k]))
+                wt(' %9.6f %9.6f'%(self.XU[i][k], self.YU[i][k]))
             wt('[   XL   ][   YL   ]')
             for k in range(self.NL[i]):
-                wt(' %.6f %.6f'%(self.XL[i][k], self.YL[i][k]))
+                wt(' %9.6f %9.6f'%(self.XL[i][k], self.YL[i][k]))
 
         #* Line: BODY DATA
         # NSF: number of the body intermediate sections ( NSF<60.)
         wt('[  XLEF  ][  YLEF  ][  XTEF  ][  YTEF  ][  XTEF0 ][   NSF  ]')
-        wt(' %.6f %.6f %.6f %.6f %.6f %.6f'%(
+        wt(' %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f'%(
             self.XLEF, self.YLEF, self.XTEF, self.YTEF, self.XTEF0, self.NSF))
         
         for i in range(self.NSF):
             wt('[  XF    ][  YF    ][  RF    ][  FSEC  ]')
-            wt(' %.6f %.6f %.6f %.6f'%(
+            wt(' %9.4f %9.4f %9.4f %9.4f'%(
                 self.XF[i], self.YF[i], self.RF[i], self.FSEC_B[i]))
             wt('[  NS    ]')
-            wt(' %.6f'%(self.NS[i]))
+            wt(' %9.4f'%(self.NS[i]))
             wt('[  YSF   ][  ZSF   ]')
             for k in range(self.NS[i]):
-                wt(' %.6f %.6f'%(self.YSF[i][k], self.ZSF[i][k]))
+                wt(' %9.6f %9.6f'%(self.YSF[i][k], self.ZSF[i][k]))
         
         #* Line: HORIZONTAL TAIL SECTION DATA
         wt('--------------------------------------------------------------')

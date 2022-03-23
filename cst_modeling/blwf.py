@@ -207,11 +207,9 @@ class BLWF():
         
         self.NSF    = n_slice
         self.XLEF   = x_min
-        self.XTEF   = x_max + 0.10*lx
+        self.XTEF   = x_max + 0.10*lx   # This additional 0.1*lx is to maintain the shape of body bottom
         self.XTEF0  = x_max - 0.02*lx
         
-        print(self.XTEF, self.XTEF0)
-
         min_x = 1000.0
         max_x =-1000.0
 

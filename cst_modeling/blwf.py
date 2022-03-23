@@ -207,8 +207,10 @@ class BLWF():
         
         self.NSF    = n_slice
         self.XLEF   = x_min
-        self.XTEF   = x_max
-        self.XTEF0  = x_max - 0.05*lx
+        self.XTEF   = x_max + 0.10*lx
+        self.XTEF0  = x_max - 0.02*lx
+        
+        print(self.XTEF, self.XTEF0)
 
         min_x = 1000.0
         max_x =-1000.0
@@ -421,16 +423,16 @@ class BLWF():
         Define wing parameters with wing
         '''
         self.XLEW = wing.secs[0].xLE
-        self.YLEW = wing.secs[0].zLE
+        self.YLEW = wing.secs[0].yLE
         
         self.FNS = wing.n_sec
         
         self.XLE    = [wing.secs[i].xLE - wing.secs[0].xLE for i in range(self.FNS)]
-        self.YLE    = [wing.secs[i].zLE - wing.secs[0].zLE for i in range(self.FNS)]
-        self.ZLE    = [wing.secs[i].yLE     for i in range(self.FNS)]
+        self.YLE    = [wing.secs[i].yLE - wing.secs[0].yLE for i in range(self.FNS)]
+        self.ZLE    = [wing.secs[i].zLE     for i in range(self.FNS)]
         self.CHORD  = [wing.secs[i].chord   for i in range(self.FNS)]
         
-        self.EPSIL  = [wing.secs[i].twist   for i in range(self.FNS)]
+        self.EPSIL  = [-wing.secs[i].twist  for i in range(self.FNS)]
         
         self.THICK  = [1.0 for _ in range(self.FNS)]
         self.FSEC_W = [1.0 for _ in range(self.FNS)]
@@ -506,9 +508,6 @@ class BLWF():
                 wt(' %9.6f %9.6f'%(self.XL[i][k], self.YL[i][k]))
                 
             N2 += 8 + self.NU[i] + self.NL[i]
-        
-        if N3 < N2:
-            raise Exception('N3<N2')
         
         #* Line N3-END
         for i in range(N3, len(lines)):

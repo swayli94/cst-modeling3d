@@ -1825,7 +1825,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     
     ### Return:
     ```text
-    curve:      list, intersection curve
+    curve:      list of ndarray [3], intersection curve
     ij_curve:   list, the index of nearest point in surface to each point of curve
     xi_curve, yt_curve: ndarray [:], relative coordinates in the plane P0123, range in [0,1]
     ```

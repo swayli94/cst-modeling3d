@@ -4,10 +4,11 @@ Interface for BLWF58
 Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
-from matplotlib.pyplot import axis
+import os
 import numpy as np
-from .basic import (read_tecplot, intersect_surface_plane, 
+from .basic import (read_tecplot, intersect_surface_plane, interplot_from_curve,
                     rearrange_points, reconstruct_curve_by_length, BasicSurface)
+from .foil import find_circle_3p
 
 
 def output_curve(curve, fname='curves.dat', append=False):
@@ -69,7 +70,7 @@ class BLWF():
         self.XLE    = [0.0 for _ in range(self.FNS)]    # X of leading edge
         self.YLE    = [0.0 for _ in range(self.FNS)]    # Y of leading edge
         self.CHORD  = [0.0 for _ in range(self.FNS)]    # Local chord
-        self.THICK  = [0.0 for _ in range(self.FNS)]    # Y coordinates are multiplied by THICK
+        self.THICK  = [1.0 for _ in range(self.FNS)]    # Y coordinates are multiplied by THICK
         self.EPSIL  = [0.0 for _ in range(self.FNS)]    # The angle through which the section is rotated to introduce twist.
                                                         # This angle is measured in the free stream direction
         self.FSEC_W = [1.0 for _ in range(self.FNS)]    # 1, the coordinates are read from the following lines
@@ -106,6 +107,33 @@ class BLWF():
         self.YSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]   # from negative to positive
         self.ZSF    = [[0.0 for _ in range(self.NS[i])] for i in range(self.NSF)]   # positive, symmetry is z=0
 
+        #* Vertical tail sections
+        self.XLETV  = 0.0       #  X-coordinate of the l.e. of the first input vertical tail section in the body-fitted coordinate system
+        self.YLETV  = 0.0
+        
+        self.NC_VT  = 0         # number of the vertical tail input sections, NC_VT < 11
+        self.XLE_VT = [0.0 for _ in range(self.NC_VT)]  # X cooridnate of the leading edge location of each section
+        self.YLE_VT = [0.0 for _ in range(self.NC_VT)]  
+        self.C_VT   = [0.0 for _ in range(self.NC_VT)]  # local chord length of each section
+        self.T_VT   = [1.0 for _ in range(self.NC_VT)]  # thick, Y coordinates are multiplied by THICK
+        self.ANT_VT = [0   for _ in range(self.NC_VT)]  # the index of the airfoil at the vertical tail section, ANT <= NA
+        
+        
+        #* AIRFOIL DATA FOR NACELLES AND TAIL
+        self.NA     = 0         # the number of airfoils that can be used for the nacelle, tail and winglet, NA<21
+        self.A_YSYM = [0   for _ in range(self.NA)]     # 1 denotes a symmetric profile
+        self.A_NU   = [0   for _ in range(self.NA)]
+        self.A_NL   = [0   for _ in range(self.NA)]
+        self.A_XSING= [0.0 for _ in range(self.NA)]     # Coordinates of the transformation singular line
+        self.A_YSING= [0.0 for _ in range(self.NA)]     # XSING = XU[0]+0.5*RLE, YSING=YU[0]=YL[0], RLE = nose profile radius
+        self.A_TRAIL= [0.0 for _ in range(self.NA)]     # The included angle at the trailing edge in degrees
+        self.A_SLOPT= [0.0 for _ in range(self.NA)]     # The tangent of the slope of the mean camber line at the trailing edge
+        self.A_XU   = [[0.0 for _ in range(self.A_NU[i])] for i in range(self.NA)]
+        self.A_YU   = [[0.0 for _ in range(self.A_NU[i])] for i in range(self.NA)]
+        self.A_XL   = [[0.0 for _ in range(self.A_NL[i])] for i in range(self.NA)]
+        self.A_YL   = [[0.0 for _ in range(self.A_NL[i])] for i in range(self.NA)]    # The trailing edge point may be different if the profile has an open tail
+
+
         return
 
     @staticmethod
@@ -121,7 +149,7 @@ class BLWF():
         '''
         return read_tecplot(fname)
     
-    def define_fuselage(self, zone_id: list, n_slice: int, n_point=0,
+    def define_fuselage(self, zone_id: list, n_slice: int, n_point=0, extrapolate2sym=True,
                         fname='surface-aircraft.dat', index_xyz=[0,1,2]):
         '''
         Extract fuselage sections
@@ -195,6 +223,15 @@ class BLWF():
             _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
             curve = np.array([curves[ii] for ii in old_index])
             
+            #* Extrapolate to symmetry plane (Z=0)
+            if extrapolate2sym:
+                if abs(curve[0,2])>1e-3:
+                    y_sym = curve[0,1] - (curve[0,1]-curve[1,1])/(curve[0,2]-curve[1,2])*curve[0,2]
+                    curve = np.array([[curve[0,0], y_sym, 0.0]]+[curves[ii] for ii in old_index])
+                elif abs(curve[-1,2])>1e-3:
+                    y_sym = curve[-1,1] - (curve[-1,1]-curve[-2,1])/(curve[-1,2]-curve[-2,2])*curve[-1,2]
+                    curve = np.array([curves[ii] for ii in old_index]+[[curve[-1,0], y_sym, 0.0]])
+                
             #* Interploate section curves
             if n_point>0:
                 curve = reconstruct_curve_by_length(curve, n_point)
@@ -207,7 +244,7 @@ class BLWF():
         
         self.NSF    = n_slice
         self.XLEF   = x_min
-        self.XTEF   = x_max + 0.10*lx   # This additional 0.1*lx is to maintain the shape of body bottom
+        self.XTEF   = x_max + 0.01*lx   # This additional 0.2*lx is to maintain the shape of body bottom
         self.XTEF0  = x_max - 0.02*lx
         
         min_x = 1000.0
@@ -250,8 +287,8 @@ class BLWF():
 
         return fuselage_sections
 
-    def define_vertical_tail(self, zone_id: list, n_slice: int, n_point=0,
-                        fname='surface-aircraft.dat', index_xyz=[0,1,2]):
+    def define_vertical_tail(self, zone_id: list, n_slice: int, n_point=0, avg_dir=None, 
+                        fname='surface-aircraft.dat', index_xyz=[0,1,2], ratio=0.1):
         '''
         Extract vertical tail sections
         
@@ -260,6 +297,7 @@ class BLWF():
         zone_id:    list, index of zones in the tecplot format file, start from 0
         n_slice:    number of sections in the X-axis
         n_point:    number of points to reconstruct the section curve, 0 means no reconstruction
+        avg_dir:    ndarray [2], specified average direction
         fname:      file name
         index_xyz:  index of variables in file for XYZ
         ```
@@ -293,7 +331,7 @@ class BLWF():
         ly = y_max-y_min
         
         #* Intersect sections
-        Ys = np.linspace(y_min+0.1*ly, y_max-0.001*ly, n_slice, endpoint=True)
+        Ys = np.linspace(y_min+ratio*ly, y_max-0.001*ly, n_slice, endpoint=True)
         tail_sections = []
 
         for kk in range(len(Ys)):
@@ -319,7 +357,7 @@ class BLWF():
                     xi_curves += xi_curve.tolist()
                     yt_curves += yt_curve.tolist()
 
-            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=None)
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=avg_dir)
             curve = np.array([curves[ii] for ii in old_index])
             
             #* Interploate section curves
@@ -327,6 +365,50 @@ class BLWF():
                 curve = reconstruct_curve_by_length(curve, n_point)
 
             tail_sections.append(curve.copy())
+            
+        #* Update BLWF parameters
+        if self.ITV != 0:
+
+            self.NC_VT = n_slice
+            
+            for i in range(n_slice):
+                
+                curve = tail_sections[i].copy()
+                
+                self.XLE_VT.append(curve[0,0])
+                self.YLE_VT.append(curve[0,1])
+                self.C_VT.append(curve[-1,0]-curve[0,0])
+                self.T_VT.append(1.0)
+                self.ANT_VT.append(i+1)
+                
+                self.NA += 1
+                self.A_YSYM.append(1)
+                self.A_NU.append(curve.shape[0])
+                self.A_NL.append(curve.shape[0])
+                
+                curve = curve/self.C_VT[-1]
+                curve[:,0] = curve[:,0] - curve[0,0]
+                curve[:,2] = -(curve[:,2] - curve[0,2])
+                
+                rle, te_angle, _ = BLWF.airfoil_info(curve[:,0], curve[:,2], -curve[:,2])
+                
+                self.A_XSING.append(0.5*rle)
+                self.A_YSING.append(0.0)
+                self.A_TRAIL.append(te_angle)
+                self.A_SLOPT.append(0.0)
+                
+                self.A_XU.append(curve[:,0].tolist())
+                self.A_YU.append(curve[:,2].tolist())
+                self.A_XL.append([])
+                self.A_YL.append([])
+                
+                
+            self.XLE_VT[0] -= 2*ratio*(self.XLE_VT[-1]-self.XLE_VT[0])
+            self.YLE_VT[0] -= 2*ratio*(self.YLE_VT[-1]-self.YLE_VT[0])
+            self.C_VT[0]   -= 2*ratio*(self.C_VT[-1]-self.C_VT[0])
+            
+            self.XLETV = self.XLE_VT[0]
+            self.YLETV = self.YLE_VT[0]
 
         return tail_sections
 
@@ -614,14 +696,14 @@ class BLWF():
             # ITV = -1, 1
             N3 = N2+12
             wt('    1.    ')
-            wt('[ NX_TV ][ NY_TV ][ NZ_TV ][ NT_TV ]')
-            wt('    96.      8.       14.      10. ')
-            wt('[ PZROOT ][ PZTIP ][ PXLE ][ PXTE ][ PYTE ] ')
-            wt('   0.4      0.4      1.0     1.0     1.0 ')
-            wt('[ XRB_TV ][ ZRB_TV ][ YRB_TV ]  ')
-            wt('   0.5      1.2     1.4 ')
-            wt('[ XLETV ][ YLETV ]')
-            wt('   18.2     0.0 ')
+            wt('[ NX_TV  ][ NY_TV  ][ NZ_TV  ][ NT_TV ]')
+            wt('   96.      8.        14.       10. ')
+            wt('[ PZROOT ][ PZTIP  ][ PXLE   ][ PXTE   ][ PYTE   ]')
+            wt('   0.4      0.4       1.0       1.0       1.0 ')
+            wt('[ XRB_TV ][ ZRB_TV ][ YRB_TV ]')
+            wt('   0.5      1.2       1.4 ')
+            wt('[ XLETV  ][ YLETV  ]')
+            wt(' %9.4f %9.4f'%(self.XLETV, self.YLETV))
 
         #* Line (N3+1)-N4: FIRST NACELLE MESH PARAMETERS AND NACELLE POSITION
         wt('--------------------------------------------------------------')
@@ -772,16 +854,16 @@ class BLWF():
         #* Line: VERTICAL TAIL SECTION DATA 
         wt('--------------------------------------------------------------')
         wt('      VERTICAL TAIL SECTION DATA')
-        wt('[  NC ]')   # the number of the vertical tail input sections (0<=NC<11)
+        wt('[  NC    ]')   # the number of the vertical tail input sections (0<=NC<11)
         if self.ITV == 0:
             wt('    0.    ')
 
         else:
-            wt('    2.    ')
-            wt('[ ZLE ][ XLE ][ YLE ][ CHORD ][ THICK ][ EPSIL ][ ANT ]')
-            wt(' 0.000000  2179.2529 245.80607 253.95923  1.00000   0.0000      1.')
-            wt('[ ZLE ][ XLE ][ YLE ][ CHORD ][ THICK ][ EPSIL ][ ANT ]')
-            wt(' 0.000000  2537.0166 303.78506 88.892090  1.00000   0.0000      2.')
+            wt(' %9.4f'%(self.NC_VT*1.0))
+            for i in range(self.NC_VT):
+                wt('[  ZLE   ][   XLE  ][   YLE  ][  CHORD ][  THICK ][  EPSIL ][  ANT   ]')
+                wt(' %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f %9.4f'%(
+                    0.0, self.XLE_VT[i], self.YLE_VT[i], self.C_VT[i], self.T_VT[i], 0.0, self.ANT_VT[i]))
 
         #* Line: SECTION DATA FOR FIRST NACELLE
         wt('--------------------------------------------------------------')
@@ -857,21 +939,60 @@ class BLWF():
         
         #* Line: AIRFOIL DATA FOR NACELLE, TAIL AND WINGLET SECTIONS.
         wt('--------------------------------------------------------------')
-        wt('      AIRFOIL DATA FOR NACELLES AND TAIL (The following example can be deleted) ')
-        wt('[  NA ]')
-        wt('   1.0 ')
-        wt('[  YSYM  ][   NU   ][   NL   ]')
-        wt('1.00000  3.00000  3.00000 ')
-        wt('[  XSING ][ YSING  ][  TRAIL ][  SLOPT ]')
-        wt('0.00293  -0.00333  2.0000   -0.15000')
-        wt('[   XU   ][   YU   ]')
-        wt('0.00000     0.00000')
-        wt('0.50000     0.05000')
-        wt('1.00000     0.00000')
-        wt('[   XL   ][   YL   ]')
-        wt('0.00000     0.00000')
-        wt('0.50000    -0.05000')
-        wt('1.00000     0.00000')
+        wt('      AIRFOIL DATA FOR NACELLES AND TAIL ')
+        wt('[  NA    ]')
+        wt(' %9.4f'%(self.NA))
+        if self.NA > 0:
+            for i in range(self.NA):
+                
+                wt('[  YSYM  ][   NU   ][   NL   ]')
+                wt(' %9.4f %9.4f %9.4f'%(self.A_YSYM[i], self.A_NU[i], self.A_NL[i]))
+                wt('[  XSING ][ YSING  ][  TRAIL ][  SLOPT ]')
+                wt(' %9.4f %9.4f %9.4f %9.4f'%(self.A_XSING[i], self.A_YSING[i], self.A_TRAIL[i], self.A_SLOPT[i]))
+                wt('[   XU   ][   YU   ]')
+                for k in range(self.A_NU[i]):
+                    wt(' %9.6f %9.6f'%(self.A_XU[i][k], self.A_YU[i][k]))
+                if self.A_YSYM[i]!=1:
+                    wt('[   XL   ][   YL   ]')
+                    for k in range(self.A_NL[i]):
+                        wt(' %9.6f %9.6f'%(self.A_XL[i][k], self.A_YL[i][k]))
 
         f.close()
 
+    @staticmethod
+    def clean_result_files():
+        '''
+        
+        '''
+        try:
+            os.system('del *.ps')
+        except:
+            pass
+        
+        files = ['blwf.sav', 'BLWF56.OUT', 'blwf.msh', 'blwf.lim', 'blwf.pl0', 'blwf.pl4', 'blwf.total',
+                 'body_CF.plt', 'main_56.out', 'tp1.plt']
+        
+        for file in files:
+            if os.path.exists(file):
+                os.remove(file)
+    
+    @staticmethod
+    def airfoil_info(xx, yu, yl):
+        '''
+        >>> rle, te_angle, te_slope = airfoil_info(xx, yu, yl)
+        '''
+        
+        #* Calculate leading edge radius
+        x_RLE = 0.005
+        yu_RLE = interplot_from_curve(x_RLE, xx, yu)
+        yl_RLE = interplot_from_curve(x_RLE, xx, yl)
+        rle, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
+        
+        #* Trailing edge information
+        a1 = [xx[-1]-xx[-5], yu[-1]-yu[-5]]
+        a2 = [xx[-1]-xx[-5], yl[-1]-yl[-5]]
+        te_angle = np.arccos(np.dot(a1,a2)/np.linalg.norm(a1)/np.linalg.norm(a2))/np.pi*180.0
+        te_slope = 0.5*((yu[-1]+yl[-1])-(yu[-5]+yl[-5]))/(xx[-1]-xx[-5])
+        
+        return rle, te_angle, te_slope
+        

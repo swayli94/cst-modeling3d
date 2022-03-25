@@ -3,6 +3,7 @@ Basic classes for sections and surfaces, and fundamental functions
 '''
 import copy
 import os
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import CubicSpline
 from scipy import spatial
 from scipy.interpolate import interp1d
+from scipy.spatial.distance import cdist
 
 
 class BasicSection():
@@ -1637,30 +1639,55 @@ def read_tecplot(fname='tecplot.dat'):
                 iLine += 1
                 continue
             
-            if line[0] == 'Variables=':
+            if line[0] in 'Variables=' or line[0] in 'VARIABLES=' :
+                
+                line = re.split(r'[=",\s]', lines[iLine])
+                while '' in line:
+                    line.remove('')
+
                 name_var = line[1:]
                 n_var = len(name_var)
                 iLine += 1
                 continue
-            elif line[0] == 'Variables':
-                name_var = line[2:]
-                n_var = len(name_var)
-                iLine += 1
-                continue
         
-            if line[0] == 'zone':
-                ni = int(line[2])
-                nj = int(line[4])
-                nk = int(line[6])
-
+            if line[0] in 'zone' or line[0] in 'ZONE':
+                line = re.split(r'[=\s]', lines[iLine])
+                while '' in line:
+                    line.remove('')
+                
+                if 'i' in line:
+                    ni = int(line[line.index('i')+1])
+                elif 'I' in line:
+                    ni = int(line[line.index('I')+1])
+                else:
+                    ni = 1
+                    
+                if 'j' in line:
+                    nj = int(line[line.index('j')+1])
+                elif 'J' in line:
+                    nj = int(line[line.index('J')+1])
+                else:
+                    nj = 1
+                    
+                if 'k' in line:
+                    nk = int(line[line.index('k')+1])
+                elif 'K' in line:
+                    nk = int(line[line.index('K')+1])
+                else:
+                    nk = 1
+                    
                 data_ = np.zeros((ni,nj,nk,n_var))
                 iLine += 1
                 
                 for k in range(nk):
                     for j in range(nj):
                         for i in range(ni):
-                            line = lines[iLine].split()
-                            iLine += 1
+                            
+                            line = ['#']
+                            while line[0] == '#':
+                                line = lines[iLine].split()
+                                iLine += 1
+                                
                             for v in range(n_var):
                                 data_[i,j,k,v] = float(line[v])
                                 
@@ -1693,6 +1720,67 @@ def interplot_from_curve(x0, x, y) -> np.ndarray:
 
     return y0
 
+def interpolate_IDW(x0, xs, ys, eps=1e-10):
+    '''
+    Inverse distance weighted interpolation
+    
+    >>> y0 = interpolate_IDW(x0, xs, ys, eps=1e-10)
+    
+    ### Inputs:
+    ```text
+    x0:     ndarray [n0,3]
+    xs:     ndarray [n, 3]
+    ys:     ndarray [n, ny]
+    ```
+    
+    ### Return:
+    ```text
+    y0:     ndarray [n0,ny]
+    ```
+    '''
+    n0 = x0.shape[0]
+    n  = xs.shape[0]
+    ny = ys.shape[1]
+    y0 = np.zeros([n0,ny])
+    ds = dis_matrix(x0, xs) # [n0, n]
+    
+    for i0 in range(n0):
+        
+        if np.min(ds[i0,:]) <= eps:
+            j = np.argmin(ds[i0,:])
+            y0[i0,:] = ys[j,:]
+            continue
+        
+        ws = ds[i0,:]**-1   # [n]
+        w_all = np.sum(ws)  # float
+        y0[i0,:] = np.dot(np.transpose(ys), ws)/w_all
+        
+    return y0
+    
+def dis_matrix(xs1, xs2):
+    '''
+    Calculate the distance between vectors in xs1 and xs2
+
+    Suggest: each components of vectors in x1 and x2 is 0~1
+
+    >>> RR = dis_matrix(xs1, xs2)
+
+    ### Inputs:
+    ```text
+    xs1:    ndarray [n1, nx], vectors of all samples
+    xs2:    ndarray [n2, nx], vectors of all samples
+    ```
+
+    ### Return:
+    ```text
+    RR:     ndarray [n1, n2], dis=sqrt(sum((x1-x2)**2)/nx)
+    ```
+    '''
+    nx = xs1.shape[1]
+    RR = cdist(xs1, xs2, metric='euclidean')
+    RR = RR/np.sqrt(1.0*nx)
+    return RR
+    
 def curve_intersect(x1, y1, x2, y2):
     '''
     Find the intersect index between two curves.
@@ -1826,7 +1914,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     ### Return:
     ```text
     curve:      list of ndarray [3], intersection curve
-    ij_curve:   list, the index of nearest point in surface to each point of curve
+    ij_curve:   list of [i,j], the index of nearest point in surface to each point of curve
     xi_curve, yt_curve: ndarray [:], relative coordinates in the plane P0123, range in [0,1]
     ```
     '''
@@ -1949,9 +2037,18 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
             ll  = np.sqrt(dxi**2+dyt**2)
             if ll > cri_dup:
                 avg_dir += np.array([dxi,dyt])
-    
-        avg_dir = avg_dir/np.linalg.norm(avg_dir)
-        
+
+        la = np.linalg.norm(avg_dir)
+        lx = abs(xi[-1]-xi[0])
+        ly = abs(yt[-1]-yt[0])
+
+        if la > 0.2*(lx+ly):
+            avg_dir = avg_dir/la
+        elif lx > ly:
+            avg_dir = np.array([1., 0.])
+        else:
+            avg_dir = np.array([0., 1.])
+
         ii = np.argmax(np.abs(avg_dir))
         if avg_dir[ii]<0:
             avg_dir = -avg_dir
@@ -2023,9 +2120,11 @@ def join_curves(curves: list, cri_dup=1e-6):
     '''
     Join several curves into one piece
     
+    >>> new_curve = join_curves(curves: list, cri_dup=1e-6)
+    
     ### Inputs:
     ```text
-    curves:     list [ndarray [:,3]]
+    curves:     list [ndarray [:,3 or 3+nv]]
     cri_dup:    critical distance to drop duplicated points
     ```
     '''
@@ -2043,12 +2142,10 @@ def join_curves(curves: list, cri_dup=1e-6):
         
         for cur in curves:
             
-            print(new_curve.shape, cur.shape)
-
-            d00.append(np.linalg.norm(new_curve[ 0,:]-cur[ 0,:]))
-            d01.append(np.linalg.norm(new_curve[ 0,:]-cur[-1,:]))
-            d10.append(np.linalg.norm(new_curve[-1,:]-cur[ 0,:]))
-            d11.append(np.linalg.norm(new_curve[-1,:]-cur[-1,:]))
+            d00.append(np.linalg.norm(new_curve[ 0,:3]-cur[ 0,:3]))
+            d01.append(np.linalg.norm(new_curve[ 0,:3]-cur[-1,:3]))
+            d10.append(np.linalg.norm(new_curve[-1,:3]-cur[ 0,:3]))
+            d11.append(np.linalg.norm(new_curve[-1,:3]-cur[-1,:3]))
             
         min_ds = [np.min(d00), np.min(d01), np.min(d10), np.min(d11)]
         ii_min = np.argmin(min_ds)

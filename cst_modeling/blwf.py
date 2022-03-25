@@ -5,19 +5,23 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 
 '''
 import os
+import copy
 import numpy as np
-from .basic import (read_tecplot, intersect_surface_plane, interplot_from_curve,
-                    rearrange_points, reconstruct_curve_by_length, BasicSurface)
+from .basic import (read_tecplot, intersect_surface_plane, interplot_from_curve, interpolate_IDW,
+                    join_curves, rearrange_points, reconstruct_curve_by_length, BasicSurface)
 from .foil import find_circle_3p
 
 
-def output_curve(curve, fname='curves.dat', append=False):
+def output_curve(curve, fname='curves.dat', append=False, name_var=['X', 'Y', 'Z']):
     
     if append:
         f = open(fname, 'a')
     else:
         f = open(fname, 'w')
-        f.write('Variables= X Y Z\n')
+        line = 'Variables='
+        for name in name_var:
+            line += ' %s'%(name)
+        f.write(line+'\n')
     
     if isinstance(curve, np.ndarray):
         
@@ -25,7 +29,10 @@ def output_curve(curve, fname='curves.dat', append=False):
         if n>1:
             f.write('zone i= %d\n'%(n))
             for i in range(n):
-                f.write('%20.10f  %20.10f  %20.10f\n'%(curve[i,0],curve[i,1],curve[i,2]))
+                line = ''
+                for k in range(min(len(name_var),curve.shape[1])):
+                    line += '%20.10f  '%(curve[i,k])
+                f.write(line+'\n')
             
     f.close()
 
@@ -531,6 +538,101 @@ class BLWF():
             self.YU.append(wing.secs[i].yu.tolist())
             self.XL.append(wing.secs[i].xx.tolist())
             self.YL.append(wing.secs[i].yl.tolist())
+    
+    @staticmethod
+    def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
+                      fname='tp1.plt', zone_id=[2], index_xyz=[0,1,2], arrange_method='join'):
+        '''
+        Extract data sliced by planes
+        
+        ### Inputs:
+        ```text
+        locations:  list of distances to the reference point in the given direction
+        Pref:       ndarray [3], reference point
+        dir_norm:   ndarray [3], direction vector normal to the slice plane (will be normalized)
+        dir_ref:    ndarray [3], direction vector that roughly sets the xi-axis in the slice plane
+        
+        fname:      file name
+        zone_id:    list, index of zones in the tecplot format file, start from 0
+        index_xyz:  index of variables in file for XYZ
+        arrange_method: 'join', 'rearrange'
+        ```
+        
+        ### Return:
+        ```text
+        sections:   list of ndarray [:,3+nv]
+        name_var:   list, name of variables
+        ```
+        '''
+        #* Read surface data
+        data_, name_var = read_tecplot(fname)
+        index_var = [i for i in range(len(name_var))]
+        for i in index_xyz:
+            index_var.remove(i)
+        
+        if len(zone_id)==0:
+            data = data_
+        else:
+            data = [data_[i] for i in zone_id]
+        
+        #* Intersect sections
+        dn = dir_norm/np.linalg.norm(dir_norm)
+        dr = dir_ref - np.dot(dir_ref, dn)*dn
+        dr = dr/np.linalg.norm(dir_norm)
+        dt = np.cross(dn, dr)
+        dt = dt/np.linalg.norm(dt)
+        
+        sections = []
+
+        for loc in locations:
+            
+            P0 = Pref + loc*dn
+            P1 = P0 + dr
+            P3 = P0 + dt
+            
+            curves = []
+            xi_curves = []
+            yt_curves = []
+            
+            for data_ in data:
+                
+                surface = np.concatenate((data_[:,:,:,index_xyz[0]:index_xyz[0]+1],
+                            data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
+                            data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
+                surface = surface.squeeze()
+                curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=False)
+                
+                surface_var = []
+                for iv in index_var:
+                    surface_var.append(data_[:,:,:,iv])
+                surface_var = np.transpose(np.array(surface_var), [1,2,3,0]).squeeze()  # [:,:,nv]
+                
+                if len(curve) == 0:
+                    continue
+
+                new_curve = []
+                for i in range(len(curve)):
+                    
+                    ii, jj = ij_curve[i]
+                    xs = [surface[ii,jj,:], surface[ii+1,jj,:], surface[ii,jj+1,:], surface[ii+1,jj+1,:]]
+                    ys = [surface_var[ii,jj,:], surface_var[ii+1,jj,:], surface_var[ii,jj+1,:], surface_var[ii+1,jj+1,:]]
+                    
+                    xyz = curve[i][None,:]
+                    var = interpolate_IDW(xyz, np.array(xs), np.array(ys))
+                    tmp = np.concatenate((xyz, var), axis=1).squeeze()
+
+                    new_curve.append(tmp)
+                
+                curves += copy.deepcopy(new_curve)
+                xi_curves += xi_curve.tolist()
+                yt_curves += yt_curve.tolist()
+
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=np.array([1.,0.]))
+            curve = np.array([curves[ii] for ii in old_index])
+
+            sections.append(curve.copy())
+
+        return sections, name_var
     
     def update_input_wing(self, fname='blwf.in'):
         '''

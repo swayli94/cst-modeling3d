@@ -409,13 +409,23 @@ class BLWF():
                 self.A_XL.append([])
                 self.A_YL.append([])
                 
-                
+            xle_old   = self.XLE_VT[0]
+            chord_old = self.C_VT[0]
+            
             self.XLE_VT[0] -= 2*ratio*(self.XLE_VT[-1]-self.XLE_VT[0])
             self.YLE_VT[0] -= 2*ratio*(self.YLE_VT[-1]-self.YLE_VT[0])
             self.C_VT[0]   -= 2*ratio*(self.C_VT[-1]-self.C_VT[0])
             
             self.XLETV = self.XLE_VT[0]
             self.YLETV = self.YLE_VT[0]
+            
+            #* Extrapolated curve
+            curve = tail_sections[0].copy()
+            curve[:,0] = (curve[:,0]-xle_old)*self.C_VT[0]/chord_old + self.XLE_VT[0]
+            curve[:,1] = self.YLE_VT[0]
+            curve[:,2] = curve[:,2]*self.C_VT[0]/chord_old
+            
+            tail_sections.append(curve.copy())
 
         return tail_sections
 

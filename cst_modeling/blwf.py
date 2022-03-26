@@ -555,7 +555,8 @@ class BLWF():
         fname:      file name
         zone_id:    list, index of zones in the tecplot format file, start from 0
         index_xyz:  index of variables in file for XYZ
-        arrange_method: 'join', 'rearrange'
+        arrange_method: 'join', keeps the original order of points (suitable for surface with a few blocks)
+                        'rearrange', rearrange points by minimal distance
         ```
         
         ### Return:
@@ -600,7 +601,8 @@ class BLWF():
                             data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
                             data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
                 surface = surface.squeeze()
-                curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3, within_bounds=False)
+                curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface,
+                            P0, P1, P3, within_bounds=False, original_order=(arrange_method=='join'))
                 
                 surface_var = []
                 for iv in index_var:
@@ -614,6 +616,9 @@ class BLWF():
                 for i in range(len(curve)):
                     
                     ii, jj = ij_curve[i]
+                    ii = min(surface.shape[0]-2, ii)
+                    jj = min(surface.shape[1]-2, jj)
+                    
                     xs = [surface[ii,jj,:], surface[ii+1,jj,:], surface[ii,jj+1,:], surface[ii+1,jj+1,:]]
                     ys = [surface_var[ii,jj,:], surface_var[ii+1,jj,:], surface_var[ii,jj+1,:], surface_var[ii+1,jj+1,:]]
                     
@@ -623,12 +628,18 @@ class BLWF():
 
                     new_curve.append(tmp)
                 
-                curves += copy.deepcopy(new_curve)
-                xi_curves += xi_curve.tolist()
-                yt_curves += yt_curve.tolist()
+                if arrange_method == 'join':
+                    curves.append(np.array(new_curve))
+                else:
+                    curves += new_curve
+                    xi_curves += xi_curve.tolist()
+                    yt_curves += yt_curve.tolist()
 
-            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=np.array([1.,0.]))
-            curve = np.array([curves[ii] for ii in old_index])
+            if arrange_method == 'join':
+                curve = join_curves(curves)
+            else:
+                _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=np.array([1.,0.]))
+                curve = np.array([curves[ii] for ii in old_index])
 
             sections.append(curve.copy())
 

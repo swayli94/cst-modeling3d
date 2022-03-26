@@ -1898,7 +1898,7 @@ def intersect_vec_plane(V0, V1, P0, P1, P3):
 
     return xi, t1, t3, rv
 
-def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False):
+def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False, original_order=False):
     '''
     Calculate the intersection curve of a surface and a plane
     
@@ -1909,6 +1909,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     surface:        ndarray [ni,nj,3], coordinates of surface
     P0, P1, P3:     ndarray [3], coordinates of three points of plane P0123
     within_bounds:  if True, only keep the curve within the bounds of P0123
+    original_order: if False, rearrange points to form a smooth curve
     ```
     
     ### Return:
@@ -1976,7 +1977,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     xi_curve = np.array(xi_curve)
     yt_curve = np.array(yt_curve)
     
-    if len(curve)>2:
+    if len(curve)>2 and not original_order:
         _, old_index = rearrange_points(xi_curve, yt_curve)
         
         curve    = [curve[ii]    for ii in old_index]

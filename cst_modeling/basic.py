@@ -1616,14 +1616,18 @@ def read_tecplot(fname='tecplot.dat'):
     '''
     Read a tecplot format data file
     
+    >>> data, name_var, titles = read_tecplot(fname='tecplot.dat')
+    
     ### Return: 
     ```text
     data:       list of ndarray [ni,nj,nk,nv], data of all zones
     name_var:   list, name of variables
+    titles:     list, title of zones
     ```
     '''
     name_var = []
     data = []
+    titles = []
     n_var = 0
     
     with open(fname, 'r') as f:
@@ -1676,6 +1680,14 @@ def read_tecplot(fname='tecplot.dat'):
                 else:
                     nk = 1
                     
+                if 'T' in line:
+                    # 非贪婪模式：寻找最短的可能匹配 https://www.cnblogs.com/baxianhua/p/8571967.html
+                    str_pat = re.compile(r'\"(.*?)\"')
+                    name = str_pat.findall(lines[iLine])
+                    titles.append(name[0])
+                else:
+                    titles.append('')
+                    
                 data_ = np.zeros((ni,nj,nk,n_var))
                 iLine += 1
                 
@@ -1694,7 +1706,7 @@ def read_tecplot(fname='tecplot.dat'):
                 data.append(data_.copy())
                 continue
 
-    return data, name_var
+    return data, name_var, titles
 
 #* ===========================================
 #* Intersection and interplotation

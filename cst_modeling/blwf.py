@@ -177,7 +177,7 @@ class BLWF():
         '''
 
         #* Read surface data
-        data_, _ = read_tecplot(fname)
+        data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
         else:
@@ -315,7 +315,7 @@ class BLWF():
         ```
         '''
         #* Read surface data
-        data_, _ = read_tecplot(fname)
+        data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
         else:
@@ -451,7 +451,7 @@ class BLWF():
         ```
         '''
         #* Read surface data
-        data_, _ = read_tecplot(fname)
+        data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
         else:
@@ -1040,7 +1040,7 @@ class BLWF():
         ```
         '''
         #* Read surface data
-        data_, name_var = read_tecplot(fname)
+        data_, name_var, _ = read_tecplot(fname)
         index_var = [i for i in range(len(name_var))]
         for i in index_xyz:
             index_var.remove(i)

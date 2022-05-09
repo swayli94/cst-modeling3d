@@ -47,8 +47,8 @@ wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
 
 <div align=center>
 	<img src="example\wing\wing-tip.jpg" width="500"> <br>
-    Fig. Wing surface and wing tip
 </div>
+
 
 ### (3) Blade
 
@@ -65,43 +65,30 @@ blade.output_tecplot(fname='Blade-simple.dat')
 
 <div align=center>
 	<img src="example\blade\blade-simple-1.jpg" width="300"> <br>
-    Fig. Blade surface (green)
 </div>
 
-### (4) Nacelle
 
-```python
-nacelle = Surface(n_sec=7, name='Nacelle', nn=51, ns=51)
-nacelle.read_setting('Nacelle.txt', tail=0.02)
-phi = [0.0, 90.0, 135.0, 180.0, 225.0, 270.0, 360.0]
-nacelle.geo_axisymmetric(phi)
-nacelle.smooth_axisymmetric(0, 6, phi, linear_TEx=True, RTE=0.8, RTE_=0.78)
-nacelle.output_tecplot(fname='Nacelle.dat', one_piece=False, split=False)
-```
+### (4) Nacelle
 
 <div align=center>
     <img src="example\nacelle\nacelle.jpg" width="280">
     <img src="example\nacelle\nacelle-frontview.jpg" width="280"> <br>
-    Fig. A real nacelle (left: 3D view; right: front view)
 </div>
-
 
 ### (5) Fuselage
 
-The fuselage contains nose, tube, and aft body. The nose is a defined by a **BasicSurface** object. The tube and aft body is defined by another **BasicSurface** object. The **BasicSurface** object uses control section curves that are defined outside the object, instead of being constructed via internal CST method.
-
 <div align=center>
     <img src="example\fuselage\fuselage.jpg" width="500"><br>
-    Fig. Simple fuselage
 </div>
-
 
 ### (6) Fairing
 
-In order to get smooth transition on the fuselage, the fairing surface defined by an object of **BasicSurface**. The curves at both ends are directly extracted from the fuselage geometry, so that the fairing can fit the fuselage.
-
 <div align=center>
     <img src="example\fairing\fairing-fuselage.jpg" width="400"><br>
-    Fig. Simple fairing
 </div>
 
+### (7) Delta wing
+
+<div align=center>
+    <img src="example\delta-wing\delta.jpg" width="400"><br>
+</div>

@@ -1654,7 +1654,7 @@ def read_tecplot(fname='tecplot.dat'):
                 iLine += 1
                 continue
         
-            if line[0] in 'zone' or line[0] in 'ZONE':
+            if line[0] in 'zone' or line[0] in 'ZONE' or line[0] in 'Zone':
                 line = re.split(r'[=\s]', lines[iLine])
                 while '' in line:
                     line.remove('')
@@ -1948,13 +1948,8 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
     for j in range(nj):
         for i in range(ni):
             
-            if norm_dis[i,j]==0:
-                ij_curve.append([i,j])
-                curve.append(surface[i,j,:].copy())
-                continue
-            
             if i<ni-1:
-                if norm_dis[i,j]*norm_dis[i+1,j]<0 :
+                if norm_dis[i,j]*norm_dis[i+1,j]<0 or norm_dis[i,j]==0:
                     
                     xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i+1,j,:], P0, P1, P3)
                     
@@ -1970,7 +1965,7 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
                         continue
 
             if j<nj-1:
-                if norm_dis[i,j]*norm_dis[i,j+1]<0 :
+                if norm_dis[i,j]*norm_dis[i,j+1]<0 or norm_dis[i,j]==0:
                     
                     xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i,j+1,:], P0, P1, P3)
                     
@@ -2238,6 +2233,112 @@ def reconstruct_curve_by_length(curve: np.ndarray, n:int):
         new_curve[i,2] = fz(t)
         
     return new_curve
+    
+def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
+                    fname='surface-aircraft.dat', zone_id=[], index_xyz=[0,1,2], arrange_method='join'):
+    '''
+    Extract data sliced by planes
+    
+    ### Inputs:
+    ```text
+    locations:  list of distances to the reference point in the given direction
+    Pref:       ndarray [3], reference point
+    dir_norm:   ndarray [3], direction vector normal to the slice plane (will be normalized)
+    dir_ref:    ndarray [3], direction vector that roughly sets the xi-axis in the slice plane
+    
+    fname:      file name
+    zone_id:    list, index of zones in the tecplot format file, start from 0
+    index_xyz:  index of variables in file for XYZ
+    arrange_method: 'join', keeps the original order of points (suitable for surface with a few blocks)
+                    'rearrange', rearrange points by minimal distance
+    ```
+    
+    ### Return:
+    ```text
+    sections:   list of ndarray [:,3+nv]
+    name_var:   list, name of variables
+    ```
+    '''
+    #* Read surface data
+    data_, name_var, _ = read_tecplot(fname)
+    index_var = [i for i in range(len(name_var))]
+    for i in index_xyz:
+        index_var.remove(i)
+    
+    if len(zone_id)==0:
+        data = data_
+    else:
+        data = [data_[i] for i in zone_id]
+    
+    #* Intersect sections
+    dn = dir_norm/np.linalg.norm(dir_norm)
+    dr = dir_ref - np.dot(dir_ref, dn)*dn
+    dr = dr/np.linalg.norm(dir_norm)
+    dt = np.cross(dn, dr)
+    dt = dt/np.linalg.norm(dt)
+    
+    sections = []
+
+    for loc in locations:
+        
+        P0 = Pref + loc*dn
+        P1 = P0 + dr
+        P3 = P0 + dt
+        
+        curves = []
+        xi_curves = []
+        yt_curves = []
+        
+        for data_ in data:
+            
+            surface = np.concatenate((data_[:,:,:,index_xyz[0]:index_xyz[0]+1],
+                        data_[:,:,:,index_xyz[1]:index_xyz[1]+1],
+                        data_[:,:,:,index_xyz[2]:index_xyz[2]+1]), axis=3)
+            surface = surface.squeeze()
+            curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface,
+                        P0, P1, P3, within_bounds=False, original_order=(arrange_method=='join'))
+            
+            surface_var = []
+            for iv in index_var:
+                surface_var.append(data_[:,:,:,iv])
+            surface_var = np.transpose(np.array(surface_var), [1,2,3,0]).squeeze()  # [:,:,nv]
+            
+            if len(curve) == 0:
+                continue
+
+            new_curve = []
+            for i in range(len(curve)):
+                
+                ii, jj = ij_curve[i]
+                ii = min(surface.shape[0]-2, ii)
+                jj = min(surface.shape[1]-2, jj)
+                
+                xs = [surface[ii,jj,:], surface[ii+1,jj,:], surface[ii,jj+1,:], surface[ii+1,jj+1,:]]
+                ys = [surface_var[ii,jj,:], surface_var[ii+1,jj,:], surface_var[ii,jj+1,:], surface_var[ii+1,jj+1,:]]
+                
+                xyz = curve[i][None,:]
+                var = interpolate_IDW(xyz, np.array(xs), np.array(ys))
+                tmp = np.concatenate((xyz, var), axis=1).squeeze()
+
+                new_curve.append(tmp)
+            
+            if arrange_method == 'join':
+                curves.append(np.array(new_curve))
+            else:
+                curves += new_curve
+                xi_curves += xi_curve.tolist()
+                yt_curves += yt_curve.tolist()
+
+        if arrange_method == 'join':
+            curve = join_curves(curves)
+        else:
+            _, old_index = rearrange_points(np.array(xi_curves), np.array(yt_curves), avg_dir=np.array([1.,0.]))
+            curve = np.array([curves[ii] for ii in old_index])
+
+        sections.append(curve.copy())
+
+    return sections, name_var
+
     
 #* ===========================================
 #* Format transfer

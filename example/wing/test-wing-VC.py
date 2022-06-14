@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     wingVC.build(split=True, one_piece=False, f_tecplot='Wing-VC-baseline.dat', f_plot3d=None)
 
-    wingVC.bend(4, 5, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
+    wingVC.bend(12, 13, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
 
     wingVC.output_tecplot(fname='Wing-VC.dat', one_piece=False)
 

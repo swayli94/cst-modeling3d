@@ -14,7 +14,7 @@ if __name__ == "__main__":
         nn=101, ns=101, flap_loc=flap_loc, flap_trans=0.2, flap_angle=flap_angle,
         axis_xloc=axis_xloc, axis_dy=axis_dy)
 
-    wingVC.build(split=True, one_piece=False, f_tecplot=None, f_plot3d=None)
+    wingVC.build(split=True, one_piece=False, f_tecplot='Wing-VC-baseline.dat', f_plot3d=None)
 
     wingVC.bend(4, 5, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
 

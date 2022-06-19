@@ -619,7 +619,7 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
 
     return x_, yu, yl, t0, R0
 
-def naca_to_cst(NACA_series: str, n_cst=7, nn=101):
+def naca_to_cst(NACA_series: str, n_cst=7, nn=51):
     '''
     Get CST parameters of a NACA series airfoil
 
@@ -648,6 +648,12 @@ def naca_to_cst(NACA_series: str, n_cst=7, nn=101):
         yu[i] = yy[n0-i-nn]
         xl[i] = xx[nn+i-1]
         yl[i] = yy[nn+i-1]
+        
+    for i in range(nn-2):
+        if xu[i+1] < xu[i]:
+            xu[i+1] = max(xu[i], 0.5*(xu[i]+xu[i+2]))
+        if xl[i+1] < xl[i]:
+            xl[i+1] = max(xl[i], 0.5*(xl[i]+xl[i+2]))
 
     cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=n_cst)
 
@@ -953,9 +959,6 @@ def foil_bump_modify(x: np.array, yu: np.array, yl: np.array,
     yu_new = yu.copy()
     yl_new = yl.copy()
     t0 = np.max(yu_new-yl_new)
-
-    yu_ = yu.copy()
-    yl_ = yl.copy()
 
     if xc<0.1 or xc>0.9:
         kind = 'H'

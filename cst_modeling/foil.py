@@ -586,6 +586,8 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
     ### Return
     x (ndarray), y_upp (ndarray), y_low (ndarray), t0, R0
     '''
+    coef_upp = np.array(coef_upp)
+    coef_low = np.array(coef_low)
     x_, yu = cst_curve(nn, coef_upp, x=x)
     x_, yl = cst_curve(nn, coef_low, x=x)
     

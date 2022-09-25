@@ -379,14 +379,15 @@ class Surface(BasicSurface):
         ### Inputs:
         ```text
         location: list of spanwise location (must within current sections)
-        axis:     the direction for interplotation Y,Z
+        axis:     the direction for interpolation Y,Z
         ```
 
         ### Note:   
         ```text
-        Must run before geo(), geo_secs() and flip()
-        This will automatically update the curves of all sections
-        X is the flow direction (chord direction)
+        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip()
+        2. Need to call geo() or geo_axisymmetric() to update the surfaces
+        3. This will automatically update the curves of all sections
+        4. X is the flow direction (chord direction)
         ```
         '''
         if self.l2d:
@@ -402,8 +403,11 @@ class Surface(BasicSurface):
 
         #* Find new section's location
         for loc in location:
+            
             found = False
+            
             for j in range(self.n_sec-1):
+                
                 if axis in 'Y':
                     if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
                         rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
@@ -418,6 +422,9 @@ class Surface(BasicSurface):
                     sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
                     self.secs.insert(j+1, sec_add)
                     break
+            
+            if not found:
+                print('Warning: [Surface.add_sec] location %.3f in %s axis is not valid'%(loc, axis))
 
     def output_tecplot(self, fname=None, one_piece=False, split=False):
         '''

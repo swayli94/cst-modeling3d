@@ -348,7 +348,7 @@ def xfoil_reconstruction(xx: np.ndarray, yu: np.ndarray, yl: np.ndarray, dump: d
     '''
     nn = xx.shape[0]
     
-    if ii >= dump['numCase']:
+    if ii>=dump['numCase'] or dump['numCase']==0:
         print()
         print('Error: index %d > number of cases %d'%(ii, dump['numCase']))
         print()
@@ -407,20 +407,20 @@ def xfoil_reconstruction(xx: np.ndarray, yu: np.ndarray, yl: np.ndarray, dump: d
     cp_= np.zeros(2*nn-1)
     cf_= np.zeros(2*nn-1)
     
-    ii = 0
+    k = 0
     for i in range(nn):
-        x_ [ii] = xx[nn-i-1]
-        y_ [ii] = yl[nn-i-1]
-        cp_[ii] = fpl(x_[ii])
-        cf_[ii] = ffl(x_[ii])
-        ii += 1
+        x_ [k] = xx[nn-i-1]
+        y_ [k] = yl[nn-i-1]
+        cp_[k] = fpl(x_[k])
+        cf_[k] = ffl(x_[k])
+        k += 1
         
     for i in range(nn-1):
-        x_ [ii] = xx[i+1]
-        y_ [ii] = yu[i+1]
-        cp_[ii] = fpu(x_[ii])
-        cf_[ii] = ffu(x_[ii])
-        ii += 1
+        x_ [k] = xx[i+1]
+        y_ [k] = yu[i+1]
+        cp_[k] = fpu(x_[k])
+        cf_[k] = ffu(x_[k])
+        k += 1
     
     return AoA, Cl, x_, y_, cp_, cf_
 

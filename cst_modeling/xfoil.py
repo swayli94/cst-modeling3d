@@ -8,6 +8,7 @@ import platform
 
 import numpy as np
 from scipy.io import FortranFile
+from scipy.interpolate import PchipInterpolator
 
 
 def run_xfoil(AoAs=None, Cls=None,
@@ -119,7 +120,7 @@ def read_xfoil_dump(fname: str, strip=True) -> dict:
     '''
     Read XFoil dump file (Ue,Dstar,Theta,Cf vs s,x,y)
     
-    >>> result = read_dump(fname)
+    >>> result = read_xfoil_dump(fname)
     
     '''
     f = FortranFile(fname, 'r')
@@ -332,4 +333,95 @@ def foil_for_XFoil(x, yu, yl, fname='airfoil.dat'):
         for i in range(n-1):
             f.write(' %9.5f %9.5f \n'%(x[i+1], yl[i+1]))
         f.write('\n')
+
+def xfoil_reconstruction(xx: np.ndarray, yu: np.ndarray, yl: np.ndarray, dump: dict, ii=0):
+    '''
+    Reconstruct the X, Cp, Cf distribution from Xfoil dump file
+    
+    Combine to one piece (starts from lower surface trailing edge)
+    
+    dump is the return from read_xfoil_dump()
+    
+    ii is the index of the dump results
+    
+    >>> AoA, Cl, x_, y_, cp_, cf_ = xfoil_reconstruction(xx, yu, yl, dump, ii)
+    '''
+    nn = xx.shape[0]
+    
+    if ii >= dump['numCase']:
+        print()
+        print('Error: index %d > number of cases %d'%(ii, dump['numCase']))
+        print()
+        raise Exception
+    
+    AoA = dump['AoAs'][ii]   #type: float
+    Cl  = dump['CLs' ][ii]   #type: float
+    Xs  = dump['X'   ][ii]
+    Cps = dump['Cp'  ][ii]
+    Cfs = dump['Cf'  ][ii]
+    
+    #* Combine to one piece
+    _xx = []; _cp = []; _cf = []
+    _nn = Xs[1].shape[0]
+    for i in range(_nn):
+        _xx.append(Xs [1][_nn-i-1])
+        _cp.append(Cps[1][_nn-i-1])
+        _cf.append(Cfs[1][_nn-i-1])
+    for i in range(Xs[0].shape[0]-1):
+        _xx.append(Xs [0][i+1])
+        _cp.append(Cps[0][i+1])
+        _cf.append(Cfs[0][i+1])
+    _xx = np.array(_xx)
+    _xx = (_xx-np.min(_xx))/(np.max(_xx)-np.min(_xx))
+    
+    _xu = []; _pu = []; _fu = []
+    _xl = []; _pl = []; _fl = []
+    
+    #* Split by Leading edge
+    isLow = True
+    for i in range(_xx.shape[0]):
+        
+        if _xx[i] <= 0.0:
+            isLow = False
+            _xl = [_xx[i]] + _xl
+            _pl = [_cp[i]] + _pl
+            _fl = [_cf[i]] + _fl
+
+        if isLow:
+            _xl = [_xx[i]] + _xl
+            _pl = [_cp[i]] + _pl
+            _fl = [_cf[i]] + _fl
+        else:
+            _xu.append(_xx[i])
+            _pu.append(_cp[i])
+            _fu.append(_cf[i])
+
+    fpu = PchipInterpolator(_xu, _pu)
+    ffu = PchipInterpolator(_xu, _fu)
+    fpl = PchipInterpolator(_xl, _pl)
+    ffl = PchipInterpolator(_xl, _fl)
+
+    #* Interpolate
+    x_ = np.zeros(2*nn-1)
+    y_ = np.zeros(2*nn-1)
+    cp_= np.zeros(2*nn-1)
+    cf_= np.zeros(2*nn-1)
+    
+    ii = 0
+    for i in range(nn):
+        x_ [ii] = xx[nn-i-1]
+        y_ [ii] = yl[nn-i-1]
+        cp_[ii] = fpl(x_[ii])
+        cf_[ii] = ffl(x_[ii])
+        ii += 1
+        
+    for i in range(nn-1):
+        x_ [ii] = xx[i+1]
+        y_ [ii] = yu[i+1]
+        cp_[ii] = fpu(x_[ii])
+        cf_[ii] = ffu(x_[ii])
+        ii += 1
+    
+    return AoA, Cl, x_, y_, cp_, cf_
+
 

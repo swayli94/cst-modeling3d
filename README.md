@@ -92,3 +92,9 @@ blade.output_tecplot(fname='Blade-simple.dat')
 <div align=center>
     <img src="example\delta-wing\delta.jpg" width="400"><br>
 </div>
+
+### (8) Three bearings swirl nozzle
+
+<div align=center>
+    <img src="example\3BSN\3bsn.gif" width="400"><br>
+</div>

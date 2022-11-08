@@ -141,6 +141,25 @@ class BasicSection():
         self.y = other.y.copy()
         self.z = other.z.copy()
 
+    def rotate(self, **kwargs):
+        '''
+        Rotate the 3D curve according to origin
+
+        >>> sec.rotate(angle, origin, axis)
+
+        ### Inputs:
+        ```text
+        angle:  rotation angle (deg)
+        origin: rotation origin
+        axis:   rotation axis (use positive direction to define angle)
+        '''
+
+        if len(self.x) + len(self.y) + len(self.z) < 4:
+            print('Warning: The section is not generated, use geo_secs() first')
+            return
+
+        self.x, self.y, self.z = rotate(self.x, self.y, self.z, **kwargs)
+
 
 class BasicSurface():
     '''
@@ -600,6 +619,25 @@ class BasicSurface():
         self.center[1] = (self.center[1]-Y0)*scale + Y0
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
+    def rotate(self, **kwargs):
+        '''
+        Rotate the surface according to the origin and axis with the angle
+        
+        `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
+
+        `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
+
+        `angle`: The rotation angle in degree
+        '''
+        for surf in self.surfs:
+            points = np.array(surf).reshape(3, -1).T
+            xnew, ynew, znew = rotation_3d(points, **kwargs).T
+            surf[0] = xnew.reshape(self.ns, self.nn)
+            surf[1] = ynew.reshape(self.ns, self.nn)
+            surf[2] = znew.reshape(self.ns, self.nn)
+
+        center_point = self.center.reshape(1, 3)
+        self.center[0], self.center[1], self.center[2] = rotation_3d(center_point, **kwargs)[0]
 
     def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None, ratio_end=10):
         '''
@@ -1382,6 +1420,65 @@ def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
         y_ = origin[1] + (x-origin[0])*ss + (y-origin[1])*cc
 
     return x_, y_, z_
+
+# The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
+def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
+    '''
+    ### Description
+    This function rotate a set of points based on the origin and the axis given by the inputs
+
+    ### Inputs
+    `pp`: The point set that is going to be rotated. `pp.shape = (n_points, 3)`
+
+    `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
+
+    `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
+
+    `angle`: The rotation angle in degree
+
+    ### Outputs
+    `xnew, ynew, znew`: The rotated points.
+    '''
+    # Translate the points to a coordinate system that has the origin defined by the input
+    # The points have to be translated back to the original frame before return.
+    
+    nn = pp.shape[0]
+    for i in range(nn):
+        pp[i, :] = pp[i, :] - origin
+    xnew, ynew, znew = np.zeros(nn), np.zeros(nn), np.zeros(nn)
+    
+    norm = np.sqrt(axis @ axis)
+    if norm < 1e-8:
+        raise Exception("The length of the axis is too short!")
+    e3 = axis / norm
+
+    angle_rad = np.pi * angle / 180.0
+
+    for i in range(nn):
+        vec = pp[i, :].copy()
+
+        # compute the parallel component
+        vec_p = (vec @ e3) * e3
+        # compute the normal component
+        vec_n = vec - vec_p
+
+        # define the local coordinate system
+        e1 = vec_n
+        e2 = np.cross(e3, e1)
+
+        # rotate
+        vec_n_rot = e1 * np.cos(angle_rad) + e2 * np.sin(angle_rad)
+
+        # assemble the vector
+        vec_new = vec_n_rot + vec_p
+        xnew[i], ynew[i], znew[i] = vec_new[0], vec_new[1], vec_new[2]
+
+    # transform back to the original frame
+    xnew, ynew, znew = xnew + origin[0], ynew + origin[1], znew + origin[2]
+
+    pp_new = np.hstack((xnew.reshape(-1,1), ynew.reshape(-1,1), znew.reshape(-1,1)))
+    # print(pp_new.shape)
+    return pp_new
 
 def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
     '''
@@ -2441,7 +2538,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0):
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
 
-def plot3d_to_igs(fname='igs'):
+def plot3d_to_igs(fname='igs', ratio=1.0):
     '''
     Converts Plot3d surface grid file [fname.grd] to IGES file [fname.igs].
     
@@ -2536,6 +2633,7 @@ def plot3d_to_igs(fname='igs'):
 
         # Node coordinates
         xyz, kLine = read_block_plot3d(lines, kLine, ni, nj, nk)
+        xyz = xyz * ratio
         for k in range(nk):
             for j in range(nj):
                 for i in range(ni):

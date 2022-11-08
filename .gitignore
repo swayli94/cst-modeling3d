@@ -11,3 +11,5 @@ temp*
 *.lay
 *.grd
 *.ini
+*DS_Store
+!example/3BSN/show.lay

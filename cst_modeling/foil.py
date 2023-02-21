@@ -295,9 +295,6 @@ class RoundTipSection(BasicSection):
         #* --------------------------------------------------
         #* Base shape (actual chord length)
         x_ref   = dist_clustcos(nn, a0=0.0079, a1=0.96, beta=2)
-        self.xx = x_ref
-        self.base_yu = np.zeros_like(x_ref)
-        self.base_yl = np.zeros_like(x_ref)
         
         if base_abs_thick > 0.0:
             
@@ -310,16 +307,24 @@ class RoundTipSection(BasicSection):
             self.base_yu = (dy_ + y_)/chord
             self.base_yl = (dy_ - y_)/chord
         
+        else:
+            
+            dy_ = RoundTipSection.base_camber(xLE+x_ref*chord, a_LE=aLE, a_TE=aTE)
+            
+            self.xx = x_ref
+            self.base_yu = dy_/chord
+            self.base_yl = dy_/chord
+        
         #* Base shape thickness check
         base_tmax = np.max(self.base_yu-self.base_yl)
         if base_tmax > thick:
-            print('Warning: base shape is thicker than tmax (%.2f > %.2f).'%(base_tmax*chord, thick*chord))
+            print('Warning: base shape is thicker than tmax (%.3f > %.3f).'%(base_tmax*chord, thick*chord))
             print('         The base shape is scaled to tmax.')
             self.base_yu = dy_ + y_*thick/base_tmax
             self.base_yl = dy_ - y_*thick/base_tmax
         
         if base_tmax > tail/chord and tail>0.0:
-            print('Warning: base shape is thicker than the specified tail thickness (%.2f > %.2f).'%(base_tmax*chord, tail))
+            print('Warning: base shape is thicker than the specified tail thickness (%.3f > %.3f).'%(base_tmax*chord, tail))
             print('         The final tail thickness is about the base thickness.')
             
         #* --------------------------------------------------
@@ -341,6 +346,12 @@ class RoundTipSection(BasicSection):
         #* Unit chord shape
         self.yu = self.base_yu + self.cst_yu
         self.yl = self.base_yl + self.cst_yl
+        
+        # Calculate leading edge radius
+        x_RLE = 0.005
+        yu_RLE = interp_from_curve(x_RLE, self.xx, self.yu)
+        yl_RLE = interp_from_curve(x_RLE, self.xx, self.yl)
+        self.RLE, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
 
         
     @staticmethod
@@ -792,7 +803,7 @@ def cst_foil(nn, coef_upp, coef_low, x=None, t=None, tail=0.0):
 
     CST:    class shape transformation method (Kulfan, 2008)
 
-    >>> x_, yu, yl, t0, R0 = cst_foil(cst_u, cst_l, x, t, tail)
+    >>> x_, yu, yl, t0, R0 = cst_foil(nn, cst_u, cst_l, x, t, tail)
 
     ### Inputs:
     ```text
@@ -957,7 +968,7 @@ def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0):
     '''
     Generating single curve based on CST method.
 
-    CST:    class shape transfermation method (Kulfan, 2008)
+    CST:    class shape transformation method (Kulfan, 2008)
 
     >>> x, y = cst_curve(nn, coef, x, xn1, xn2)
 

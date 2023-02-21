@@ -18,7 +18,17 @@ class BasicSection():
     '''
     Section: 3D curve and 2D unit curve
     '''
-    def __init__(self, thick=None, chord=1.0, twist=0.0):
+    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True):
+        '''
+        ### Inputs:
+        ```text
+        thick:          maximum relative thickness
+        chord:          chord length
+        twist:          twist angle
+        lTwistAroundLE: twist center is LE or TE
+        ```
+        '''
+        
         self.xLE = 0.0
         self.yLE = 0.0
         self.zLE = 0.0
@@ -26,6 +36,8 @@ class BasicSection():
         self.twist = twist
         self.thick = 0.0
         self.thick_set = thick
+        
+        self.lTwistAroundLE = lTwistAroundLE
 
         #* 2D unit curve
         self.xx  = None
@@ -102,18 +114,35 @@ class BasicSection():
         #* Flip xx
         if flip_x:
             self.xx = np.flip(self.xx)
+        
+        #* Twist center (rotation after translation and scale)
+        if self.lTwistAroundLE:
+            xr = None
+            yr = None
+        else:
+            xr = self.xLE + self.chord
 
         #* Transform to 3D for open section
         if isinstance(self.yy, np.ndarray):
+            
+            if not self.lTwistAroundLE:
+                yr = self.yLE + self.yy[-1]*self.chord
+            
             self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
-                scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
+                scale=self.chord, rot=self.twist, xr=xr, yr=yr,
+                dx=self.xLE, dy=self.yLE, proj=proj)
 
             self.z = np.ones_like(self.x)*self.zLE
 
         #* Transform to 3D for closed section
         if isinstance(self.yu, np.ndarray):
+            
+            if not self.lTwistAroundLE:
+                yr = self.yLE + 0.5*(self.yu[-1]+self.yl[-1])*self.chord
+            
             xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
-                scale=self.chord, rot=self.twist, dx=self.xLE, dy=self.yLE, proj=proj)
+                scale=self.chord, rot=self.twist, xr=xr, yr=yr,
+                dx=self.xLE, dy=self.yLE, proj=proj)
 
             self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
             self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
@@ -121,7 +150,7 @@ class BasicSection():
 
     def copyfrom(self, other):
         '''
-        Copy from anthor BasicSection object
+        Copy from another BasicSection object
         '''
         if not isinstance(other, BasicSection):
             raise Exception('Must copy from another BasicSection object')
@@ -397,7 +426,7 @@ class BasicSurface():
     @staticmethod
     def section_surf(sec0, sec1, ns=101):
         '''
-        Interplot surface section between curves
+        Interpolate surface section between curves
 
         >>> surf = section_surf(sec0, sec1, ns)
 
@@ -610,6 +639,10 @@ class BasicSurface():
         i_sec0, i_sec1:     the starting and ending section index of the smooth region
         smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
         dyn0:               (dy/dz)|n, set the slope of y-z curve at the end of section 0
+        ratio_end:          the ratio controls how fast changing to the original geometry 
+                            at both ends of the curve (ip=0, n_point-1)
+                            <=0: no change, >0: larger the faster, which means narrower the 
+                            width of the original geometry
         ```
         '''
         #* Do not have neighboring surfaces
@@ -678,9 +711,12 @@ class BasicSurface():
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
             
             #* Smoothly change to the original geometry at both ends of the curve (ip=0, n_point-1)
-            r1 = self.smooth_ratio_function(-ip/(n_point-1)*10,    a=ratio_end)
-            r2 = self.smooth_ratio_function((ip/(n_point-1)-1)*10, a=ratio_end)
-            ratio = r1+r2
+            if ratio_end>0:
+                r1 = self.smooth_ratio_function(-ip/(n_point-1)*10,    a=ratio_end)
+                r2 = self.smooth_ratio_function((ip/(n_point-1)-1)*10, a=ratio_end)
+                ratio = r1+r2
+            else:
+                ratio = 0.0
 
             #* Use the spanwise spline to update the spanwise geometry
             for i_surf in range(i_sec0, i_sec1):
@@ -1114,6 +1150,58 @@ class BasicSurface():
         return origins
 
 
+    def add_sec(self, location: list, axis='Z'):
+        '''
+        Add sections to the surface, the new sections are interpolated from existed ones
+
+        ### Inputs:
+        ```text
+        location: list of spanwise location (must within current sections)
+        axis:     the direction for interpolation Y,Z
+        ```
+
+        ### Note:   
+        ```text
+        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip()
+        2. This will automatically update the curves of all sections
+        3. X is the flow direction (chord direction)
+        ```
+        '''
+        if self.l2d:
+            print('Can not add sections in 2D case')
+            return
+
+        if len(location) == 0:
+            print('Must specify locations when adding sections')
+            return
+        
+
+        #* Find new section's location
+        for loc in location:
+            
+            found = False
+            
+            for j in range(self.n_sec-1):
+                
+                if axis in 'Y':
+                    if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
+                        rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
+                        found = True
+
+                if axis in 'Z':
+                    if (self.secs[j].zLE-loc)*(self.secs[j+1].zLE-loc)<0.0:
+                        rr = (loc - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
+                        found = True
+                
+                if found:
+                    sec_add = interp_basic_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
+                    self.secs.insert(j+1, sec_add)
+                    break
+            
+            if not found:
+                print('Warning: [Surface.add_sec] location %.3f in %s axis is not valid'%(loc, axis))
+
+
     def output_tecplot(self, fname=None, one_piece=False):
         '''
         Output the surface to *.dat in Tecplot format
@@ -1293,7 +1381,7 @@ class BasicSurface():
 #* Supportive functions
 #* ===========================================
 
-def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=0.0, proj=False):
+def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, proj=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
 
@@ -1305,7 +1393,8 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
     scale:      scale factor, e.g., chord length
     rot:        rotate angle (deg), +z direction for x-y plane, 
                 e.g., twist angle
-    x0, y0:     rotation and scale center
+    x0, y0:     scale center
+    xr, yr:     rotation center (rotate after translation and scale)
     dx, dy:     translation, e.g., leading edge location
     proj:       if True, for unit airfoil, the rotation keeps 
                 the projection length the same
@@ -1322,7 +1411,7 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
     yu_new = dy + yu
     yl_new = dy + yl
 
-    #* Rotation center
+    #* Scale center
     if x0 is None:
         x0 = xu_new[0]
     if y0 is None:
@@ -1339,10 +1428,16 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, dx=0.0, dy=
     yu_new = y0 + (yu_new-y0)*scale/rr
     yl_new = y0 + (yl_new-y0)*scale/rr
 
+    #* Rotation center
+    if xr is None:
+        xr = x0
+    if yr is None:
+        yr = y0
+
     #* Rotation
     if not rot is None:
-        xu_new, yu_new, _ = rotate(xu_new, yu_new, None, angle=rot, origin=[x0, y0, 0.0], axis='Z')
-        xl_new, yl_new, _ = rotate(xl_new, yl_new, None, angle=rot, origin=[x0, y0, 0.0], axis='Z')
+        xu_new, yu_new, _ = rotate(xu_new, yu_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_new, yl_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
 
     return xu_new, xl_new, yu_new, yl_new
 
@@ -1420,11 +1515,11 @@ def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None
 
     return x_, y_
 
-def interplot_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float):
+def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float):
     '''
-    Interplot a basic section by ratio.
+    Interpolate a basic section by ratio.
 
-    >>> sec = interplot_basic_sec(sec0, sec1, ratio)
+    >>> sec = interp_basic_sec(sec0, sec1, ratio)
     '''
     
     sec = copy.deepcopy(sec0)
@@ -1709,18 +1804,18 @@ def read_tecplot(fname='tecplot.dat'):
     return data, name_var, titles
 
 #* ===========================================
-#* Intersection and interplotation
+#* Intersection and interpolation
 #* ===========================================
 
-def interplot_from_curve(x0, x, y) -> np.ndarray:
+def interp_from_curve(x0, x, y) -> np.ndarray:
     '''
-    Interplot points from curve represented points [x, y]
+    Interpolate points from curve represented points [x, y]
 
-    >>> y0 = interplot_from_curve(x0, x, y)
+    >>> y0 = interp_from_curve(x0, x, y)
 
     ### Inputs:
     ```text
-    x0  : ndarray/value of x locations to be interploted
+    x0  : ndarray/value of x locations to be interpolated
     x, y: points of curve (ndarray)
     ```
 

@@ -5,12 +5,7 @@ import os
 import numpy as np
 
 from .basic import BasicSurface, rotate
-from .foil import OpenSection, Section, interplot_sec
-
-#!---------------------------------------------------
-#! For compatibility with v1
-from .basic import output_plot3d, plot3d_to_igs
-#!---------------------------------------------------
+from .foil import OpenSection, Section
 
 
 #* ===========================================
@@ -199,8 +194,7 @@ class Surface(BasicSurface):
         '''
         super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
 
-        n_ = max(1, n_sec)
-        self.secs = [ Section() for _ in range(n_) ]
+        self.secs = [ Section() for _ in range(max(1, n_sec)) ]
 
     def read_setting(self, fname, tail=0.0):
         '''
@@ -371,60 +365,6 @@ class Surface(BasicSurface):
 
         # Locate layout center for plot
         self.layout_center()
-
-    def add_sec(self, location: list, axis='Z'):
-        '''
-        Add sections to the surface, the new sections are interpolated from current ones
-
-        ### Inputs:
-        ```text
-        location: list of spanwise location (must within current sections)
-        axis:     the direction for interpolation Y,Z
-        ```
-
-        ### Note:   
-        ```text
-        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip()
-        2. Need to call geo() or geo_axisymmetric() to update the surfaces
-        3. This will automatically update the curves of all sections
-        4. X is the flow direction (chord direction)
-        ```
-        '''
-        if self.l2d:
-            print('Can not add sections in 2D case')
-            return
-
-        if len(location) == 0:
-            print('Must specify locations when adding sections')
-            return
-
-        #* First update current sections
-        self.geo_secs()
-
-        #* Find new section's location
-        for loc in location:
-            
-            found = False
-            
-            for j in range(self.n_sec-1):
-                
-                if axis in 'Y':
-                    if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
-                        rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
-                        found = True
-
-                if axis in 'Z':
-                    if (self.secs[j].zLE-loc)*(self.secs[j+1].zLE-loc)<0.0:
-                        rr = (loc - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
-                        found = True
-                
-                if found:
-                    sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
-                    self.secs.insert(j+1, sec_add)
-                    break
-            
-            if not found:
-                print('Warning: [Surface.add_sec] location %.3f in %s axis is not valid'%(loc, axis))
 
     def output_tecplot(self, fname=None, one_piece=False, split=False):
         '''

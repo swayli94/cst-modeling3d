@@ -7,7 +7,7 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 import os
 import copy
 import numpy as np
-from .basic import (read_tecplot, intersect_surface_plane, interplot_from_curve, extract_slice,
+from .basic import (read_tecplot, intersect_surface_plane, interp_from_curve, extract_slice,
                     rearrange_points, reconstruct_curve_by_length, BasicSurface)
 from .foil import find_circle_3p
 
@@ -1002,8 +1002,8 @@ class BLWF():
         
         #* Calculate leading edge radius
         x_RLE = 0.005
-        yu_RLE = interplot_from_curve(x_RLE, xx, yu)
-        yl_RLE = interplot_from_curve(x_RLE, xx, yl)
+        yu_RLE = interp_from_curve(x_RLE, xx, yu)
+        yl_RLE = interp_from_curve(x_RLE, xx, yl)
         rle, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
         
         #* Trailing edge information

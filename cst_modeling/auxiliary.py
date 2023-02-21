@@ -5,7 +5,7 @@ import numpy as np
 import copy
 
 from .basic import curve_intersect
-from .foil import Section, transform, interplot_from_curve
+from .foil import Section, transform, interp_from_curve
 from .surface import Surface
 
 def section_flap(sec: Section, ratio, angle, dy_axis=None):
@@ -38,12 +38,12 @@ def section_flap(sec: Section, ratio, angle, dy_axis=None):
     yl_new2 = np.concatenate((sec.yl[:il1], yl_[il2:]), axis=0)
 
     xx_u = np.linspace(sec.xx[iu1], xu_[-1], nu_flap)
-    yy_u = interplot_from_curve(xx_u, xu_new2, yu_new2)
+    yy_u = interp_from_curve(xx_u, xu_new2, yu_new2)
     xu_new = np.concatenate((sec.xx[:iu1], xx_u), axis=0)
     yu_new = np.concatenate((sec.yu[:iu1], yy_u), axis=0)
 
     xx_l = np.linspace(sec.xx[il1], xl_[-1], nl_flap)
-    yy_l = interplot_from_curve(xx_l, xl_new2, yl_new2)
+    yy_l = interp_from_curve(xx_l, xl_new2, yl_new2)
     xl_new = np.concatenate((sec.xx[:il1], xx_l), axis=0)
     yl_new = np.concatenate((sec.yl[:il1], yy_l), axis=0)
 

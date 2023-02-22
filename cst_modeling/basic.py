@@ -15,11 +15,13 @@ from scipy.spatial.distance import cdist
 
 
 class BasicSection():
-    '''
-    Section: 3D curve and 2D unit curve
-    '''
+
     def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True):
         '''
+        Section: 3D curve and 2D unit curve
+        
+        >>> BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
+        
         ### Inputs:
         ```text
         thick:          maximum relative thickness
@@ -172,14 +174,14 @@ class BasicSection():
 
 
 class BasicSurface():
-    '''
-    Construct multi-section surface with BasicSection objects.
-
-    >>> BasicSurface(n_sec=0, name='Surf', nn=1001, ns=101, project=True)
-    '''
 
     def __init__(self, n_sec=0, name='Surf', nn=1001, ns=101, project=True):
+        '''
+        Construct multi-section surface with BasicSection objects.
 
+        >>> BasicSurface(n_sec=0, name='Surf', nn=1001, ns=101, project=True)
+        '''
+        
         n_ = max(1, n_sec)
         self.l2d   = n_ == 1    # type: bool
         self.name  = name       # type: str
@@ -390,6 +392,7 @@ class BasicSurface():
         if self.l2d:
             sec_ = copy.deepcopy(self.secs[0])
             sec_.zLE = 1.0
+            sec_.z = np.ones_like(sec_.x)
             surf = self.section_surf(self.secs[0], sec_, ns=self.ns)
             self.surfs.append(surf)
 

@@ -6,8 +6,6 @@ build/
 
 temp*
 
-*.txt
-*.dat
 *.lay
 *.grd
 *.ini

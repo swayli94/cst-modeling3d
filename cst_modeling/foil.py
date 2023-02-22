@@ -275,13 +275,14 @@ class RoundTipSection(BasicSection):
     lTwistAroundLE: twist center is LE or TE
     base_abs_thick: actual thickness of the base shape
     base_le_radius: relative radius of base shape function leading edge
-    base_le_ratio:  ratio of the leading edge region
+    base_te_radius: relative radius of base shape function trailing edge
+    base_le_ratio:  ratio of the leading  edge region
     base_te_ratio:  ratio of the trailing edge region
     ```
     '''
     def __init__(self, xLE, yLE, zLE, chord, thick, twist, tail,
                 cst_u: np.ndarray, cst_l: np.ndarray,
-                base_le_ratio, base_te_ratio, base_abs_thick, base_le_radius, 
+                base_le_ratio, base_te_ratio, base_abs_thick, base_le_radius, base_te_radius,
                 aLE=0.0, aTE=0.0, i_split=None, nn=501, lTwistAroundLE=False):
 
         super().__init__(thick=thick, chord=chord, twist=twist, lTwistAroundLE=lTwistAroundLE)
@@ -299,7 +300,7 @@ class RoundTipSection(BasicSection):
         if base_abs_thick > 0.0:
             
             x_, y_ = RoundTipSection.base_shape(x_ref, xLE, xLE+chord, base_le_ratio*chord, base_te_ratio*chord, 
-                                                base_abs_thick/2.0, base_le_radius, i_split=i_split)
+                                                base_le_radius, base_te_radius, base_abs_thick/2.0, i_split=i_split)
             dy_    = RoundTipSection.base_camber(x_, a_LE=aLE, a_TE=aTE)
 
             # Scale to unit chord length
@@ -356,21 +357,22 @@ class RoundTipSection(BasicSection):
         
     @staticmethod
     def base_shape(x_ref: np.ndarray, x_LE: float, x_TE: float, 
-                l_LE: float, l_TE: float, h: float, rr: float, i_split=None):
+                l_LE: float, l_TE: float, r_LE: float, r_TE: float, h: float, i_split=None):
         '''
         Base shape function of wing sections.
 
-        >>> x, y = base_shape(x_ref, x_LE, x_TE, l_LE, l_TE, h, rr, i_split=None)
+        >>> x, y = base_shape(x_ref, x_LE, x_TE, l_LE, l_TE, r_LE, r_TE, h, i_split=None)
         
         ### Inputs:
         ```text
         x_ref:  reference point distribution in [0,1], ndarray [nn]
         x_LE:   leading edge location
         x_TE:   trailing edge location
-        l_LE:   length of leading edge curve
-        l_TE:   length of trailing edge ramp
+        l_LE:   length of leading  edge curve/ramp
+        l_TE:   length of trailing edge curve/ramp
+        r_LE:   relative radius of leading  edge
+        r_TE:   relative radius of trailing edge
         h:      height
-        rr:     relative radius of leading edge
         i_split:    active when leading edge and trailing edge curves are intersected
         ```
         ______________________________________________   
@@ -386,16 +388,16 @@ class RoundTipSection(BasicSection):
         x = x_ref*l0+x_LE
         y = np.ones_like(x)*h
         
-        r_LE = l_LE/l0
-        r_TE = l_TE/l0
+        ratio_LE = l_LE/l0
+        ratio_TE = l_TE/l0
         
 
         if l_LE+l_TE<=l0:
             
-            i_LE = np.argmin(np.abs(x_ref-r_LE))+1
-            i_TE = np.argmin(np.abs(x_ref-1+r_TE))-1
-            y[:i_LE] = RoundTipSection.general_eqn(x_ref[:i_LE],   r_LE, rr, h)
-            y[i_TE:] = RoundTipSection.general_eqn(1-x_ref[i_TE:], r_TE, 0., h)
+            i_LE = np.argmin(np.abs(x_ref-ratio_LE))+1
+            i_TE = np.argmin(np.abs(x_ref-1+ratio_TE))-1
+            y[:i_LE] = RoundTipSection.general_eqn(x_ref[:i_LE],   ratio_LE, r_LE, h)
+            y[i_TE:] = RoundTipSection.general_eqn(1-x_ref[i_TE:], ratio_TE, r_TE, h)
             
             return x, y
             
@@ -404,8 +406,8 @@ class RoundTipSection(BasicSection):
             print('Warning: the specified length of LE and TE region %.2f > chord length %2f.'%(l_LE+l_TE, l0))
             print('         The LE and TE curves will intersect.')
             
-            y_le = RoundTipSection.general_eqn(x_ref,   r_LE, rr, h)
-            y_te = RoundTipSection.general_eqn(1-x_ref, r_TE, 0., h)
+            y_le = RoundTipSection.general_eqn(x_ref,   ratio_LE, r_LE, h)
+            y_te = RoundTipSection.general_eqn(1-x_ref, ratio_TE, r_TE, h)
             i_IT = np.argmin(np.abs(y_le-y_te))
 
             #* Locate intersection point
@@ -414,8 +416,8 @@ class RoundTipSection(BasicSection):
             x_r = x_ref[i_IT+1] # y_le(x_r) > y_te(x_r)
             for _ in range(10):
                 x_m = 0.5*(x_l+x_r)
-                d_m = RoundTipSection.general_eqn(np.array([x_m]), r_LE, rr, h) \
-                    - RoundTipSection.general_eqn(np.array([1-x_m]), r_TE, 0., h)
+                d_m = RoundTipSection.general_eqn(np.array([x_m]),   ratio_LE, r_LE, h) \
+                    - RoundTipSection.general_eqn(np.array([1-x_m]), ratio_TE, r_TE, h)
                 if d_m < -1e-10:
                     x_l = x_m
                 elif d_m > 1e-10:
@@ -423,7 +425,7 @@ class RoundTipSection(BasicSection):
                 else:
                     break
             
-            y_m = RoundTipSection.general_eqn(np.array([x_m]), r_LE, rr, h)[0]
+            y_m = RoundTipSection.general_eqn(np.array([x_m]), ratio_LE, r_LE, h)[0]
             
             if i_split == None:
                 
@@ -439,8 +441,8 @@ class RoundTipSection(BasicSection):
                 nn = x_ref.shape[0]
                 x_le = dist_clustcos(i_split,      a0=0.01, a1=0.96, beta=2)*x_m
                 x_te = dist_clustcos(nn-i_split+1, a0=0.05, a1=0.96)*(1.0-x_m)+x_m
-                y_le = RoundTipSection.general_eqn(x_le,   r_LE, rr, h)
-                y_te = RoundTipSection.general_eqn(1-x_te, r_TE, 0., h)
+                y_le = RoundTipSection.general_eqn(x_le,   ratio_LE, r_LE, h)
+                y_te = RoundTipSection.general_eqn(1-x_te, ratio_TE, r_TE, h)
                 
                 xx = np.concatenate((x_le[:, np.newaxis], x_te[1:, np.newaxis]), axis=0)
                 yy = np.concatenate((y_le[:, np.newaxis], y_te[1:, np.newaxis]), axis=0)

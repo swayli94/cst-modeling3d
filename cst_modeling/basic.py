@@ -633,29 +633,77 @@ class BasicSurface():
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
 
-    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None, ratio_end=10):
+    def split(self, ips: list):
+        '''
+        Split each surface `surfs` into several pieces.
+        Length of `surfs` is multiplied by len(ips)+1.
+        
+        ### Inputs:
+        ```text
+        ips:    split point indices on each section curves
+        ``` 
+        
+        surf: [surf_x, surf_y, surf_z], list of ndarray [ns, nn]
+        '''
+        nt = self.surfs[0][0].shape[1]  # i.e., self.nn
+        ips.sort()
+        ips = [1] + ips + [nt]
+        
+        surfs = copy.deepcopy(self.surfs)
+        self.surfs = []
+
+        for i in range(len(ips)-1):
+
+            for surf in surfs:
+
+                surf_x = surf[0]
+                surf_y = surf[1]
+                surf_z = surf[2]
+                
+                self.surfs.append([
+                    surf_x[:,ips[i]-1:ips[i+1]],
+                    surf_y[:,ips[i]-1:ips[i+1]],
+                    surf_z[:,ips[i]-1:ips[i+1]]])
+
+    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None, ratio_end=10, ratio_end2=1):
         '''
         Smooth the spanwise curve between i_sec0 and i_sec1
 
         ### Inputs:
         ```text
-        i_sec0, i_sec1:     the starting and ending section index of the smooth region
+        i_sec0, i_sec1:     usually are the starting and ending section index of the smooth region
+                            essentially, the index of surface to be smoothed is i_sec0, ..., i_sec1-1
         smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
         dyn0:               (dy/dz)|n, set the slope of y-z curve at the end of section 0
-        ratio_end:          the ratio controls how fast changing to the original geometry 
-                            at both ends of the curve (ip=0, n_point-1)
-                            <=0: no change, >0: larger the faster, which means narrower the 
-                            width of the original geometry
+        ratio_end:  float or list, the ratio controls how fast changing to the original geometry 
+                    at both ends of the curve (ip=0, n_point-1).
+                    list [a0, a1, b] | float <= 0: no change; float > 0: [a, a, 1]
+                    a0, a1: larger the faster 
+                    b: controls the width of the original geometry at both ends
+                    <=1: no width, >1: larger the wider      
         ```
         '''
         #* Do not have neighboring surfaces
         if i_sec0 == 0:
             smooth0 = False
-        if i_sec1 == self.n_sec-1:
+        if i_sec1 == self.n_sec-1 or i_sec1 == len(self.surfs)-1:
             smooth1 = False
 
+        n_point = self.surfs[i_sec0][0].shape[1]
+
+        #* Smoothly change to the original geometry at both ends of the curve (ip=0, n_point-1)
+        _x = np.linspace(0, 1, n_point, endpoint=True)
+        
+        if not isinstance(ratio_end, list):
+            if ratio_end <= 0:
+                ratio = np.zeros(n_point)
+            else:
+                ratio = self.smooth_ratio_function(_x, a0=ratio_end, a1=ratio_end, b=1)
+        else:
+            ratio = self.smooth_ratio_function(_x, a0=ratio_end[0], a1=ratio_end[1], b=ratio_end[2])
+
+
         #* For each point in the section curve (n_point)
-        n_point = self.surfs[0][0].shape[1]
         for ip in range(n_point):
 
             #* Collect the spanwise control points
@@ -713,22 +761,14 @@ class BasicSurface():
 
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
             
-            #* Smoothly change to the original geometry at both ends of the curve (ip=0, n_point-1)
-            if ratio_end>0:
-                r1 = self.smooth_ratio_function(-ip/(n_point-1)*10,    a=ratio_end)
-                r2 = self.smooth_ratio_function((ip/(n_point-1)-1)*10, a=ratio_end)
-                ratio = r1+r2
-            else:
-                ratio = 0.0
-
             #* Use the spanwise spline to update the spanwise geometry
             for i_surf in range(i_sec0, i_sec1):
-                nn = self.surfs[i_surf][0].shape[0]
-                for j in range(nn):
+                ns = self.surfs[i_surf][0].shape[0]
+                for j in range(ns):
                     zi = self.surfs[i_surf][2][j,ip]
-                    self.surfs[i_surf][0][j,ip] = (1-ratio)*curve_x(zi) + ratio*self.surfs[i_surf][0][j,ip]
-                    self.surfs[i_surf][1][j,ip] = (1-ratio)*curve_y(zi) + ratio*self.surfs[i_surf][1][j,ip]
-    
+                    self.surfs[i_surf][0][j,ip] = (1-ratio[ip])*curve_x(zi) + ratio[ip]*self.surfs[i_surf][0][j,ip]
+                    self.surfs[i_surf][1][j,ip] = (1-ratio[ip])*curve_y(zi) + ratio[ip]*self.surfs[i_surf][1][j,ip]
+   
     def smooth_axisymmetric(self, i_sec0: int, i_sec1: int, phi, linear_TEx=True, RTE=None, RTE_=None, func_trans=None):
         '''
         Smooth the axisymmetric curve between i_sec0 and i_sec1
@@ -844,7 +884,20 @@ class BasicSurface():
                     self.surfs[i_surf][2][j,ip] = R*np.sin(angle/180.0*np.pi)
     
     @staticmethod
-    def smooth_ratio_function(x, a=4):
+    def smooth_ratio_function(x, a0=4, a1=4, b=1):
+        '''
+        x [0,1], y [0,1]
+        
+        larger a gives steeper ramp
+        larger b gives longer plateau at both ends
+        '''
+        r0 = BasicSurface.smooth_ramp_function(-10*x, a0)
+        r1 = BasicSurface.smooth_ramp_function(-10*(1-x), a1)
+        ratio = BasicSurface.scaled_sigmoid(r0+r1, b)
+        return ratio
+    
+    @staticmethod
+    def smooth_ramp_function(x, a=1):
         '''
         x<=0, y: 0 -> 1
         '''
@@ -852,6 +905,11 @@ class BasicSurface():
         y2 = 1.0 + a/4*x
         rr = x < -2/a
         return rr*y1 + (1-rr)*y2
+    
+    @staticmethod
+    def scaled_sigmoid(x, b=1):
+        y = 1.0/(1.0+np.exp(-b*x))
+        return (y-np.min(y))/(np.max(y)-np.min(y))
 
 
     def bend(self, i_sec0: int, i_sec1: int, leader=None, kx=None, ky=None, kc=None, rot_x=False):
@@ -1226,15 +1284,17 @@ class BasicSurface():
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  Z \n ')
 
-            nt = self.surfs[0][0].shape[1]
             ns = self.ns
 
             if not one_piece:
 
                 for i_sec in range(n_piece):
+                    
                     surf_x = self.surfs[i_sec][0]
                     surf_y = self.surfs[i_sec][1]
                     surf_z = self.surfs[i_sec][2]
+                    
+                    nt = surf_x.shape[1]
 
                     f.write('zone T="sec %d" i= %d j= %d \n'%(i_sec, nt, ns))
 
@@ -1249,9 +1309,12 @@ class BasicSurface():
                 f.write('zone T="sec" i= %d j= %d \n'%(nt, n_point))
 
                 for i_sec in range(n_piece):
+                    
                     surf_x = self.surfs[i_sec][0]
                     surf_y = self.surfs[i_sec][1]
                     surf_z = self.surfs[i_sec][2]
+                    
+                    nt = surf_x.shape[1]
 
                     if i_sec>=n_piece-2:
                         i_add = 0
@@ -1270,24 +1333,31 @@ class BasicSurface():
         ```text
         fname: the name of the file
         ```
+        
+        X[ns][nn], ns => spanwise
         '''
         if fname is None:
             fname = self.name + '.grd'
 
         n_piece = len(self.surfs)
 
-        # X[ns][nn], ns => spanwise
-        X = self.surfs[0][0]
-        ns = X.shape[0]
-        nn = X.shape[1]
-        
         with open(fname, 'w') as f:
+            
             f.write('%d \n '%(n_piece))     # Number of surfaces
+            
             for i_sec in range(n_piece):
+                
+                X = self.surfs[i_sec][0]
+                ns = X.shape[0]
+                nn = X.shape[1]
                 f.write('%d %d 1\n '%(nn, ns))
 
             for i_sec in range(n_piece):
+                
                 X = self.surfs[i_sec][0]
+                ns = X.shape[0]
+                nn = X.shape[1]
+                
                 ii = 0
                 for i in range(ns):
                     for j in range(nn):

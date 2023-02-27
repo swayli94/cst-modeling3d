@@ -16,11 +16,11 @@ class OpenSurface(BasicSurface):
     '''
     Open surface defined by multiple OpenSection objects
 
-    >>> OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, project=True)
+    >>> OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, projection=True)
     '''
-    def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, project=True):
+    def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, projection=True):
 
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
         n_ = max(1, n_sec)
         self.secs = [ OpenSection() for _ in range(n_) ]
@@ -115,7 +115,7 @@ class OpenSurface(BasicSurface):
                                 cst_r[j] = float(line1[i1])
                                 i1 += 1
 
-                        self.secs[i].set_params(refine=cst_r)
+                        self.secs[i].refine = cst_r
 
                     found_key = 0
 
@@ -141,7 +141,7 @@ class OpenSurface(BasicSurface):
                                 cst_r[j] = float(line1[i1])
                                 i1 += 1
 
-                        self.secs[i].set_params(cst_flip=cst_r)
+                        self.secs[i].cst_flip = cst_r
 
                     found_key = 0
 
@@ -160,7 +160,7 @@ class Surface(BasicSurface):
     '''
     Surface defined by multiple Section objects, i.e., foils
 
-    >>> Surface(n_sec=0, name='Wing', nn=1001, ns=101, project=True)
+    >>> Surface(n_sec=0, name='Wing', nn=1001, ns=101, projection=True)
 
     ### Inputs:
     ```text
@@ -168,7 +168,7 @@ class Surface(BasicSurface):
     name:    name of the surface
     nn:      number of points of upper/lower section
     ns:      number of spanwise points
-    project: True ~ projected chord length does not change when twisted
+    projection: True ~ projected chord length does not change when twisted
     ```
 
     ### Note:
@@ -188,11 +188,11 @@ class Surface(BasicSurface):
     surfs:  list of [surf_x, surf_y, surf_z], they are [ns, nn] ndarray
     ```
     '''
-    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, project=True):
+    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, projection=True):
         '''
         Initialize the CST surface (upper & lower)
         '''
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
         self.secs = [ Section() for _ in range(max(1, n_sec)) ]
 
@@ -309,11 +309,9 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].set_params(
-                            refine_fixed_t=True,
-                            refine_u=cst_ur,
-                            refine_l=cst_lr,
-                        )
+                        self.secs[i].refine_fixed_t=True
+                        self.secs[i].refine_u = cst_ur
+                        self.secs[i].refine_l = cst_lr
 
                     found_key = 0
 
@@ -348,10 +346,8 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].set_params(
-                            cst_flip_u=cst_ur,
-                            cst_flip_l=cst_lr,
-                        )
+                        self.secs[i].cst_flip_u = cst_ur
+                        self.secs[i].cst_flip_l = cst_lr
 
                     found_key = 0
 

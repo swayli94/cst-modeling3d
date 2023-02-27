@@ -244,7 +244,7 @@ name:       name of the surface
 nn:         number of points on upper or lower section surface
 ns:         number of spanwise points
 
-project:    if True, projected chord length does not change when being twisted
+projection:    if True, projected chord length does not change when being twisted
 split:      if True, surface between two sections is splitted into upper and lower surfaces
 flip_x:     if True, arrange xx and x of control sections in the reverse order
 ```
@@ -258,7 +258,7 @@ secs:       list of Section objects (length is n_sec)
 surfs:      list of [surf_x, surf_y, surf_z], surf_ is [ns, nn] ndarray
 
 zLE_secs:   list of z cooridnates of section leading edges
-half_s:     float, half span
+half_span:     float, half span
 center:     ndarray, center coordinates for better plot with matplotlib
 ```
 
@@ -496,7 +496,7 @@ Build a simple blade.
 
 ```python
 from cst_modeling.surface import Surface
-blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, project=False)
+blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, projection=False)
 blade.read_setting('Fan.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.1, 0.05])
 blade.geo()
 blade.smooth(isec0=0, isec1=4)
@@ -571,7 +571,7 @@ name:       name of the surface
 nn:         number of points on upper or lower section surface
 ns:         number of spanwise points
 
-project:    if True, projected chord length does not change when being twisted
+projection:    if True, projected chord length does not change when being twisted
 flip_x:     if True, arrange xx and x of control sections in the reverse order
 ```
 
@@ -584,7 +584,7 @@ secs:       list of Section objects (length is n_sec)
 surfs:      list of [surf_x, surf_y, surf_z], surf_ is [ns, nn] ndarray
 
 zLE_secs:   list of z cooridnates of section leading edges
-half_s:     float, half span
+half_span:     float, half span
 center:     ndarray, center coordinates for better plot with matplotlib
 ```
 
@@ -739,7 +739,7 @@ from cst_modeling.surface import BasicSurface
 #* ============================================
 #* Nose
 #* ============================================
-nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, project=False)
+nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, projection=False)
 nose.read_setting('Fuselage.txt')
 
 #* Define control section curves (unit chord length)
@@ -754,7 +754,7 @@ nose.output_tecplot(fname='nose.dat')
 #* ============================================
 #* Tube and aft body
 #* ============================================
-tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, project=False)
+tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, projection=False)
 tube.read_setting('Fuselage.txt')
     
 #* Define control section curves (unit chord length)
@@ -780,7 +780,7 @@ The fairing surface is a multi-section surface, which is defined by an object of
 
 ```python
 from cst_modeling.surface import OpenSurface
-fairing = OpenSurface(n_sec=3, name='Fairing-simple', nn=51, ns=51, project=False)
+fairing = OpenSurface(n_sec=3, name='Fairing-simple', nn=51, ns=51, projection=False)
 fairing.read_setting('Fairing.txt')
 phi = [0.0, 90.0, 180.0]
 fairing.geo_axisymmetric(phi)

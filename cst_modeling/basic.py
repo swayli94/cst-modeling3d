@@ -15,20 +15,52 @@ from scipy.spatial.distance import cdist
 
 
 class BasicSection():
+    '''
+    Coordinates of the 2D unit curve and the 3D curve.
+    
+    Attributes
+    ------------
+    xLE, yLE, zLE : float
+        coordinates of the leading edge.
+    thick : float
+        actual maximum relative thickness.
+    chord : float
+        chord length.
+    twist : float
+        twist angle.
+    thick_set : {float, None}
+        specified maximum relative thickness, by default None.
+    lTwistAroundLE : bool
+        whether the twist center is LE, otherwise TE.
+    xx, yy, yu, yl : array_like
+        the 2D unit curve coordinates. 
+        When it is an open section, only `yy` is available.
+        When it is a closed section, only `yu` and `yl` are available. 
+        They are then concatenated to one curve, e.g., an airfoil.
+    x, y, z : array_like
+        the 3D curve coordinates. The 3D curve is generated from the 2D curve through
+        translation, scale, and rotation.
+    '''
 
-    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True):
+    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True) -> None:
         '''
-        Section: 3D curve and 2D unit curve
+        Create a BasicSection object
+
+        Parameters
+        ----------
+        thick : {float, None}, optional
+            specified maximum relative thickness, by default None.
+        chord : float
+            chord length, by default 1.
+        twist : float
+            twist angle, by default 0.
+        lTwistAroundLE : bool
+            whether the twist center is LE, otherwise TE, by default True.
         
-        >>> BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
-        
-        ### Inputs:
-        ```text
-        thick:          maximum relative thickness
-        chord:          chord length
-        twist:          twist angle
-        lTwistAroundLE: twist center is LE or TE
-        ```
+        Examples
+        --------
+        >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
+
         '''
         
         self.xLE = 0.0
@@ -52,63 +84,24 @@ class BasicSection():
         self.y = np.zeros(1)
         self.z = np.zeros(1)
 
-    def set_params(self, init=False, **kwargs):
+    def section(self, nn=1001, flip_x=False, projection=True) -> None:
         '''
-        Set parameters of the section
+        Calculate the 3D curve coordinates from the known 2D curve.
 
-        ### Inputs:
-        ```text
-        init:   True, set to default values
-        ```
+        Parameters:
+        ------------
+        nn : int
+            number of points in `xx`, `yy`, `yu`, and `yl`. 
+            It's here for the consistency with `Section.section` and `BasicSurface.geo_secs`.
+        flip_x : bool
+            whether flip `xx` in the reverse order, by default False.
+        projection : bool
+            whether keeps the projection length the same when rotating the section, by default True.
+        
+        Examples:
+        ------------
+        >>> sec.section(nn=1001, flip_x=False, projection=True)
 
-        ### kwargs:
-        ```text
-        xLE, yLE, zLE, chord, twist, thick (None)
-        ```
-        '''
-        if init:
-            self.xLE = 0.0
-            self.yLE = 0.0
-            self.zLE = 0.0
-            self.chord = 1.0
-            self.twist = 0.0
-            self.thick = 0.0
-            self.thick_set = None
-
-            return
-
-        if 'xLE' in kwargs.keys():
-            self.xLE = kwargs['xLE']
-
-        if 'yLE' in kwargs.keys():
-            self.yLE = kwargs['yLE']
-
-        if 'zLE' in kwargs.keys():
-            self.zLE = kwargs['zLE']
-
-        if 'chord' in kwargs.keys():
-            self.chord = kwargs['chord']
-
-        if 'twist' in kwargs.keys():
-            self.twist = kwargs['twist']
-
-        if 'thick' in kwargs.keys():
-            self.thick_set = kwargs['thick']
-
-    def section(self, nn=1001, flip_x=False, proj=True):
-        '''
-        ### Functions:
-        ```text
-        1. Construct 2D unit curve (null in the BasicSection)
-        2. Transform to 3D curve
-        ```
-
-        ### Inputs:
-        ```text
-        nn:     total amount of points (it's here for function BasicSurface.geo_secs)
-        flip_x: True ~ flip section.xx in reverse order
-        proj:   True => for unit airfoil, the rotation keeps the projection length the same
-        ```
         '''
         if not isinstance(self.xx, np.ndarray):
             raise Exception('The 2D curve has not been constructed')
@@ -132,7 +125,7 @@ class BasicSection():
             
             self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
                 scale=self.chord, rot=self.twist, xr=xr, yr=yr,
-                dx=self.xLE, dy=self.yLE, proj=proj)
+                dx=self.xLE, dy=self.yLE, projection=projection)
 
             self.z = np.ones_like(self.x)*self.zLE
 
@@ -144,42 +137,52 @@ class BasicSection():
             
             xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
                 scale=self.chord, rot=self.twist, xr=xr, yr=yr,
-                dx=self.xLE, dy=self.yLE, proj=proj)
+                dx=self.xLE, dy=self.yLE, projection=projection)
 
             self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
             self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
             self.z = np.ones_like(self.x)*self.zLE
 
-    def copyfrom(self, other):
-        '''
-        Copy from another BasicSection object
-        '''
-        if not isinstance(other, BasicSection):
-            raise Exception('Must copy from another BasicSection object')
-        
-        self.xLE = other.xLE
-        self.yLE = other.yLE
-        self.zLE = other.zLE
-        self.chord = other.chord
-        self.twist = other.twist
-
-        self.xx = copy.deepcopy(other.xx)
-        self.yy = copy.deepcopy(other.yy)
-        self.yu = copy.deepcopy(other.yu)
-        self.yl = copy.deepcopy(other.yl)
-
-        self.x = other.x.copy()
-        self.y = other.y.copy()
-        self.z = other.z.copy()
-
 
 class BasicSurface():
+    '''
+    Multi-section surface based on `BasicSection`.
+    
+    Attributes
+    ------------
+    name : str
+        name of the object, by default 'Surf'.
+    nn : int
+        number of points in the unit 2D curve's `xx`, by default 1001.
+    ns : int
+        number of points in the sweep direction between sections, by default 101.
+    l2d : bool
+        whether this is a 3D surface for a 2D curve (unit span). 
+        It is `True` when `n_sec` is 0 or 1.
+    secs : list of BasicSection
+        section objects.
+    surfs : list of list of array_like
+        surface coordinates. List `surfs` contains `n_sec`-1 sub-lists.
+        Each sub-list is the coordinates of the 3D surface, which contains 3 `ndarray`.
+        The 3 arrays are the X, Y, Z coordinates of the surface.   
+        For example, surfs = [[x0, y0, z0], [x1, y1, z1]] when n_sec=3.
+    projection : bool
+        whether keeps the projection length the same when rotating the section, by default True.
+    half_span : float
+        half span for plotting.
+    center : array_like
+        surface center for plotting.
+    n_sec
+    zLEs
+    '''
 
-    def __init__(self, n_sec=0, name='Surf', nn=1001, ns=101, project=True):
+    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, projection=True):
         '''
-        Construct multi-section surface with BasicSection objects.
-
-        >>> BasicSurface(n_sec=0, name='Surf', nn=1001, ns=101, project=True)
+        Construct a BasicSurface object.
+        
+        Examples
+        --------
+        >>> surf = BasicSurface(n_sec=1, name='Surf', nn=1001, ns=101, projection=True)
         '''
         
         n_ = max(1, n_sec)
@@ -189,18 +192,21 @@ class BasicSurface():
         self.ns    = ns         # type: int
         self.secs  = [ BasicSection() for _ in range(n_) ]
         self.surfs = []         # type: list[list]
-        self.project = project  # type: bool
+        self.projection = projection  # type: bool
 
         # Parameters for plot
-        self.half_s = 0.5       # type: float
+        self.half_span = 0.5    # type: float
         self.center = np.array([0.5, 0.5, 0.5])
 
     @property
-    def n_sec(self):
+    def n_sec(self) -> int:
+        '''
+        Number of sections
+        '''
         return len(self.secs)
 
     @property
-    def zLE_secs(self):
+    def zLEs(self):
         '''
         List of section zLE
         '''
@@ -288,27 +294,10 @@ class BasicSurface():
             z_range[1] = max(z_range[1], self.secs[i].zLE)
         
         span = np.array([x_range[1]-x_range[0], y_range[1]-y_range[0], z_range[1]-z_range[0]])
-        self.half_s = span.max()/2.0
+        self.half_span = span.max()/2.0
         self.center[0] = 0.5*(x_range[1]+x_range[0])
         self.center[1] = 0.5*(y_range[1]+y_range[0])
         self.center[2] = 0.5*(z_range[1]+z_range[0])
-
-    def copyfrom(self, other):
-        '''
-        Copy from another BasicSurface object
-        '''
-        if not isinstance(other, BasicSurface):
-            raise Exception('Must copy from a BasicSurface object')
-
-        self.l2d   = other.l2d
-        self.name  = other.name
-        self.nn    = other.nn
-        self.ns    = other.ns
-        self.secs  = copy.deepcopy(other.secs)
-        self.surfs = copy.deepcopy(other.surfs)
-
-        self.half_s = other.half_s
-        self.center = other.center.copy()
 
     def linear_interpolate_z(self, z: float, key='x'):
         '''
@@ -372,7 +361,7 @@ class BasicSurface():
         ```
         '''
         for i in range(self.n_sec):
-            self.secs[i].section(nn=self.nn, flip_x=flip_x, proj=self.project)
+            self.secs[i].section(nn=self.nn, flip_x=flip_x, projection=self.projection)
 
     def geo(self, flip_x=False, update_sec=True):
         '''
@@ -1444,9 +1433,9 @@ class BasicSurface():
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        ax.set_xlim3d(self.center[0]-self.half_s, self.center[0]+self.half_s)
-        ax.set_ylim3d(self.center[1]-self.half_s, self.center[1]+self.half_s)
-        ax.set_zlim3d(self.center[2]-self.half_s, self.center[2]+self.half_s)
+        ax.set_xlim3d(self.center[0]-self.half_span, self.center[0]+self.half_span)
+        ax.set_ylim3d(self.center[1]-self.half_span, self.center[1]+self.half_span)
+        ax.set_zlim3d(self.center[2]-self.half_span, self.center[2]+self.half_span)
         plt.show()
 
 
@@ -1454,7 +1443,7 @@ class BasicSurface():
 #* Supportive functions
 #* ===========================================
 
-def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, proj=False):
+def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, projection=False):
     '''
     Apply chord length, twist angle(deg) and leading edge position to unit airfoil
 
@@ -1469,7 +1458,7 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr
     x0, y0:     scale center
     xr, yr:     rotation center (rotate after translation and scale)
     dx, dy:     translation, e.g., leading edge location
-    proj:       if True, for unit airfoil, the rotation keeps 
+    projection:       if True, for unit airfoil, the rotation keeps 
                 the projection length the same
     ```
 
@@ -1492,7 +1481,7 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr
     
     #* Scale (keeps the same projection length)
     rr = 1.0
-    if proj and not rot is None:
+    if projection and not rot is None:
         angle = rot/180.0*np.pi  # rad
         rr = np.cos(angle)
 

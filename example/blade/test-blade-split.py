@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     #* ==========================================
     #* Suction side
-    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, project=False)
+    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, projection=False)
 
     blade1.read_setting('Fan.txt')
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     #* ==========================================
     #* Pressure side
-    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, project=False)
+    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, projection=False)
 
     blade2.read_setting('Fan.txt')
 

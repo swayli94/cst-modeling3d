@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     n_sec = 12
 
-    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, project=False)
+    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, projection=False)
 
     CST = []
     origins = []

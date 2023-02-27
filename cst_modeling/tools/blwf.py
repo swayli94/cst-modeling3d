@@ -43,7 +43,7 @@ class BLWF():
     
     ### Inputs:
     ```text
-    name:   project name
+    name:   projection name
     ITH:    number of horizontal tail, 0, -1, 1, 2
     ITV:    number of vertical tail, 0, -1, 1
     INAC1:  number of inboard nacelle, 0, -1, 1

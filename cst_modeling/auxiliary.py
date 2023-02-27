@@ -49,7 +49,7 @@ def section_flap(sec: Section, ratio, angle, dy_axis=None):
 
     #* Update 3D section
     xu_, xl_, yu_, yl_ = transform(xu_new, xl_new, yu_new, yl_new, 
-        scale=sec.chord, rot=sec.twist, dx=sec.xLE, dy=sec.yLE, proj=True)
+        scale=sec.chord, rot=sec.twist, dx=sec.xLE, dy=sec.yLE, projection=True)
 
     sec.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
     sec.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
@@ -68,7 +68,7 @@ class WingVariableCamber(Surface):
     fname:   name of control file
     nn:      number of points of upper/lower section
     ns:      number of spanwise
-    project: True ~ projected chord length does not change when twisted
+    projection: True ~ projected chord length does not change when twisted
 
     flap_loc:   list [2*n_flap], z coordinates of the flap ends. 
                 [z_flap1_1, z_flap1_2, z_flap2_1, z_flap2_2, ...]
@@ -93,15 +93,15 @@ class WingVariableCamber(Surface):
     def __init__(self, n_sec=0, name='WingVC', fname='Wing.txt', **kwargs):
 
         tail = 0.0
-        project = True
+        projection = True
         nn = 1001
         ns = 101
 
         if 'tail' in kwargs.keys():
             tail = kwargs['tail']
 
-        if 'project' in kwargs.keys():
-            project = kwargs['project']
+        if 'projection' in kwargs.keys():
+            projection = kwargs['projection']
 
         if 'nn' in kwargs.keys():
             nn = kwargs['nn']
@@ -109,7 +109,7 @@ class WingVariableCamber(Surface):
         if 'ns' in kwargs.keys():
             ns = kwargs['ns']
 
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
         self.read_setting(fname, tail=tail)
 
@@ -168,7 +168,7 @@ class WingVariableCamber(Surface):
 
         self.geo_secs()
 
-        zLE_secs = self.zLE_secs
+        zLE_secs = self.zLEs
 
         for i in range(self.n_flap):
             i1 = zLE_secs.index(z_secs[4*i]) + 1

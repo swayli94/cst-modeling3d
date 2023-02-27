@@ -19,7 +19,7 @@ if __name__ == "__main__":
     #!  需要定义的量：n_sec, Fairing.txt 每一行中的第三个参数, nn (等于tube-curve.dat中的点数)
     #*==============================================
 
-    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, project=False)
+    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, projection=False)
     fairing.read_setting('Fairing.txt')
 
     #*==============================================

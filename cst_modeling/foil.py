@@ -7,7 +7,7 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .naca import naca
+from .tools.naca import naca
 from .basic import BasicSection, rotate, interp_from_curve
 
 
@@ -37,49 +37,7 @@ class Section(BasicSection):
         self.refine_u = None
         self.refine_l = None
 
-    def set_params(self, init=False, **kwargs):
-        '''
-        Set parameters of the section
-
-        ### Inputs:
-        ```text
-        init:   True, set to default values
-        ```
-
-        ### kwargs:
-        ```text
-        xLE, yLE, zLE, chord, twist, tail, thick (None)
-
-        refine_u:       ndarray, cst coefficients of upper incremental curve
-        refine_l:       ndarray, cst coefficients of lower incremental curve
-        ```
-        '''
-        if init:
-            super().set_params(init=True)
-
-            self.tail = 0.0
-            self.RLE  = 0.0
-
-            self.refine_u = None
-            self.refine_l = None
-            return
-
-        super().set_params(init=False, **kwargs)
-
-        if 'tail' in kwargs.keys():
-            self.tail = kwargs['tail']
-
-        if 'refine_u' in kwargs.keys():
-            aa_ = kwargs['refine_u']
-            if isinstance(aa_, np.ndarray):
-                self.refine_u = aa_.copy()
-
-        if 'refine_l' in kwargs.keys():
-            aa_ = kwargs['refine_l']
-            if isinstance(aa_, np.ndarray):
-                self.refine_l = aa_.copy()
-
-    def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, proj=True):
+    def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True):
         '''
         Generating the section (3D) by cst_foil. 
 
@@ -95,7 +53,7 @@ class Section(BasicSection):
         cst_u:  CST coefficients of upper surface (ndarray, optional)
         cst_l:  CST coefficients of lower surface (ndarray, optional)
         flip_x: True ~ flip section.xx in reverse order
-        proj:   True => for unit airfoil, the rotation keeps the projection length the same
+        projection:   True => for unit airfoil, the rotation keeps the projection length the same
         ```
         '''
         #* Update CST parameters
@@ -128,25 +86,7 @@ class Section(BasicSection):
         self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.thick_set)
 
         #* Transform to 3D
-        super().section(flip_x=flip_x, proj=proj)
-
-    def copyfrom(self, other):
-        '''
-        Copy from anthor section object
-        '''
-        if not isinstance(other, Section):
-            raise Exception('Must copy from another section object')
-        
-        super().copyfrom(other)
-
-        self.tail = other.tail
-        self.RLE = other.RLE
-
-        self.cst_u = other.cst_u.copy()
-        self.cst_l = other.cst_l.copy()
-
-        self.refine_u   = copy.deepcopy(other.refine_u)
-        self.refine_l   = copy.deepcopy(other.refine_l)
+        super().section(flip_x=flip_x, projection=projection)
 
 
 class OpenSection(BasicSection):
@@ -166,41 +106,7 @@ class OpenSection(BasicSection):
         #* Round tail
         self.cst_flip = None
 
-    def set_params(self, init=False, **kwargs):
-        '''
-        Set parameters of the section
-
-        ### Inputs:
-        ```text
-        init:   True, set to default values
-        ```
-
-        ### kwargs:
-        ```text
-        xLE, yLE, zLE, chord, twist, thick (None)
-        refine:     ndarray, cst coefficients of incremental curve
-        cst_flip:   ndarray, cst coefficients of flipped incremental curve
-        ```
-        '''
-        if init:
-            super().set_params(init=True)
- 
-            self.refine = None
-            return
-        
-        super().set_params(init=False, **kwargs)
-
-        if 'refine' in kwargs.keys():
-            aa_ = kwargs['refine']
-            if isinstance(aa_, np.ndarray):
-                self.refine = aa_.copy()
-
-        if 'cst_flip' in kwargs.keys():
-            aa_ = kwargs['cst_flip']
-            if isinstance(aa_, np.ndarray):
-                self.cst_flip = aa_.copy()
-
-    def section(self, cst=None, nn=1001, flip_x=False, proj=True):
+    def section(self, cst=None, nn=1001, flip_x=False, projection=True):
         '''
         Generating the section (3D) by cst_curve. 
 
@@ -215,7 +121,7 @@ class OpenSection(BasicSection):
         nn:     total amount of points
         cst:    CST coefficients of the curve (ndarray, optional)
         flip_x: True ~ flip section.xx in reverse order
-        proj:   True => for unit airfoil, the rotation keeps the projection length the same
+        projection:   True => for unit airfoil, the rotation keeps the projection length the same
         ```
         '''
         #* Update CST parameters
@@ -242,21 +148,7 @@ class OpenSection(BasicSection):
             self.thick = self.thick_set
 
         #* Transform to 3D
-        super().section(flip_x=flip_x, proj=proj)
-
-    def copyfrom(self, other):
-        '''
-        Copy from anthor OpenSection object
-        '''
-        if not isinstance(other, OpenSection):
-            raise Exception('Must copy from another OpenSection object')
-
-        super().copyfrom(other)
-
-        self.cst = other.cst.copy()
-
-        self.refine   = copy.deepcopy(other.refine)
-        self.cst_flip = copy.deepcopy(other.cst_flip)
+        super().section(flip_x=flip_x, projection=projection)
 
 
 class RoundTipSection(BasicSection):
@@ -512,8 +404,6 @@ class RoundTipSection(BasicSection):
         c  = dy_LE
         dy = a*x_ref**3+b*x_ref**2+c*x_ref
         return dy
-
-
 
 
 #* ===========================================

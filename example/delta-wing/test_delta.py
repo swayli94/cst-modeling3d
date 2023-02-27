@@ -212,7 +212,7 @@ class Wing(BasicSurface):
     
     def __init__(self, sections: list, ns=101):
         
-        super().__init__(n_sec=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, project=True)
+        super().__init__(n_sec=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, projection=True)
         
         self.secs = sections
         

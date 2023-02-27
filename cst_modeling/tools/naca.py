@@ -42,7 +42,7 @@ from typing import Tuple
 
 import numpy as np
 
-from ..foil import cst_foil_fit
+from ..section import cst_foil_fit
 
 
 def naca_to_cst(NACA_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarray]:

@@ -7,7 +7,7 @@ Fit a reference blade geometry (DFVLR L030-4) with RoundTipSection
 import numpy as np
 from scipy.interpolate import interp1d
 
-from cst_modeling.foil import dist_clustcos, RoundTipSection, cst_foil_fit, cst_foil
+from cst_modeling.section import dist_clustcos, RoundTipSection, cst_foil_fit, cst_foil
 
 import matplotlib.pyplot as plt
 

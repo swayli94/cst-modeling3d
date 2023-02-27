@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 
 from .basic import BasicSurface, rotate
-from .foil import OpenSection, Section
+from .section import OpenSection, Section
 
 #* ===========================================
 #* CST surfaces

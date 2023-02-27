@@ -2,7 +2,7 @@
 
 import numpy as np
 from cst_modeling.basic import fromCylinder
-from cst_modeling.foil import fit_curve_with_twist, find_circle_3p
+from cst_modeling.section import fit_curve_with_twist, find_circle_3p
 from cst_modeling.surface import OpenSurface
 
 

@@ -5,7 +5,7 @@ import numpy as np
 import copy
 
 from ..basic import curve_intersect, transform
-from ..foil import Section, interp_from_curve
+from ..section import Section, interp_from_curve
 from ..surface import Surface
 
 def section_flap(sec: Section, ratio, angle, dy_axis=None):

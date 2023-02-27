@@ -3,7 +3,7 @@ This is an example of generating 2D geometry in 3D form for ICEM CFD and CFL3D
 '''
 
 import numpy as np
-from cst_modeling.foil import cst_foil
+from cst_modeling.section import cst_foil
 from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
 
 

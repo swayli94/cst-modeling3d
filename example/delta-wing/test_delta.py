@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
-from cst_modeling.foil import dist_clustcos, cst_foil
+from cst_modeling.section import dist_clustcos, cst_foil
 
 
 def base_shape(x_ref: np.ndarray, x_LE: float, x_TE: float, 

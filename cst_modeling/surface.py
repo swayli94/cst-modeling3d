@@ -343,7 +343,7 @@ class Surface(BasicSurface):
 
     def output_tecplot(self, fname=None, one_piece=False, split=False) -> None:
         '''
-        Output the surface to *.dat in Tecplot format
+        Output the surface to `*.dat` in Tecplot format.
 
         Parameters
         ------------
@@ -434,7 +434,7 @@ class Surface(BasicSurface):
 
     def output_plot3d(self, fname=None, split=False) -> None:
         '''
-        Output the surface to *.grd in plot3d format
+        Output the surface to `*.grd` in plot3d format.
 
         Parameters
         ------------

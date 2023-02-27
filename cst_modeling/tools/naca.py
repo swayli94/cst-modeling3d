@@ -37,12 +37,60 @@ Copyright (C) 2011 by Dirk Gorissen <dgorissen@gmail.com>
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
 """
+from math import atan, cos, pi, pow, sin, sqrt, tan
+from typing import Tuple
 
-from math import cos, sin, tan
-from math import atan
-from math import pi
-from math import pow
-from math import sqrt
+import numpy as np
+
+from ..foil import cst_foil_fit
+
+
+def naca_to_cst(NACA_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarray]:
+    '''
+    Get CST parameters of a NACA series airfoil.
+    
+    Parameters
+    ----------
+    NACA_series : str
+        4 or 5 digit NACA number string
+    n_cst : int
+        number of CST coefficients
+    nn : int
+        total amount of points
+    
+    Returns
+    --------
+    cst_u, cst_l: ndarray
+        CST coefficients
+    
+    Examples
+    ----------
+    >>> cst_u, cst_l = naca_to_cst(NACA_series, n_cst, nn)
+
+    '''
+    xx, yy = naca(NACA_series, nn-1, finite_TE=False, half_cosine_spacing=True)
+
+    xu = np.zeros(nn)
+    xl = np.zeros(nn)
+    yu = np.zeros(nn)
+    yl = np.zeros(nn)
+
+    n0 = 2*nn-1
+    for i in range(nn):
+        xu[i] = xx[n0-i-nn]
+        yu[i] = yy[n0-i-nn]
+        xl[i] = xx[nn+i-1]
+        yl[i] = yy[nn+i-1]
+        
+    for i in range(nn-2):
+        if xu[i+1] < xu[i]:
+            xu[i+1] = max(xu[i], 0.5*(xu[i]+xu[i+2]))
+        if xl[i+1] < xl[i]:
+            xl[i+1] = max(xl[i], 0.5*(xl[i]+xl[i+2]))
+
+    cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=n_cst)
+
+    return cst_u, cst_l
 
 def linspace(start,stop,np):
     """

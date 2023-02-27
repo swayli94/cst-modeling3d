@@ -31,14 +31,16 @@ release = 'v0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
+    'sphinx.ext.autodoc',       # automatically insert docstrings from modules
+    'sphinx.ext.mathjax',       # include math, rendered in the browser by MathJax
     'sphinx_rtd_theme',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.coverage'
+    'sphinx.ext.napoleon',      # Google' style docstring
+    'sphinx.ext.doctest',       # automatically test code snippets in doctest blocks
+    'sphinx.ext.intersphinx',   # link between Sphinx documentation of different projects
+    'sphinx.ext.todo',          # write "todo" entries that can be shown or hidden on build
+    'sphinx.ext.coverage',      # checks for documentation coverage
+    'sphinx.ext.viewcode',      # include links to the source code of documented Python objects
+    'sphinx.ext.githubpages'    # create .nojekyll file to publish the document on GitHub pages
 ]
 
 # Add any paths that contain templates here, relative to this directory.

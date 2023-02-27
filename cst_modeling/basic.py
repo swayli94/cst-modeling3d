@@ -729,7 +729,7 @@ class BasicSurface():
         Parameters
         -----------
         i_sec0, i_sec1: int
-            The index of surface `surfs` to be smoothed is `i_sec0`, ..., `i_sec1-1`.
+            The index of surface `surfs` to be smoothed is `i_sec0, ..., i_sec1-1`.
             They usually are the starting and ending section index of the smooth region.
         smooth0, smooth1: bool
             whether have smooth transition to the neighboring surfaces.
@@ -738,13 +738,13 @@ class BasicSurface():
             If None, the slope at section 0 is not specified.
         ratio_end: {float, list of float}
             the ratio controls how fast changing to the original geometry 
-            at both ends of the curve (`ip`=0, n_point-1). \n
-            If input a list, `ratio_end`=[`a0`, `a1`, `b`]. \n
-            If input a float `a`, do not change to the original geometry when `a` <= 0,
-            `ratio_end`=[`a`, `a`, `1`] when `a` > 0. \n
+            at both ends of the curve (`ip=0, n_point-1`). \n
+            If input a list, `ratio_end=[a0, a1, b]`. \n
+            If input a float `a`, do not change to the original geometry when `a <= 0`,
+            `ratio_end=[a, a, 1]` when `a` > 0. \n
             `a0`, `a1`: larger the faster. \n
-            `b`: controls the width of the original geometry at both ends.
-            `b`<=1: no width, `b`>1: larger the wider. 
+            `b`: controls the width of the original geometry at both ends. \n
+            `b<=1`: no width, `b>1`: larger the wider. 
 
         '''
         #* Do not have neighboring surfaces
@@ -989,21 +989,19 @@ class BasicSurface():
             coordinates of the leader curve control points (and chord length). \n
             The leader is a spline curve defined by a list of control points.
             The leading edge point at both ends are automatically included in leader. \n
-            `leader` = `[[x,y,z(,c)], [x,y,z(,c)], ...]`.
+            `leader = [[x,y,z(,c)], [x,y,z(,c)], ...]`.
         kx : {None, float}
             X-axis slope (dx/dz) at both ends [kx0, kx1].
         ky : {None, float}
             Y-axis slope (dy/dz) at both ends [ky0, ky1].
         kc : {None, float}
-            chord  slope (dc/dz) at both ends [kc0, kc1].
+            chord slope (dc/dz) at both ends [kc0, kc1].
         rot_x : bool
             if True, rotate sections in x-axis to make the section vertical to the leader.
-        ```
 
         Notes
         ------
-        Regenerate the surface between section i_sec0 and i_sec1.
-        
+        Regenerate the surface between section i_sec0 and i_sec1. \n
         X is the flow direction (chord direction).
 
         Examples
@@ -1341,7 +1339,7 @@ class BasicSurface():
 
     def output_tecplot(self, fname=None, one_piece=False) -> None:
         '''
-        Output the surface to *.dat in Tecplot format.
+        Output the surface to `*.dat` in Tecplot format.
         
         Parameters
         ------------
@@ -1405,7 +1403,7 @@ class BasicSurface():
 
     def output_plot3d(self, fname=None) -> None:
         '''
-        Output the surface to *.grd in plot3d format.
+        Output the surface to `*.grd` in plot3d format.
 
         Parameters
         ------------
@@ -2788,7 +2786,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0) -> None:
     X, Y, Z: list of ndarray [ns,nn]
         coordinates
     fname: str
-        the name of the file (*.grd)
+        the name of the file (`*.grd`)
 
     '''
     # ns: number of spanwise points

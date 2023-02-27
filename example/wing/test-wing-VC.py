@@ -1,6 +1,6 @@
 
 # Run this in the directory where the folder cst_modeling is
-from cst_modeling.auxiliary import WingVariableCamber
+from cst_modeling.tools.auxiliary import WingVariableCamber
 
 
 if __name__ == "__main__":

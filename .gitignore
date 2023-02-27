@@ -9,3 +9,7 @@ temp*
 *.lay
 *.grd
 *.ini
+*.pyc
+
+make.bat
+Makefile

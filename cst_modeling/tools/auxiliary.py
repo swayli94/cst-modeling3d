@@ -4,9 +4,9 @@ Auxiliary functions for surface modeling
 import numpy as np
 import copy
 
-from .basic import curve_intersect
-from .foil import Section, transform, interp_from_curve
-from .surface import Surface
+from ..basic import curve_intersect, transform
+from ..foil import Section, interp_from_curve
+from ..surface import Surface
 
 def section_flap(sec: Section, ratio, angle, dy_axis=None):
     '''
@@ -200,20 +200,20 @@ class DeflectSurf():
 
     >>> DeflectSurf(surf: Surface, z0, z1, r0, r1, trans_len=0.5)
 
-    ### Inputs:
-    ```text
+    Parameters
+    ----------
     z0, z1:     span-wise coordinates of the start and end sections
     r0, r1:     chord-wise ratio defining the deflection axis
     trans_len:  span-wise transition length (m)
-    ```
 
-    ### Parameters:
-    ```text
+
+    Attributes
+    ------------
     LE0, LE1, TE0, TE1: ndarray, [x, y, z], LE & TE coordinates of the two end sections of the deflection region
     AX0, AX1: ndarray, [x, y, z], axis ends coordinates. By default, AX = (1-r)*LE + r*TE
 
     i_sec0, i_sec1: section index to locate z0 and z1
-    ```
+
     '''
 
     def __init__(self, surf: Surface, z0, z1, r0, r1, trans_len=0.5):
@@ -238,21 +238,6 @@ class DeflectSurf():
         self.AX0 = np.array([self.x0, self.y0, self.z0])
         self.AX1 = np.array([self.x1, self.y1, self.z1])
 
-    def deflect(self, angle: float):
-        '''
-        Deflecting surface
-
-        Inputs:
-        ---
-        angle:  deflection angle (degree), positive means downwards deflection
-        '''
-
-        surf2 = copy.deepcopy(self.surfs)
-
-
-
-
-        pass
 
     def _locate_ends(self):
         '''

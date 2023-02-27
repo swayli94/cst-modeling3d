@@ -12,11 +12,39 @@ from scipy.interpolate import CubicSpline
 from scipy import spatial
 from scipy.interpolate import interp1d
 from scipy.spatial.distance import cdist
+from typing import Tuple, List
 
 
 class BasicSection():
     '''
     Coordinates of the 2D unit curve and the 3D curve.
+    
+    Parameters
+    ----------
+    thick : {float, None}, optional
+        specified maximum relative thickness, by default None.
+    chord : float
+        chord length (m), by default 1.
+    twist : float
+        twist angle, by default 0.
+    lTwistAroundLE : bool
+        whether the twist center is LE, otherwise TE, by default True.
+    
+    Examples
+    --------
+    >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
+    
+
+    Notes
+    -------
+    - +x:     flow direction (m)
+    - +y:     upside (m)
+    - +z:     span-wise (m)
+    - twist:  +z direction (deg)
+    - chord:  chord length (m)
+    - thick:  relative maximum thickness
+    - tail:   absolute tail thickness (m)
+
     
     Attributes
     ------------
@@ -32,12 +60,12 @@ class BasicSection():
         specified maximum relative thickness, by default None.
     lTwistAroundLE : bool
         whether the twist center is LE, otherwise TE.
-    xx, yy, yu, yl : array_like
+    xx, yy, yu, yl : ndarray
         the 2D unit curve coordinates. 
         When it is an open section, only `yy` is available.
         When it is a closed section, only `yu` and `yl` are available. 
         They are then concatenated to one curve, e.g., an airfoil.
-    x, y, z : array_like
+    x, y, z : ndarray
         the 3D curve coordinates. The 3D curve is generated from the 2D curve through
         translation, scale, and rotation.
     '''
@@ -51,7 +79,7 @@ class BasicSection():
         thick : {float, None}, optional
             specified maximum relative thickness, by default None.
         chord : float
-            chord length, by default 1.
+            chord length (m), by default 1.
         twist : float
             twist angle, by default 0.
         lTwistAroundLE : bool
@@ -88,7 +116,7 @@ class BasicSection():
         '''
         Calculate the 3D curve coordinates from the known 2D curve.
 
-        Parameters:
+        Parameters
         ------------
         nn : int
             number of points in `xx`, `yy`, `yu`, and `yl`. 
@@ -98,7 +126,7 @@ class BasicSection():
         projection : bool
             whether keeps the projection length the same when rotating the section, by default True.
         
-        Examples:
+        Examples
         ------------
         >>> sec.section(nn=1001, flip_x=False, projection=True)
 
@@ -148,38 +176,67 @@ class BasicSurface():
     '''
     Multi-section surface based on `BasicSection`.
     
-    Attributes
-    ------------
+    Parameters
+    ----------
+    n_sec : int
+        number of control sections.
     name : str
         name of the object, by default 'Surf'.
     nn : int
         number of points in the unit 2D curve's `xx`, by default 1001.
     ns : int
         number of points in the sweep direction between sections, by default 101.
+    projection : bool
+        whether keeps the projection length the same when rotating the section, by default True.
+
+    Examples
+    --------
+    >>> surf = BasicSurface(n_sec=1, name='Surf', nn=1001, ns=101, projection=True)
+    
+    
+    Notes
+    -------
+    - +x:     flow direction (m)
+    - +y:     upside (m)
+    - +z:     span-wise (m)
+
+        
+    Attributes
+    ------------
     l2d : bool
         whether this is a 3D surface for a 2D curve (unit span). 
         It is `True` when `n_sec` is 0 or 1.
     secs : list of BasicSection
         section objects.
-    surfs : list of list of array_like
+    surfs : list of list of ndarray
         surface coordinates. List `surfs` contains `n_sec`-1 sub-lists.
         Each sub-list is the coordinates of the 3D surface, which contains 3 `ndarray`.
         The 3 arrays are the X, Y, Z coordinates of the surface.   
         For example, surfs = [[x0, y0, z0], [x1, y1, z1]] when n_sec=3.
-    projection : bool
-        whether keeps the projection length the same when rotating the section, by default True.
     half_span : float
         half span for plotting.
-    center : array_like
+    center : ndarray
         surface center for plotting.
-    n_sec
-    zLEs
+
     '''
 
     def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, projection=True):
         '''
         Construct a BasicSurface object.
         
+        Parameters
+        ----------
+        n_sec : int
+            number of control sections.
+        name : str
+            name of the object, by default 'Surf'.
+        nn : int
+            number of points in the unit 2D curve's `xx`, by default 1001.
+        ns : int
+            number of points in the sweep direction between sections, by default 101.
+        projection : bool
+            whether keeps the projection length the same when rotating the section, by default True.
+            
         Examples
         --------
         >>> surf = BasicSurface(n_sec=1, name='Surf', nn=1001, ns=101, projection=True)
@@ -206,20 +263,21 @@ class BasicSurface():
         return len(self.secs)
 
     @property
-    def zLEs(self):
+    def zLEs(self) -> List[float]:
         '''
         List of section zLE
         '''
         return [round(sec.zLE,5) for sec in self.secs]
 
-    def read_setting(self, fname: str):
+    def read_setting(self, fname: str) -> None:
         '''
         Read in Surface layout parameters from file
+        
+        Parameters
+        -----------
+        fname : str
+            parameter file name.
 
-        ### Inputs:
-        ```text
-        fname:  control file name
-        ```
         '''
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface setting')
@@ -278,7 +336,7 @@ class BasicSurface():
         
         self.layout_center()
 
-    def layout_center(self):
+    def layout_center(self) -> None:
         '''
         Locate layout center for plot
         '''
@@ -299,22 +357,19 @@ class BasicSurface():
         self.center[1] = 0.5*(y_range[1]+y_range[0])
         self.center[2] = 0.5*(z_range[1]+z_range[0])
 
-    def linear_interpolate_z(self, z: float, key='x'):
+    def linear_interpolate_z(self, z: float, key='x') -> dict:
         '''
-        Linear interpolation of key by given z
+        Linear interpolation of key by a given z.
 
-        >>> key_value = linear_interpolate_z(z: float, key='x')
-
-        ### Inputs:
-        ```text
-        z:      location of the value
-        key:    The value to be interpolated
-                'x' or 'X'
-                'y' or 'Y'
-                'c' or 'C' or 'chord'
-                't' or 'thick' or 'thickness'
-                'twist'
-        ```
+        Parameters
+        ----------
+        z : float
+            location of the value
+        key : str
+            the value to be interpolated:
+            'x' or 'X', 'y' or 'Y',
+            'c' or 'C' or 'chord',
+            't' or 'thick' or 'thickness', 'twist'.
         '''
         #* Find the adjacent control sections
         i_sec = self.n_sec
@@ -345,33 +400,31 @@ class BasicSurface():
         return key_value
 
 
-    def geo_secs(self, flip_x=False):
+    def geo_secs(self, flip_x=False) -> None:
         '''
-        Update surface sections
+        Update surface sections, including the construction of 2D unit curves (optional)
+        and transforming to 3D curves.
 
-        ### Functions:
-        ```text
-        1. Construct 2D unit curve (null in the BasicSection)
-        2. Transform to 3D curve
-        ```
+        Parameters
+        ----------
+        flip_x : bool
+            whether flip `xx` in the reverse order, by default False.
 
-        ### Inputs:
-        ```text
-        flip_x:     True ~ flip section.xx in reverse order
-        ```
         '''
         for i in range(self.n_sec):
             self.secs[i].section(nn=self.nn, flip_x=flip_x, projection=self.projection)
 
-    def geo(self, flip_x=False, update_sec=True):
+    def geo(self, flip_x=False, update_sec=True) -> None:
         '''
         Generate surface geometry
+        
+        Parameters
+        -----------
+        flip_x : bool
+            whether flip `xx` in the reverse order, by default False.
+        update_sec : bool
+            whether update sections, by default True.
 
-        ### Inputs:
-        ```text
-        flip_x:     True ~ flip section.xx in reverse order
-        update_sec: True ~ update sections
-        ```
         '''
         if update_sec:
             self.geo_secs(flip_x=flip_x)
@@ -390,16 +443,19 @@ class BasicSurface():
                 surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
                 self.surfs.append(surf)
 
-    def geo_axisymmetric(self, phi, flip_x=False, update_sec=True):
+    def geo_axisymmetric(self, phi, flip_x=False, update_sec=True) -> None:
         '''
-        Generate axisymmetric surface geometry
+        Generate axisymmetric surface geometry.
+        
+        Parameters
+        -----------
+        phi : list or ndarray
+            position angle of control sections.
+        flip_x : bool
+            whether flip `xx` in the reverse order, by default False.
+        update_sec : bool
+            whether update sections, by default True.
 
-        ### Inputs:
-        ```text
-        phi:        list or ndarray, position angle of control sections
-        flip_x:     True ~ flip section.xx in reverse order
-        update_sec: True ~ update sections
-        ```
         '''
         if update_sec:
             self.geo_secs(flip_x=flip_x)
@@ -416,23 +472,27 @@ class BasicSurface():
 
 
     @staticmethod
-    def section_surf(sec0, sec1, ns=101):
+    def section_surf(sec0: BasicSection, sec1: BasicSection, ns=101) -> List[np.ndarray]:
         '''
-        Interpolate surface section between curves
-
+        Interpolate surface section between curves.
+        
+        Parameters
+        ----------
+        sec0, sec1 : BasicSection
+            sections on both ends of the surface.
+        ns : int
+            number of points in the interpolation direction.
+            
+        Returns
+        ---------
+        surf : list of ndarray
+            coordinates of the surface, `[surf_x, surf_y, surf_z]`,
+            `surf_x`'s shape is `[ns, nn]`. 
+        
+        Examples
+        ---------
         >>> surf = section_surf(sec0, sec1, ns)
 
-        ### Inputs:
-        ```text
-        sec0, sec1:     Section object
-        ns:             number of spanwise points
-        ```
-
-        ### Return: 
-        ```text
-        surf:   [surf_x, surf_y, surf_z]
-                list of ndarray [ns, nn]
-        ```
         '''
 
         nn = sec0.x.shape[0]
@@ -451,24 +511,29 @@ class BasicSurface():
         return surf
 
     @staticmethod
-    def section_surf_axisymmetric(sec0, sec1, phi0: float, phi1: float, ns=101):
+    def section_surf_axisymmetric(sec0: BasicSection, sec1: BasicSection, 
+                                  phi0: float, phi1: float, ns=101) -> List[np.ndarray]:
         '''
-        Interplot axisymmetric surface section between curves
-
-        >>> surf = section_surf_axisymmetric(sec0, sec1, ns)
-
-        ### Inputs:
-        ```text
-        sec0, sec1:     Section object
-        phi0, phi1:     angle (degree) about X-axis (X-Y plane is 0 degree)
-        ns:             number of spanwise points
-        ```
-
-        ### Return: 
-        ```text
-        surf:   [surf_x, surf_y, surf_z]
-                list of ndarray [ns, nn]
-        ```
+        Interpolate axisymmetric surface section between curves.
+        
+        Parameters
+        ----------
+        sec0, sec1 : BasicSection
+            sections on both ends of the surface.
+        phi0, phi1 : float
+            angle (degree) about X-axis (X-Y plane is 0 degree).
+        ns : int
+            number of points in the interpolation direction.
+            
+        Returns
+        ---------
+        surf : list of ndarray
+            coordinates of the surface, `[surf_x, surf_y, surf_z]`,
+            `surf_x`'s shape is `[ns, nn]`. 
+            
+        Examples
+        ---------
+        >>> surf = section_surf_axisymmetric(sec0, sec1, phi0, phi1, ns)
         '''
         nn = sec0.x.shape[0]
         surf_x = np.zeros((ns,nn))
@@ -502,18 +567,21 @@ class BasicSurface():
         return [surf_x, surf_y, surf_z]
 
 
-    def flip(self, axis='None', plane='None'):
+    def flip(self, axis='None', plane='None') -> None:
         '''
-        For surfs, and center. (This should be the last action)
+        Flip surfaces and layout center. This should be the last action before output.
+        
+        Parameters
+        -----------
+        axis : str
+            turn 90 degrees about axis: +X, -X, +Y, -Y, +Z, -Z.
+        plane : str
+            get symmetry about plane: 'XY', 'YZ', 'ZX'.
 
-        The axis and plane can be a single string, 
+        Notes
+        ---------
+        The `axis` and `plane` can be a single phrase, 
         or a string contains multiple actions to take in order, e.g., '+X  +Y'.
-
-        ### Inputs:
-        ```text
-        axis:  turn 90 degrees about axis: +X, -X, +Y, -Y, +Z, -Z
-        plane: get symmetry about plane: 'XY', 'YZ', 'ZX'
-        ```
         '''
         for axis_ in axis.split():
             if '+X' in axis_:
@@ -591,11 +659,9 @@ class BasicSurface():
                 self.surfs[i_sec][1] = -self.surfs[i_sec][1]
             self.center[1] = - self.center[1]
 
-    def translate(self, dX=0.0, dY=0.0, dZ=0.0):
+    def translate(self, dX=0.0, dY=0.0, dZ=0.0) -> None:
         '''
         Translate surface coordinates
-
-        >>> translate(dX=0.0, dY=0.0, dZ=0.0)
         '''
         for surf in self.surfs:
             surf[0] += dX
@@ -606,11 +672,9 @@ class BasicSurface():
         self.center[1] += dY
         self.center[2] += dZ
 
-    def scale(self, scale=1.0, X0=0.0, Y0=0.0, Z0=0.0):
+    def scale(self, scale=1.0, X0=0.0, Y0=0.0, Z0=0.0) -> None:
         '''
-        Scale surface coordinates about (X0, Y0, Z0)
-
-        >>> scale(scale=1.0, X0=0.0, Y0=0.0, Z0=0.0)
+        Scale surface coordinates about point `[X0, Y0, Z0]`.
         '''
         for surf in self.surfs:
             surf[0] = (surf[0]-X0)*scale + X0
@@ -622,17 +686,20 @@ class BasicSurface():
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
 
-    def split(self, ips: list):
+    def split(self, ips: list) -> None:
         '''
         Split each surface `surfs` into several pieces.
         Length of `surfs` is multiplied by len(ips)+1.
         
-        ### Inputs:
-        ```text
-        ips:    split point indices on each section curves
-        ``` 
-        
-        surf: [surf_x, surf_y, surf_z], list of ndarray [ns, nn]
+        Parameters
+        -----------
+        ips : list of int
+            split point indices on each section curves
+
+        Notes
+        ----------
+        `surf` is a list of ndarray, i.e., `[surf_x, surf_y, surf_z]`,
+        the shape of each element is `[ns, nn]`.
         '''
         nt = self.surfs[0][0].shape[1]  # i.e., self.nn
         ips.sort()
@@ -654,23 +721,31 @@ class BasicSurface():
                     surf_y[:,ips[i]-1:ips[i+1]],
                     surf_z[:,ips[i]-1:ips[i+1]]])
 
-    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, dyn0=None, ratio_end=10, ratio_end2=1):
+    def smooth(self, i_sec0: int, i_sec1: int, smooth0=False, smooth1=False, 
+               dyn0=None, ratio_end=10) -> None:
         '''
-        Smooth the spanwise curve between i_sec0 and i_sec1
+        Smooth the span-wise curve between i_sec0 and i_sec1.
+        
+        Parameters
+        -----------
+        i_sec0, i_sec1: int
+            The index of surface `surfs` to be smoothed is `i_sec0`, ..., `i_sec1-1`.
+            They usually are the starting and ending section index of the smooth region.
+        smooth0, smooth1: bool
+            whether have smooth transition to the neighboring surfaces.
+        dyn0: {None, float}
+            If float, sets the slope of y-z curve at the end of section 0, i.e., (dy/dz)|n.
+            If None, the slope at section 0 is not specified.
+        ratio_end: {float, list of float}
+            the ratio controls how fast changing to the original geometry 
+            at both ends of the curve (`ip`=0, n_point-1). \n
+            If input a list, `ratio_end`=[`a0`, `a1`, `b`]. \n
+            If input a float `a`, do not change to the original geometry when `a` <= 0,
+            `ratio_end`=[`a`, `a`, `1`] when `a` > 0. \n
+            `a0`, `a1`: larger the faster. \n
+            `b`: controls the width of the original geometry at both ends.
+            `b`<=1: no width, `b`>1: larger the wider. 
 
-        ### Inputs:
-        ```text
-        i_sec0, i_sec1:     usually are the starting and ending section index of the smooth region
-                            essentially, the index of surface to be smoothed is i_sec0, ..., i_sec1-1
-        smooth0, smooth1:   bool, whether have smooth transition to the neighboring surfaces
-        dyn0:               (dy/dz)|n, set the slope of y-z curve at the end of section 0
-        ratio_end:  float or list, the ratio controls how fast changing to the original geometry 
-                    at both ends of the curve (ip=0, n_point-1).
-                    list [a0, a1, b] | float <= 0: no change; float > 0: [a, a, 1]
-                    a0, a1: larger the faster 
-                    b: controls the width of the original geometry at both ends
-                    <=1: no width, >1: larger the wider      
-        ```
         '''
         #* Do not have neighboring surfaces
         if i_sec0 == 0:
@@ -758,35 +833,35 @@ class BasicSurface():
                     self.surfs[i_surf][0][j,ip] = (1-ratio[ip])*curve_x(zi) + ratio[ip]*self.surfs[i_surf][0][j,ip]
                     self.surfs[i_surf][1][j,ip] = (1-ratio[ip])*curve_y(zi) + ratio[ip]*self.surfs[i_surf][1][j,ip]
    
-    def smooth_axisymmetric(self, i_sec0: int, i_sec1: int, phi, linear_TEx=True, RTE=None, RTE_=None, func_trans=None):
+    def smooth_axisymmetric(self, i_sec0: int, i_sec1: int, phi, linear_TEx=True, 
+                            RTE=None, RTE_=None, func_trans=None):
         '''
         Smooth the axisymmetric curve between i_sec0 and i_sec1
+        
+        Parameters
+        ----------
+        i_sec0, i_sec1 : int
+            the starting and ending section index of the smooth region
+        phi : list or ndarray
+            position angle (degree) of control sections: `i_sec0` ~ `i_sec1`
+        linear_TEx : bool
+            if True, the x coordinates of trailing edge curve are piece-wise linear distribution. 
+            Otherwise, they can be nonlinear distribution due to the leading edge curve.
+        RTE : {None, float}
+            if None, the trailing edge curve in YZ plane is generated by the layout parameters.
+            If provided a float, then the trailing edge curve in YZ plane is set to a circle. 
+            Its origin is (0,0), radius is `RTE`.
+        RTE_ : {None, float}
+            if `RTE_` is provided, it means the control sections are close sections, i.e., 
+            both upper and lower surfaces of the control section exist.
+            Then, `RTE_` is the inner circle radius.
+        func_trans : {None, function}
+            if None, `ratio` = `tx`. \n
+            If a function `ratio = func_trans(tx)` is provided:
+            `ratio` is a float (0~1), representing how much the YZ-plane curve is similar to a circle. \n
+            When `ratio` is 1, the curve is the specified circle of which the radius is `RTE`.
+            `tx` is a float (0~1), representing the relative x-axis location of the YZ-plane curve.
 
-        ### Inputs:
-        ```text
-        i_sec0, i_sec1:   the starting and ending section index of the smooth region
-        phi:            list or ndarray, position angle of control sections: i_sec0 ~ i_sec1
-
-        linear_TEx:     if True, the x coordinates of trailing edge curve are piece-wise 
-                        linear distribution. Otherwise, they can be nonlinear distribution 
-                        due to the leading edge curve
-
-        RTE:            default None, then the trailing edge curve in YZ plane is generated
-                        by the layout parameters. If provided a float, then the trailing 
-                        edge curve in YZ plane is set to a circle. Its origin is (0,0), 
-                        radius is RTE
-        RTE_:           if RTE_ is provided, it means the control section is close sections
-                        i.e., both upper and lower surfaces of the control section exist
-                        Then, RTE_ is the inner circle radius
-
-        func_trans:     optional function: ratio = func_trans(tx)
-                        ratio is a float (0~1), representing the extent of the YZ-plane 
-                        curve being similar to a circle. When ratio is 1, the curve is the 
-                        specified circle of which the radius is RTE.
-                        tx is a float  (0~1), representing the relative x-axis location of 
-                        the YZ-plane curve
-                        default None, means ratio = tx
-        ```
         '''
         periodic = False
         if np.abs(phi[0]+phi[-1]-360.0)<1E-3:
@@ -873,12 +948,12 @@ class BasicSurface():
                     self.surfs[i_surf][2][j,ip] = R*np.sin(angle/180.0*np.pi)
     
     @staticmethod
-    def smooth_ratio_function(x, a0=4, a1=4, b=1):
+    def smooth_ratio_function(x: np.ndarray, a0=4, a1=4, b=1) -> np.ndarray:
         '''
-        x [0,1], y [0,1]
+        Smooth ratio function, `x` in [0,1], `ratio` in [0,1].
         
-        larger a gives steeper ramp
-        larger b gives longer plateau at both ends
+        A larger `a` gives a steeper ramp, 
+        a larger `b` gives a longer plateau at both ends.
         '''
         r0 = BasicSurface.smooth_ramp_function(-10*x, a0)
         r1 = BasicSurface.smooth_ramp_function(-10*(1-x), a1)
@@ -886,9 +961,9 @@ class BasicSurface():
         return ratio
     
     @staticmethod
-    def smooth_ramp_function(x, a=1):
+    def smooth_ramp_function(x: np.ndarray, a=1) -> np.ndarray:
         '''
-        x<=0, y: 0 -> 1
+        Smooth ramp function, `x`<=0, `y` in [0,1].
         '''
         y1 = 1.0/(1.0+np.exp(-a*x-2))
         y2 = 1.0 + a/4*x
@@ -901,34 +976,41 @@ class BasicSurface():
         return (y-np.min(y))/(np.max(y)-np.min(y))
 
 
-    def bend(self, i_sec0: int, i_sec1: int, leader=None, kx=None, ky=None, kc=None, rot_x=False):
+    def bend(self, i_sec0: int, i_sec1: int, leader=None, 
+             kx=None, ky=None, kc=None, rot_x=False) -> None:
         '''
         Bend surfaces by a guide curve, i.e., leader.
+        
+        Parameters
+        ------------
+        i_sec0, i_sec1 : int
+            the index of the start section and the end section.
+        leader : {None, list of list}
+            coordinates of the leader curve control points (and chord length). \n
+            The leader is a spline curve defined by a list of control points.
+            The leading edge point at both ends are automatically included in leader. \n
+            `leader` = `[[x,y,z(,c)], [x,y,z(,c)], ...]`.
+        kx : {None, float}
+            X-axis slope (dx/dz) at both ends [kx0, kx1].
+        ky : {None, float}
+            Y-axis slope (dy/dz) at both ends [ky0, ky1].
+        kc : {None, float}
+            chord  slope (dc/dz) at both ends [kc0, kc1].
+        rot_x : bool
+            if True, rotate sections in x-axis to make the section vertical to the leader.
+        ```
 
+        Notes
+        ------
+        Regenerate the surface between section i_sec0 and i_sec1.
+        
+        X is the flow direction (chord direction).
+
+        Examples
+        ---------
         >>> bend(i_sec0: int, i_sec1: int, leader=None, 
         >>>         kx=None, ky=None, kc=None, rot_x=False)
 
-        ### Inputs:
-        ```text
-        i_sec0:      the index of start section
-        i_sec1:      the index of end section
-        leader:     list of points (and chord length) in the guide curve. 
-                    [[x,y,z(,c)], [x,y,z(,c)], ...]
-        axis:       Z-axis, spanwise direction
-        kx:         X-axis slope (dx/dz) at both ends [kx0, kx1]
-        ky:         Y-axis slope (dy/dz) at both ends [ky0, ky1]
-        kc:         Chord  slope (dc/dz) at both ends [kc0, kc1]
-        rot_x:      if True, rotate sections in x-axis to 
-                    make the section vertical to the leader
-        ```
-
-        ### Note:
-        ```text
-        The leader is a list of points to define the spline curve that 
-        describes the leading edge curve. 
-        Regenerate the surface between section i_sec0 and i_sec1
-        X is the flow direction (chord direction)
-        ```
         '''
         if self.l2d:
             print('No bending for 2D cases')
@@ -964,7 +1046,7 @@ class BasicSurface():
                 for point in leader:
                     chord  = self.linear_interpolate_z(point[2], key='chord')
                     point_ = point.append(chord)
-                    leader_points.append(point)
+                    leader_points.append(point_)
 
             else:
                 print('spline_chord', spline_chord)
@@ -1086,20 +1168,21 @@ class BasicSurface():
                 self.surfs[i_surf][2][j,:] = zz.copy()
 
 
-    def Surf2Cylinder(self, flip=True, origin=None):
+    def surf_to_cylinder(self, flip=True, origin=None) -> None:
         '''
         Bend the surface (surfs) to cylinder (turbomachinery).
         The original surface is constructed by 2D sections.
-
-        ### Inputs:
-        ```text
-        flip:   if True, flip X
-        origin: default None, i.e., the cylinder origin axis is Z-axis for all sections
-                otherwise, provide a list of actual cylinder origins, [O0, O1, ...]
-                list length is the number of sections
-                each element is the cylinder origin of that section, i.e., [xO, yO]
-                can be ndarray or list
-        ```
+        
+        Parameters
+        -----------
+        flip : bool
+            whether flip `xx` in the reverse order, by default False.
+        origin : {None, list of ndarray}
+            the cylinder origin axis, by default None.
+            If None, the cylinder origin axis is Z-axis for all sections.
+            Otherwise, `origin` = [O0, O1, ...], list length is the number of sections.
+            Each element is the cylinder origin of that section, i.e., [xOi, yOi] (i=0,1,...),
+            it can be a ndarray or list.
         '''
 
         if origin is None:
@@ -1123,7 +1206,7 @@ class BasicSurface():
 
                 for j in range(ns):
 
-                    #! This linear interplotation of origins
+                    #! This linear interpolation of origins
                     #! causes non-smooth surface even when the smooth function is used
                     tt = j/(ns-1.0)
                     x0 = (1-tt)*origin[i][0] + tt*origin[i+1][0]
@@ -1139,16 +1222,19 @@ class BasicSurface():
                 sec = self.secs[i]
                 sec.x, sec.y, sec.z = toCylinder(sec.x, sec.y, sec.z, flip=flip, origin=origin[i])
 
-    def read_cylinder_origins(self, fname):
+    def read_cylinder_origins(self, fname: str) -> None:
         '''
-        Read in orgins of each section from file
-
+        Read in origins of each section from file.
+        
+        Parameters
+        -------------
+        fname: str
+            settings file name
+        
+        Examples
+        -----------
         >>> origins = read_cylinder_origins(fname)
 
-        ### Inputs:
-        ```text
-        fname:  settings file name
-        ```
         '''
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
@@ -1200,22 +1286,23 @@ class BasicSurface():
         return origins
 
 
-    def add_sec(self, location: list, axis='Z'):
+    def add_sec(self, location: list, axis='Z') -> None:
         '''
-        Add sections to the surface, the new sections are interpolated from existed ones
+        Add sections to the surface, the new sections are interpolated from existed ones.
+        
+        Parameters
+        ---------------
+        location : list 
+            span-wise locations (must within current sections).
+        axis : str
+            the direction for interpolation, i.e., Y, Z.
 
-        ### Inputs:
-        ```text
-        location: list of spanwise location (must within current sections)
-        axis:     the direction for interpolation Y,Z
-        ```
+        Notes
+        -------
+        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip() \n
+        2. This will automatically update the curves of all sections \n
+        3. X is the flow direction (chord direction) \n
 
-        ### Note:   
-        ```text
-        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip()
-        2. This will automatically update the curves of all sections
-        3. X is the flow direction (chord direction)
-        ```
         '''
         if self.l2d:
             print('Can not add sections in 2D case')
@@ -1252,15 +1339,17 @@ class BasicSurface():
                 print('Warning: [Surface.add_sec] location %.3f in %s axis is not valid'%(loc, axis))
 
 
-    def output_tecplot(self, fname=None, one_piece=False):
+    def output_tecplot(self, fname=None, one_piece=False) -> None:
         '''
-        Output the surface to *.dat in Tecplot format
+        Output the surface to *.dat in Tecplot format.
+        
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        one_piece : bool
+            if True, combine the span-wise sections into one piece.
 
-        ### Inputs:
-        ```text
-        fname:      the name of the file
-        one_piece:  True ~ combine the spanwise sections into one piece
-        ```
         '''
         # surf_x[ns,nt], ns => spanwise
 
@@ -1314,17 +1403,18 @@ class BasicSurface():
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
 
-    def output_plot3d(self, fname=None):
+    def output_plot3d(self, fname=None) -> None:
         '''
-        Output the surface to *.grd in plot3d format
+        Output the surface to *.grd in plot3d format.
 
-        ### Inputs:
-        ```text
-        fname: the name of the file
-        ```
-        
-        X[ns][nn], ns => spanwise
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
         '''
+        
+        # Note: X[ns][nn], ns => spanwise
+        
         if fname is None:
             fname = self.name + '.grd'
 
@@ -1373,16 +1463,18 @@ class BasicSurface():
                         if ii%3==0 or (i==ns-1 and j==nn-1):
                             f.write(' \n ')
 
-    def output_section(self, fname=None, TwoD=True):
+    def output_section(self, fname=None, TwoD=True) -> None:
         '''
-        Output the control sections
+        Output the control sections.
 
-        ### Inputs:
-        ```text
-        fname:  file name of the output file
-        TwoD:   if True, output the 2D unit curves
-                otherwise, output the 3D control sections
-        ```
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        TwoD : bool
+            if True, output the 2D unit curves.
+            Otherwise, output the 3D control sections.
+
         '''
         if fname is None:
             fname = self.name + '-section.dat'
@@ -1411,15 +1503,16 @@ class BasicSurface():
 
         f.close()
 
-    def plot(self, fig_id=1, type='wireframe'):
+    def plot(self, fig_id=1, type='wireframe') -> None:
         '''
         Plot surface
 
-        ### Inputs:
-        ```text
-        fig_id: ID of the figure
-        type:   wireframe, surface
-        ```
+        Parameters
+        ------------
+        fig_id : int
+            ID of the figure
+        type : str
+            'wireframe', or 'surface'
         '''
         fig = plt.figure(fig_id)
         ax = Axes3D(fig)
@@ -1443,29 +1536,38 @@ class BasicSurface():
 #* Supportive functions
 #* ===========================================
 
-def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, projection=False):
+def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray, 
+              scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, 
+              projection=False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
-    Apply chord length, twist angle(deg) and leading edge position to unit airfoil
+    Apply chord length, twist angle(deg) and leading edge position to a 2D curve.
 
+    Parameters
+    -------------
+    xu, xl, yu, yl : ndarray
+        current 2D curve or unit 2D airfoil.
+    scale : bool
+        scale factor, e.g., chord length.
+    rot : {None, float}
+        rotate angle (deg), +z direction for x-y plane, e.g., twist angle.
+    x0, y0 : float
+        coordinates of the scale center.
+    xr, yr : float
+        coordinates of the rotation center (rotate after translation and scale).
+    dx, dy : float
+        translation vector, e.g., leading edge location.
+    projection : bool
+        whether keeps the projection length the same when rotating the section, by default True.
+
+    Returns
+    ---------
+    xu_new, xl_new, yu_new, yl_new : ndarray
+        coordinates of the new 2D curve.
+
+    Examples
+    ---------
     >>> xu_new, xl_new, yu_new, yl_new = transform()
 
-    ### Inputs:
-    ```text
-    xu, xl, yu, yl:  current curve or unit airfoil (ndarray)
-    scale:      scale factor, e.g., chord length
-    rot:        rotate angle (deg), +z direction for x-y plane, 
-                e.g., twist angle
-    x0, y0:     scale center
-    xr, yr:     rotation center (rotate after translation and scale)
-    dx, dy:     translation, e.g., leading edge location
-    projection:       if True, for unit airfoil, the rotation keeps 
-                the projection length the same
-    ```
-
-    ### Return: 
-    ```text
-    xu_new, xl_new, yu_new, yl_new (ndarray)
-    ```
     '''
     #* Translation
     xu_new = dx + xu
@@ -1503,22 +1605,31 @@ def transform(xu, xl, yu, yl, scale=1.0, rot=None, x0=None, y0=None, xr=None, yr
 
     return xu_new, xl_new, yu_new, yl_new
 
-def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
+def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
+           angle=0.0, origin=[0.0, 0.0, 0.0], axis='X') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Rotate the 3D curve according to origin
+    
+    Parameters
+    ----------
+    x, y, z : ndarray
+        coordinates of the curve
+    angle : float
+        rotation angle (deg)
+    origin : list of float
+        rotation origin
+    axis : {'X', 'Y', 'Z'}
+        rotation axis (angle is defined by the right-hand rule along this axis)
 
-    >>> x_, y_, z_ = rotate(x, y, z, angle, origin, axis)
-
-    ### Inputs:
-    ```text
-    x,y,z:  curve ndarray
-    angle:  rotation angle (deg)
-    origin: rotation origin
-    axis:   rotation axis (use positive direction to define angle)
-    ```
-
-    ### Return:
-    x_, y_, z_ (ndarray)
+    Returns
+    --------
+    x_, y_, z_ : ndarray
+        coordinates of the rotated curve
+        
+    Examples
+    --------
+    >>> x_, y_, z_ = rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X')
+    
     '''
     cc = np.cos( angle/180.0*np.pi )
     ss = np.sin( angle/180.0*np.pi )
@@ -1540,22 +1651,33 @@ def rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X'):
 
     return x_, y_, z_
 
-def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None):
+def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
+                        xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-    Linearly stretch a curve when certain point is fixed
+    Linearly stretch a 2D curve when certain point is fixed
 
+    Parameters
+    ------------------
+    x, y : ndarray
+        coordinates of the 2D curve
+    dx, dy : float
+        movement of the stretched point
+    xm, ym : {None, float}
+        coordinates of the stretched point.
+        If None, the stretched point is the first element of the curve.
+    xf, yf : {None, float}
+        coordinates of the fixed point.
+        If None, the fixed point is the last element of the curve.
+
+    Returns
+    -------------
+    x_, y_ : ndarray
+        coordinates of the stretched curve
+    
+    Examples
+    ------------
     >>> x_, y_ = stretch_fixed_point(x, y, dx, dy, xm, ym, xf, yf)
-
-    ### Inputs:
-    ```text
-    x, y:   curve (ndarray)
-    dx, dy: movement of the first element (scaler)
-    xm, ym: The point that moves dx, dy (e.g., the first element of the curve)
-    xf, yf: The fixed point (e.g., the last element of the curve)
-    ```
-
-    ### Returns:
-    x_, y_ (ndarray)
+    
     '''
     x_ = x.copy()
     y_ = y.copy()
@@ -1577,10 +1699,19 @@ def stretch_fixed_point(x, y, dx=0.0, dy=0.0, xm=None, ym=None, xf=None, yf=None
 
     return x_, y_
 
-def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float):
+def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
     '''
     Interpolate a basic section by ratio.
-
+    
+    Parameters
+    ------------
+    sec0, sec1 : BasicSection
+        sections at both ends.
+    ratio : float
+        interpolation ratio.
+    
+    Examples
+    --------------
     >>> sec = interp_basic_sec(sec0, sec1, ratio)
     '''
     
@@ -1608,39 +1739,41 @@ def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float):
     return sec
 
 
-def fromCylinder(x, y, z, flip=True, origin=None):
+def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
+                 flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the cylinder curve to a 2D plane curve.
 
-    ### Inputs:
-    ```text
-    x, y ,z:    ndarray, point coordinates of curves on the cylinder
-    flip:       if True, flip the X of plane curve
-    origin:     default None.
-                if provided a list [x0, y0], then the cylinder origin is [x0, y0]
-    ```
+    Parameters
+    ----------
+    x, y ,z : ndarray
+        coordinates of the curve on a cylinder. `x` and `y` must not be 0 at the same time.
+    flip : bool
+        if True, flip the X of the extracted plane curve.
+    origin: {None, list of float}
+        if provided a list [x0, y0], the cylinder origin is [x0, y0].
 
-    ### Return:
-    X, Y, Z:    ndarray, point coordinates of curves bent to 2D X-Y planes
+    Returns
+    ---------
+    X, Y, Z :  ndarray
+        coordinates of the curve bent to the 2D X-Y plane
 
-    ### Note:
-    ```text
-    Cylinder: origin (0,0,0), axis is z-axis
-    x and y must not be 0 at the same time
-
+    Notes
+    ----------
+    The cylinder's default origin is `(0,0,0)`, axis is z-axis.
+    
     The origin of cylinder and plane curves is the same (0,0,0).
     
-        Cylinder: x, y, z ~~ r, theta, z
-        Plane:    X, Y, Z
+    Cylinder: x, y, z ~~ r, theta, z \n
+    Plane:    X, Y, Z \n
 
-        theta = arctan(y/x)
-        r = sqrt(x^2+y^2)
-        z = z
+    theta = arctan(y/x) \n
+    r = sqrt(x^2+y^2) \n
+    z = z \n
 
-        X = r*theta
-        Y = z
-        Z = r
-    ```
+    X = r*theta \n
+    Y = z \n
+    Z = r \n
     '''
     coef = -1.0 if flip else 1.0
 
@@ -1657,37 +1790,41 @@ def fromCylinder(x, y, z, flip=True, origin=None):
 
     return X, Y, Z
 
-def toCylinder(X, Y, Z, flip=True, origin=None):
+def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
+               flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the plane sections to curves on a cylinder.
 
-    ### Inputs:
-    ```text
-    X, Y, Z:    ndarray, point coordinates of curves on 2D X-Y planes
-                Z must not be 0
-    flip:       if True, flip the X of plane curve
-    origin:     default None.
-                if provided a list [x0, y0], then the cylinder origin is [x0, y0]
-    ```
+    Parameters
+    ----------
+    X, Y, Z : ndarray
+        coordinates of the curve on a plane. `Z` must not be 0.
+    flip : bool
+        if True, flip the X of the extracted plane curve.
+    origin: {None, list of float}
+        if provided a list [x0, y0], the cylinder origin is [x0, y0].
 
-    ### Return:
-    x, y ,z:    ndarray, point coordinate of curves bent to a cylinder
+    Returns
+    ---------
+    x, y ,z :  ndarray
+        coordinates of the curve bent to a cylinder.
 
-    ### Note:
-    ```text
+    Notes
+    ----------
+    The cylinder's default origin is `(0,0,0)`, axis is z-axis.
+    
     The origin of cylinder and plane curves is the same (0,0,0).
     
-        Plane:    X, Y, Z
-        Cylinder: x, y, z ~~ r, theta, z
-        
-        theta = arctan(y/x)
-        r = sqrt(x^2+y^2)
-        z = z
+    Cylinder: x, y, z ~~ r, theta, z \n
+    Plane:    X, Y, Z \n
 
-        X = r*theta
-        Y = z
-        Z = r
-    ```
+    theta = arctan(y/x) \n
+    r = sqrt(x^2+y^2) \n
+    z = z \n
+
+    X = r*theta \n
+    Y = z \n
+    Z = r \n
     '''
     coef = -1.0 if flip else 1.0
 
@@ -1709,15 +1846,17 @@ def toCylinder(X, Y, Z, flip=True, origin=None):
     return x, y, z
 
 
-def output_curve(x, y, fname='curve.dat', ID=0):
+def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
     '''
-    Output airfoil data to tecplot ASCII format file
+    Output airfoil data to tecplot ASCII format file.
 
-    ### Inputs:
-    ```text
-    x, y:   current curve (ndarray)
-    ID:     >0 append to existed file. 0: write header
-    ```
+    Parameters
+    -----------
+    x, y : ndarray
+        coordinates of the curve.
+    ID : int
+        if `ID`=0, create new file and write header.
+        If `ID`>0, append to existed file.
     '''
     nn = x.shape[0]
 
@@ -1734,15 +1873,21 @@ def output_curve(x, y, fname='curve.dat', ID=0):
 def read_curves(fname='curve.dat'):
     '''
     Read curves from a tecplot format file.
+    
+    Parameters
+    ------------
+    fname : str
+        file name.
+    
+    Returns
+    -----------
+    xs, ys : list of list of float
+        coordinates of multiple curves
 
+    Examples
+    -----------
     >>> xs, ys = read_curves(fname='curve.dat')
 
-    ### Return:
-    ```text
-    xs, ys: list [list]
-            len(xs) = len(ys) = number of curves
-            len(xs[i]) = number of points on curve i
-    ```
     '''
 
     xs = []
@@ -1771,16 +1916,27 @@ def read_curves(fname='curve.dat'):
 
 def read_tecplot(fname='tecplot.dat'):
     '''
-    Read a tecplot format data file
+    Read a tecplot format data file.
     
+    Parameters
+    ------------
+    fname : str
+        file name.
+    
+    Returns
+    -----------
+    data : list of ndarray
+        data of all zones, shape [ni,nj,nk,nv]. 
+    name_var : list of str
+        name of variables.
+    titles : list of str
+        title of zones
+    
+    Examples
+    -------------
     >>> data, name_var, titles = read_tecplot(fname='tecplot.dat')
     
-    ### Return: 
-    ```text
-    data:       list of ndarray [ni,nj,nk,nv], data of all zones
-    name_var:   list, name of variables
-    titles:     list, title of zones
-    ```
+
     '''
     name_var = []
     data = []
@@ -1869,43 +2025,55 @@ def read_tecplot(fname='tecplot.dat'):
 #* Intersection and interpolation
 #* ===========================================
 
-def interp_from_curve(x0, x, y) -> np.ndarray:
+def interp_from_curve(x0, x: np.ndarray, y: np.ndarray):
     '''
-    Interpolate points from curve represented points [x, y]
+    Interpolate points from curve represented points [x, y].
+    
+    Parameters
+    ----------
+    x0 : float or ndarray
+        ndarray/value of x locations to be interpolated.
+    x, y : ndarray
+        coordinates of the curve.
 
+    Returns
+    ----------
+    y0 : float or ndarray
+        interpolated coordinates
+
+    Examples
+    ---------
     >>> y0 = interp_from_curve(x0, x, y)
-
-    ### Inputs:
-    ```text
-    x0  : ndarray/value of x locations to be interpolated
-    x, y: points of curve (ndarray)
-    ```
-
-    ### Return: 
-    y0: ndarray/float
     '''
     f  = interp1d(x, y, kind='cubic')
     y0 = f(x0)
 
     return y0
 
-def interpolate_IDW(x0, xs, ys, eps=1e-10):
+def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -> np.ndarray:
     '''
-    Inverse distance weighted interpolation
+    Inverse distance weighted interpolation.
     
+    Parameters
+    ----------
+    x0 : ndarray
+        coordinates to be interpolated, shape [n0,3].
+    xs : ndarray
+        coordinates of the reference points, shape [n, 3].
+    ys : ndarray
+        values at the reference points, shape [n, ny].
+    eps : float
+        critical distance between `x0` to `xs`.
+        
+    Returns
+    ----------
+    y0 : ndarray
+        interpolated values, shape [n0,ny].
+    
+    Examples
+    ---------
     >>> y0 = interpolate_IDW(x0, xs, ys, eps=1e-10)
     
-    ### Inputs:
-    ```text
-    x0:     ndarray [n0,3]
-    xs:     ndarray [n, 3]
-    ys:     ndarray [n, ny]
-    ```
-    
-    ### Return:
-    ```text
-    y0:     ndarray [n0,ny]
-    ```
     '''
     n0 = x0.shape[0]
     n  = xs.shape[0]
@@ -1926,24 +2094,30 @@ def interpolate_IDW(x0, xs, ys, eps=1e-10):
         
     return y0
     
-def dis_matrix(xs1, xs2):
+def dis_matrix(xs1: np.ndarray, xs2: np.ndarray) -> np.ndarray:
     '''
-    Calculate the distance between vectors in xs1 and xs2
+    Calculate the distance between vectors in xs1 and xs2.
 
-    Suggest: each components of vectors in x1 and x2 is 0~1
+    Parameters
+    ------------
+    xs1 : ndarray [n1, nx]
+        vectors of all samples.
+    xs2 : ndarray [n2, nx]
+        vectors of all samples.
+    
+    Returns
+    ---------
+    RR : ndarray [n1, n2]
+        `dis=sqrt(sum((x1-x2)**2)/nx)`
 
+    Examples
+    -----------
     >>> RR = dis_matrix(xs1, xs2)
 
-    ### Inputs:
-    ```text
-    xs1:    ndarray [n1, nx], vectors of all samples
-    xs2:    ndarray [n2, nx], vectors of all samples
-    ```
+    Notes
+    -----------
+    Suggest each components of vectors in x1 and x2 is 0~1.
 
-    ### Return:
-    ```text
-    RR:     ndarray [n1, n2], dis=sqrt(sum((x1-x2)**2)/nx)
-    ```
     '''
     nx = xs1.shape[1]
     RR = cdist(xs1, xs2, metric='euclidean')
@@ -1953,20 +2127,25 @@ def dis_matrix(xs1, xs2):
 def curve_intersect(x1, y1, x2, y2):
     '''
     Find the intersect index between two curves.
-
+    
+    Parameters
+    ----------
+    x1, y1 : list or ndarray
+        coordinates of curve 1. 
+    x2, y2 : list or ndarray
+        coordinates of curve 2. 
+        
+    Returns
+    ---------
+    i1, i2 : int
+        index of the closest points in curve 1 & 2.
+    points : tuple of ndarray
+        tuple of two closest points in curve 1 & 2.
+        
+    Examples
+    -----------
     >>> i1, i2, points = curve_intersect(x1, y1, x2, y2)
 
-    ### Inputs:
-    ```text
-    x1, y1: curve 1 coordinates, list or ndarray
-    x2, y2: curve 2 coordinates, list or ndarray
-    ```
-
-    ### Return:
-    ```text
-    i1, i2: index of the closest points in curve 1 & 2
-    points: tuple of two closest points in curve 1 & 2
-    ```
     '''
 
     arr1 = np.vstack((np.array(x1),np.array(y1))).T
@@ -1980,19 +2159,19 @@ def curve_intersect(x1, y1, x2, y2):
 
     return i1, i2, points
 
-def intersect_point(p1, p2, p3, p4):
+def intersect_point(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, p4: np.ndarray):
     '''
-    Calculate intersection point of two segments p1p2 & p3p4
+    Calculate intersection point of two segments p1p2 & p3p4.
     
-    ### Inputs:
-    ```text
-    px: ndarray [2] or [:,2]
-    ```
+    Parameters
+    --------------
+    p1, p2, p3, p4 : ndarray
+        ndarray [2] or [:,2]
     
-    ### Return:
-    ```text
-    pi: ndarray [2] or [:,2]
-    ```
+    Returns
+    ----------
+    pi : ndarray
+        ndarray [2] or [:,2]
     '''
     if len(p1.shape)==1:
         a1 = p2[1]-p1[1]
@@ -2004,6 +2183,7 @@ def intersect_point(p1, p2, p3, p4):
         dd = a1*b2-a2*b1
 
         if dd==0:
+            print('Parallel segments')
             return None
         else:
             x0 = (c1*b2-c2*b1)/dd
@@ -2029,24 +2209,32 @@ def intersect_point(p1, p2, p3, p4):
             pi = np.concatenate((x0, y0), axis=1)
             return pi
 
-def intersect_vec_plane(V0, V1, P0, P1, P3):
+def intersect_vec_plane(V0: np.ndarray, V1: np.ndarray, 
+                        P0: np.ndarray, P1: np.ndarray,
+                        P3: np.ndarray) -> Tuple[np.ndarray, float, float, float]:
     '''
-    Calculate the intersection point of a vector and a plane
+    Calculate the intersection point of a vector and a plane.
     
+    Parameters
+    -----------
+    V0, V1: ndarray [3]
+        coordinates of vector: V01.
+    P0, P1, P3 : ndarray [3]
+        coordinates of three points of plane P0123.
+    
+    Returns
+    -------
+    xi : ndarray [3]
+        intersection point
+    t1, t3 : float
+        ratio of xi in P01, P03 direction.
+    rv : float
+        ratio of xi in V01 direction.
+    
+    Examples
+    ---------
     >>> xi, t1, t3, rv = intersect_vec_plane(V0, V1, P0, P1, P3)
-    
-    ### Inputs:
-    ```text
-    V0, V1:     ndarray [3], coordinates of vector: V01
-    P0, P1, P3: ndarray [3], coordinates of three points of plane P0123
-    ```
-    
-    ### Return:
-    ```text
-    xi:     ndarray [3], intersection point
-    t1, t3: ratio of xi in P01, P03 direction
-    rv:     ratio of xi in V01 direction
-    ```
+
     '''
     nR  = V1 - V0
     l0  = np.linalg.norm(nR) + 1E-20
@@ -2067,26 +2255,35 @@ def intersect_vec_plane(V0, V1, P0, P1, P3):
 
     return xi, t1, t3, rv
 
-def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False, original_order=False):
+def intersect_surface_plane(surface: np.ndarray, P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, 
+                            within_bounds=False, original_order=False):
     '''
-    Calculate the intersection curve of a surface and a plane
+    Calculate the intersection curve of a surface and a plane.
     
+    Parameters
+    ----------
+    surface : ndarray [ni,nj,3]
+        coordinates of surface.
+    P0, P1, P3 : ndarray [3]
+        coordinates of three points of plane P0123
+    within_bounds : bool
+        if True, only keep the curve within the bounds of P0123.
+    original_order : bool
+        if False, rearrange points to form a smooth curve.
+    
+    Returns
+    ---------
+    curve : list of ndarray [3]
+        intersection curve.
+    ij_curve : list of [i,j]
+        the index of nearest point in surface to each point of curve.
+    xi_curve, yt_curve: ndarray [:]
+        relative coordinates in the plane P0123, range in [0,1].
+    
+    Examples
+    ------------
     >>> curve, ij_curve, xi_curve, yt_curve = intersect_surface_plane(surface, P0, P1, P3)
-    
-    ### Inputs:
-    ```text
-    surface:        ndarray [ni,nj,3], coordinates of surface
-    P0, P1, P3:     ndarray [3], coordinates of three points of plane P0123
-    within_bounds:  if True, only keep the curve within the bounds of P0123
-    original_order: if False, rearrange points to form a smooth curve
-    ```
-    
-    ### Return:
-    ```text
-    curve:      list of ndarray [3], intersection curve
-    ij_curve:   list of [i,j], the index of nearest point in surface to each point of curve
-    xi_curve, yt_curve: ndarray [:], relative coordinates in the plane P0123, range in [0,1]
-    ```
+
     '''
 
     ni = surface.shape[0]
@@ -2151,38 +2348,47 @@ def intersect_surface_plane(surface: np.ndarray, P0, P1, P3, within_bounds=False
 
     return curve, ij_curve, xi_curve, yt_curve
 
-def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
+def rearrange_points(xi: np.ndarray, yt: np.ndarray, avg_dir=None, 
+                     cri_break=0.02, cri_dup=1e-6) -> Tuple[np.ndarray, List[int]]:
     '''
     Rearrange a list of points in a 2D curve.
     
+    Parameters
+    ----------
+    xi, yt : ndarray [n]
+        2D coordinates of the points.
+    avg_dir : None or ndarray [2]
+        if ndarray, specified average direction, the start point is fixed for the curve.
+    cri_break : float
+        critical ratio to decide whether the point is the end point of the curve.
+    cri_dup : float
+        critical distance to drop duplicated points.
+    
+    Returns
+    ----------
+    new_curve : ndarray [n,2]
+        new curve.
+    old_index : list of int
+        the index of point in the original curve.
+    
+    Examples
+    ----------
     >>> new_curve, old_index = rearrange_points(xi, yt, avg_dir=None, cri_break=0.1)
     
-    Assumption:
+    Notes
+    -------
+    There are a few assumptions: 
     
     1. it is an open curve with no intersections
-
+    
     2. most of the points are in the correct (local) order,
-     this gives us a average direction of the curve, which can 
-     help us find the starting/end point of the curve
-
+    this gives us a average direction of the curve, which can 
+    help us find the starting/end point of the curve
+    
     3. the next point is its closest point or the closest point in the average direction
     
     4. drop duplicated points 
     
-    ### Inputs:
-    ```text
-    xi, yt:     ndarray [n], 2D coordinates of the points
-    avg_dir:    ndarray [2], specified average direction
-                once specified, the start point is fixed for the curve
-    cri_break:  critical ratio to decide whether the point is the end point of the curve
-    cri_dup:    critical distance to drop duplicated points
-    ```
-    
-    ### Return:
-    ```text
-    new_curve:  ndarray [n,2]
-    old_index:  list, the index of point in the original curve
-    ```
     '''
     indexes = np.arange(0.0, len(xi), 1.0)
     points  = np.array([xi, yt, indexes]).transpose()
@@ -2281,17 +2487,26 @@ def rearrange_points(xi, yt, avg_dir=None, cri_break=0.02, cri_dup=1e-6):
 
     return new_curve[:,:2], old_index.tolist()
 
-def join_curves(curves: list, cri_dup=1e-6):
+def join_curves(curves: list, cri_dup=1e-6) -> np.ndarray:
     '''
-    Join several curves into one piece
+    Join several curves into one piece.
     
+    Parameters
+    -----------
+    curves : list of ndarray [:,3 or 3+nv]
+        coordinates and data of the curves.
+    cri_dup : float
+        critical distance to drop duplicated points.
+        
+    Returns
+    ----------
+    new_curve : ndarray [:,3 or 3+nv]
+        new curve
+    
+    Examples
+    ----------
     >>> new_curve = join_curves(curves: list, cri_dup=1e-6)
     
-    ### Inputs:
-    ```text
-    curves:     list [ndarray [:,3 or 3+nv]]
-    cri_dup:    critical distance to drop duplicated points
-    ```
     '''
     new_curve = curves[0].copy()    # [:,3]
     
@@ -2351,20 +2566,21 @@ def join_curves(curves: list, cri_dup=1e-6):
         
     return new_curve
 
-def reconstruct_curve_by_length(curve: np.ndarray, n:int):
+def reconstruct_curve_by_length(curve: np.ndarray, n:int) -> np.ndarray:
     '''
-    Reconstruct the curve with equidistant points
+    Reconstruct the curve with equidistant points.
     
-    ### Inputs:
-    ```text
-    curve:  ndarray [:,3], curve coordinates
-    n:      number of points
-    ```
+    Parameters
+    ----------
+    curve : ndarray [:,3]
+        coordinates of the curve
+    n : int
+        number of points
     
-    ### Return:
-    ```text
-    new_curve:  ndarray [n,3]
-    ```
+    Returns
+    -------------
+    new_curve : ndarray [n,3]
+        coordinates of the new curve
     '''
     
     #* Parametric curve: x(t), y(t), z(t), t in [0,1]
@@ -2394,27 +2610,39 @@ def reconstruct_curve_by_length(curve: np.ndarray, n:int):
 def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
                     fname='surface-aircraft.dat', zone_id=[], index_xyz=[0,1,2], arrange_method='join'):
     '''
-    Extract data sliced by planes
+    Extract data sliced by planes.
     
-    ### Inputs:
-    ```text
-    locations:  list of distances to the reference point in the given direction
-    Pref:       ndarray [3], reference point
-    dir_norm:   ndarray [3], direction vector normal to the slice plane (will be normalized)
-    dir_ref:    ndarray [3], direction vector that roughly sets the xi-axis in the slice plane
+    Parameters
+    --------------
+    locations : list of float
+        list of distances to the reference point in the given direction.
+    Pref : ndarray [3]
+        coordinates of the reference point.
+    dir_norm : ndarray [3]
+        direction vector normal to the slice plane (will be normalized).
+    dir_ref : ndarray [3]
+        direction vector that roughly sets the xi-axis in the slice plane.
+    fname : str
+        file name.
+    zone_id : list of int
+        index of zones in the tecplot format file, start from 0.
+    index_xyz : list of int 
+        index of variables in file for X, Y and Z.
+    arrange_method : str
+        if 'join', keeps the original order of points (suitable for surface with a few blocks).
+        If 'rearrange', rearrange points by minimal distance.
     
-    fname:      file name
-    zone_id:    list, index of zones in the tecplot format file, start from 0
-    index_xyz:  index of variables in file for XYZ
-    arrange_method: 'join', keeps the original order of points (suitable for surface with a few blocks)
-                    'rearrange', rearrange points by minimal distance
-    ```
+    Returns
+    ------------
+    sections : list of ndarray [:,3+nv]
+        coordinates and data on the slice.
+    name_var : list or str
+        name of variables
     
-    ### Return:
-    ```text
-    sections:   list of ndarray [:,3+nv]
-    name_var:   list, name of variables
-    ```
+    Examples
+    ----------
+    >>> sections, name_var = extract_slice(locations, Pref, dir_norm, dir_ref=np.array([1.,0.,0.]),
+                    fname='surface-aircraft.dat', zone_id=[], index_xyz=[0,1,2], arrange_method='join')
     '''
     #* Read surface data
     data_, name_var, _ = read_tecplot(fname)
@@ -2501,23 +2729,30 @@ def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_r
 #* Format transfer
 #* ===========================================
 
-def read_block_plot3d(lines, iLine0, ni, nj, nk):
+def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tuple[np.ndarray, int]:
     '''
-    Read block data from lines
+    Read block data from lines.
+    
+    Parameters
+    -----------
+    lines : list of str
+        f.readlines() of the entire plot3d formate file
+    iLine0 : int
+        the first line of this block is lines[iLine0]
+    ni, nj, nk: int
+        size of this block
+        
+    Returns
+    ---------
+    xyz : ndarray
+        coordinates, shape `[ni,nj,nk,3]`.
+    iLine0_new : int
+        index of line after read.
 
+    Examples
+    ----------
     >>> xyz, iLine0_new = read_block_plot3d(lines, iLine0, ni, nj, nk)
 
-    ### Inputs:
-    ```text
-    lines:      f.readlines() of the entire plot3d formate file
-    iLine0:     the first line of this block is lines[iLine0]
-    ni, nj, nk: size of this block
-    ```
-
-    ### Return:
-    ```text
-    xyz:    ndarray [ni,nj,nk,3]
-    ```
     '''
     xyz = np.zeros([ni,nj,nk,3])
     ll  = iLine0
@@ -2544,20 +2779,21 @@ def read_block_plot3d(lines, iLine0, ni, nj, nk):
 
     return xyz, iLine0_new
 
-def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0):
+def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0) -> None:
     '''
-    Output surface to fname in plot3d format
+    Output surface to fname in plot3d format.
+    
+    Parameters
+    -------------
+    X, Y, Z: list of ndarray [ns,nn]
+        coordinates
+    fname: str
+        the name of the file (*.grd)
 
-    ### Inputs:
-    ```text
-    X, Y, Z:    list of ndarray [ns,nn]
-                n0: number of surfaces
-                ns: number of spanwise points
-                nn: number of curve points
-    fname:      the name of the file (*.grd)
-    ```
     '''
-
+    # ns: number of spanwise points
+    # nn: number of curve points
+    
     n0 = len(X)
 
     with open(fname, 'w') as f:
@@ -2602,7 +2838,7 @@ def plot3d_to_igs(fname='igs'):
     '''
     Converts Plot3d surface grid file [fname.grd] to IGES file [fname.igs].
     
-    Original Fortran version by Prof. Zhang Yufei: zhangyufei@tsinghua.edu.cn
+    Original Fortran version by Prof. Zhang Yufei: zhangyufei@tsinghua.edu.cn.
     '''
 
     #* Read plot3d format file
@@ -2711,7 +2947,9 @@ def plot3d_to_igs(fname='igs'):
     f.close()
 
 def idataline(ni: int, nj: int):
-
+    '''
+    Function for `plot3d_to_igs`
+    '''
     i1 = ni+4
     i2 = nj+4
     i3 = ni*nj
@@ -2720,9 +2958,11 @@ def idataline(ni: int, nj: int):
 
     return i1+i2+i3+i4+i5
 
-def knotx(ni: int):
+def knotx(ni: int) -> np.ndarray:
     '''
-    [0, 0, 0, 0, ...(ni-3)..., 1.0, 1.0, 1.0, 1.0]
+    Function for `plot3d_to_igs`.
+    
+    Returns [0, 0, 0, 0, ...(ni-3)..., 1.0, 1.0, 1.0, 1.0].
     ''' 
 
     xKnot = np.zeros(ni+4)

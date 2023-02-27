@@ -7,9 +7,9 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 import os
 import copy
 import numpy as np
-from .basic import (read_tecplot, intersect_surface_plane, interp_from_curve, extract_slice,
+from ..basic import (read_tecplot, intersect_surface_plane, interp_from_curve, extract_slice,
                     rearrange_points, reconstruct_curve_by_length, BasicSurface)
-from .foil import find_circle_3p
+from ..foil import find_circle_3p
 
 
 def output_curve(curve, fname='curves.dat', append=False, name_var=['X', 'Y', 'Z']):

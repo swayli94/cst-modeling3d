@@ -84,6 +84,6 @@ if __name__ == "__main__":
         print(origin)
 
     blade.geo_secs()
-    blade.Surf2Cylinder(flip=True, origin=origins)
+    blade.surf_to_cylinder(flip=True, origin=origins)
     blade.output_section(TwoD=False)
 

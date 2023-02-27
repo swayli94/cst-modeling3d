@@ -1,35 +1,41 @@
 """
-Code reference:
-https://github.com/dgorissen/naca
-
-
 Python 2 and 3 code to generate 4 and 5 digit NACA profiles
+
+Notes
+----------
 The NACA airfoils are airfoil shapes for aircraft wings developed
 by the National Advisory Committee for Aeronautics (NACA).
 The shape of the NACA airfoils is described using a series of
 digits following the word "NACA". The parameters in the numerical
 code can be entered into equations to precisely generate the
 cross-section of the airfoil and calculate its properties.
+
+Reference:
     https://en.wikipedia.org/wiki/NACA_airfoil
+
+Code reference:
+    https://github.com/dgorissen/naca
+
 Pots of the Matlab code available here:
     http://www.mathworks.com/matlabcentral/fileexchange/19915-naca-4-digit-airfoil-generator
     http://www.mathworks.com/matlabcentral/fileexchange/23241-naca-5-digit-airfoil-generator
+
 Copyright (C) 2011 by Dirk Gorissen <dgorissen@gmail.com>
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 """
 
 from math import cos, sin, tan
@@ -250,7 +256,29 @@ def naca5(number, n, finite_TE = False, half_cosine_spacing = False):
 
     return X,Z
 
-def naca(number, n, finite_TE = False, half_cosine_spacing = False):
+def naca(number: str, n: int, finite_TE=False, half_cosine_spacing=False):
+    '''
+    Generate NACA 4 or 5 series airfoil.
+    
+    Parameters
+    ----------
+    number : str
+        NACA airfoil number.
+    n : int
+        number of points on upper/lower surface.
+    finite_TE : bool
+        if True, generate an airfoil with a finite thickness trailing edge.
+        Otherwise, the airfoil has a zero thickness trailing edge.
+    half_cosine_spacing : bool
+        if True, the point distribution in the x-axis is half-cosine-based spacing.
+        Otherwise, uses linear spacing.
+        
+    Returns
+    ---------
+    X, Z : ndarray
+        airfoil coordinates, length `2*n+1`.
+    
+    '''
     if len(number)==4:
         return naca4(number, n, finite_TE, half_cosine_spacing)
     elif len(number)==5:

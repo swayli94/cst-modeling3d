@@ -59,7 +59,7 @@ blade.read_setting('Fan.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.1, 0.05])
 blade.geo()
 blade.smooth(isec0=0, isec1=4)
 blade.smooth(isec0=4, isec1=5, smooth0=True)
-blade.Surf2Cylinder(flip=True)
+blade.surf_to_cylinder(flip=True)
 blade.output_tecplot(fname='Blade-simple.dat')
 ```
 

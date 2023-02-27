@@ -17,7 +17,7 @@ if __name__ == "__main__":
     blade1.geo()
 
     # Convert back to cylinder
-    blade1.Surf2Cylinder(flip=True, origin=origins)
+    blade1.surf_to_cylinder(flip=True, origin=origins)
 
     # This outputs the surface to fname in tecplot format
     blade1.output_tecplot(fname='Blade-suction.dat')
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     blade2.geo()
 
-    blade2.Surf2Cylinder(flip=True, origin=origins)
+    blade2.surf_to_cylinder(flip=True, origin=origins)
 
     blade2.output_tecplot(fname='Blade-pressure.dat')
 

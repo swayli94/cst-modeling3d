@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath('../../cst_modeling'))
 # -- Project information -----------------------------------------------------
 
 project = 'CST Modeling'
-copyright = '2022, Li Runze'
+copyright = '2023, Li Runze'
 author = 'Li Runze'
 
 # The full version, including alpha/beta/rc tags
-release = 'v0.1'
+release = 'v0.2.2'
 
 
 # -- General configuration ---------------------------------------------------

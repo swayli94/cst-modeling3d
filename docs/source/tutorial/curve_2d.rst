@@ -13,7 +13,7 @@ The influence of parameter `xn1` and `xn2` is shown in the two sub-figures.
     x, y = cst_curve(101, cst, xn1=0.5, xn2=1.0)
 
 
-.. figure:: ../../../tutorial/figures/cst_base_function.jpg
+.. figure:: ../../tutorial/figures/cst_base_function.jpg
     :width: 90 %
     :align: center
 
@@ -34,7 +34,7 @@ the influence of the control parameter `a0`, `a1`, and `beta`.
     
     xx = dist_clustcos(101, a0=0.0079, a1=0.96, beta=1.0)
 
-.. figure:: ../../../tutorial/figures/cosine_distribution.jpg
+.. figure:: ../../tutorial/figures/cosine_distribution.jpg
     :width: 70 %
     :align: center
 
@@ -60,7 +60,7 @@ The four airfoils have the same CST coefficients, but their `t` and `tail` setti
     x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, x=None, t=0.05, tail=0.0)   # blue
     x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, x=None, t=0.05, tail=0.01)  # green
 
-.. figure:: ../../../tutorial/figures/cst_airfoil.jpg
+.. figure:: ../../tutorial/figures/cst_airfoil.jpg
     :width: 70 %
     :align: center
 
@@ -78,7 +78,7 @@ Designers often looks at it.
     
     curvature = curve_curvature(x, y)
 
-.. figure:: ../../../tutorial/figures/curve_curvature.jpg
+.. figure:: ../../tutorial/figures/curve_curvature.jpg
     :width: 70 %
     :align: center
 

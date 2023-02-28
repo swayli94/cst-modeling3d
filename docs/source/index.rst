@@ -23,8 +23,8 @@ CST Modeling
     cst_modeling
 
 
-Search
-==================
+Indices and tables
+===================
 
 * :ref:`genindex`
 * :ref:`modindex`

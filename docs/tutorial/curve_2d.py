@@ -154,7 +154,8 @@ def curve_curvature():
     '''
     Calculate the curvature distribution of a curve
     '''
-    from cst_modeling.section import cst_curve, curve_curvature
+    from cst_modeling.basic import curve_curvature
+    from cst_modeling.section import cst_curve
 
     cst = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
     x, y = cst_curve(501, cst, xn1=0.5, xn2=1.0)
@@ -221,7 +222,7 @@ def fitting_curve():
     _, y_ = cst_curve(x.shape[0], coef, x=x, xn1=0.3, xn2=1.0)
     
     plt.figure()
-    plt.plot(x_new, y_new, 'b')
+    plt.plot(x_new, y_new, 'k')
     plt.plot(x, y_, 'g')
     plt.plot(x, 100*np.abs(y-y_), 'r')
     plt.legend(['original', 'fitting', '100*error'])

@@ -1,6 +1,7 @@
 
 import numpy as np
-from cst_modeling.section import cst_foil, output_foil
+from cst_modeling.basic import output_foil
+from cst_modeling.section import cst_foil
 from cst_modeling.tools.xfoil import read_xfoil_polar, run_xfoil, read_xfoil_dump, foil_for_XFoil
 import os
 import matplotlib.pyplot as plt

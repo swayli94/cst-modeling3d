@@ -151,4 +151,3 @@ Calculating the curvature of a curve is very useful in aerodynamic design.
 
     Curve curvature
 
-

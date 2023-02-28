@@ -7,6 +7,9 @@ Tutorial
 
     curve_2d
     curve_modify
+    curve_transform
+    section
+    io
 
 
 

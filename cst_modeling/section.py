@@ -7,7 +7,7 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .basic import BasicSection, rotate, interp_from_curve
+from .basic import BasicSection, rotate, interp_from_curve, curve_curvature
 
 
 #* ===========================================
@@ -641,7 +641,7 @@ def check_valid(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, RLE=0.0, neg_t_cr
 
     return rule_invalid
 
-def unify_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray):
+def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray):
     '''
     Transform the airfoil to a unit airfoil.
 
@@ -663,7 +663,7 @@ def unify_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray):
 
     Examples
     ---------
-    >>> xu_, yu_, xl_, yl_, twist, chord, tail = unify_foil(xu, yu, xl, yl)
+    >>> xu_, yu_, xl_, yl_, twist, chord, tail = normalize_foil(xu, yu, xl, yl)
 
     '''
     if abs(xu[0]-xl[0])>1e-6 or abs(yu[0]-yl[0])>1e-6:
@@ -700,7 +700,6 @@ def unify_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray):
         yl_[ip] -= xl_[ip]*yl_[-1]  
 
     return xu_, yu_, xl_, yl_, twist, chord, tail
-
 
 def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
     '''
@@ -760,60 +759,6 @@ def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
     '''
 
     return R, np.array([x0, y0])
-
-def curve_curvature(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    '''
-    Calculate curvature of points in the curve
-    
-    Parameters
-    ----------
-    x, y: ndarray
-        coordinates of the curve
-    
-    Returns
-    --------
-    curvature: ndarray
-        curvature distribution
-
-    Examples
-    -----------
-    >>> curvature = curve_curvature(x, y)
-
-    '''
-    nn = x.shape[0]
-    if nn<3:
-        raise Exception('curvature needs at least 3 points')
-    
-    curvature = np.zeros(nn)
-    for i in range(1, nn-1):
-        X1 = np.array([x[i-1], y[i-1]])
-        X2 = np.array([x[i  ], y[i  ]])
-        X3 = np.array([x[i+1], y[i+1]])
-
-        a = np.linalg.norm(X1-X2)
-        b = np.linalg.norm(X2-X3)
-        c = np.linalg.norm(X3-X1)
-        p = 0.5*(a+b+c)
-        t = p*(p-a)*(p-b)*(p-c)
-        R = a*b*c
-        if R <= 1.0E-12:
-            curv_ = 0.0
-        else:
-            curv_ = 4.0*np.sqrt(t)/R
-
-        a1 = X2[0] - X1[0]
-        a2 = X2[1] - X1[1]
-        b1 = X3[0] - X1[0]
-        b2 = X3[1] - X1[1]
-        if a1*b2 < a2*b1:
-            curv_ = -curv_
-
-        curvature[i] = curv_
-
-    curvature[0] = curvature[1]
-    curvature[-1] = curvature[-2]
-
-    return curvature
 
 
 #* ===========================================
@@ -1487,57 +1432,5 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
             y_new[i] += dy
 
     return y_new
-
-
-#* ===========================================
-#* Other functions
-#* ===========================================
-
-def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.dat', ID=0, info=False) -> None:
-    '''
-    Output airfoil data to tecplot ASCII format file
-
-    Parameters
-    -----------
-    x, yu, yl : ndarray
-        coordinates of the baseline airfoil.
-    ID : int
-        if `ID`=0, create new file and write header.
-        If `ID`>0, append to existed file.
-    info: bool
-        if True, include curvature, thickness and camber
-    '''
-    nn = x.shape[0]
-    curv_u = np.zeros(nn)
-    curv_l = np.zeros(nn)
-    camber = np.zeros(nn)
-    thickness = np.zeros(nn)
-    
-    if ID == 0:
-        # Write header
-        with open(fname, 'w') as f:
-            if info: 
-                line = 'Variables= X  Y  Curvature Thickness Camber \n '
-            else:
-                line = 'Variables= X  Y  \n '
-            f.write(line)
-
-    if info:
-        thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=info)
-
-    with open(fname, 'a') as f:
-        f.write('zone T="Upp-%d" i= %d \n'%(ID, nn))
-        for i in range(nn):
-            line = '   %20.9f  %20.9f'%(x[i], yu[i])
-            if info:
-                line = line + '  %20.9f  %20.9f  %20.9f'%(curv_u[i], thickness[i], camber[i])
-            f.write(line+'\n')
-            
-        f.write('zone T="Low-%d" i= %d \n'%(ID, nn))
-        for i in range(nn):
-            line = '   %20.9f  %20.9f'%(x[i], yl[i])
-            if info:
-                line = line + '  %20.9f  %20.9f  %20.9f'%(curv_l[i], thickness[i], camber[i])
-            f.write(line+'\n')
 
 

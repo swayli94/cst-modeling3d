@@ -1551,7 +1551,96 @@ class BasicSurface():
 
 
 #* ===========================================
-#* Supportive functions
+#* Math
+#* ===========================================
+
+def curve_curvature(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    '''
+    Calculate curvature of points in the curve
+    
+    Parameters
+    ----------
+    x, y: ndarray
+        coordinates of the curve
+    
+    Returns
+    --------
+    curvature: ndarray
+        curvature distribution
+
+    Examples
+    -----------
+    >>> curvature = curve_curvature(x, y)
+
+    '''
+    nn = x.shape[0]
+    if nn<3:
+        raise Exception('curvature needs at least 3 points')
+    
+    curvature = np.zeros(nn)
+    for i in range(1, nn-1):
+        X1 = np.array([x[i-1], y[i-1]])
+        X2 = np.array([x[i  ], y[i  ]])
+        X3 = np.array([x[i+1], y[i+1]])
+
+        a = np.linalg.norm(X1-X2)
+        b = np.linalg.norm(X2-X3)
+        c = np.linalg.norm(X3-X1)
+        p = 0.5*(a+b+c)
+        t = p*(p-a)*(p-b)*(p-c)
+        R = a*b*c
+        if R <= 1.0E-12:
+            curv_ = 0.0
+        else:
+            curv_ = 4.0*np.sqrt(t)/R
+
+        a1 = X2[0] - X1[0]
+        a2 = X2[1] - X1[1]
+        b1 = X3[0] - X1[0]
+        b2 = X3[1] - X1[1]
+        if a1*b2 < a2*b1:
+            curv_ = -curv_
+
+        curvature[i] = curv_
+
+    curvature[0] = curvature[1]
+    curvature[-1] = curvature[-2]
+
+    return curvature
+    
+def dis_matrix(xs1: np.ndarray, xs2: np.ndarray) -> np.ndarray:
+    '''
+    Calculate the distance between vectors in xs1 and xs2.
+
+    Parameters
+    ------------
+    xs1 : ndarray [n1, nx]
+        vectors of all samples.
+    xs2 : ndarray [n2, nx]
+        vectors of all samples.
+    
+    Returns
+    ---------
+    RR : ndarray [n1, n2]
+        `dis=sqrt(sum((x1-x2)**2)/nx)`
+
+    Examples
+    -----------
+    >>> RR = dis_matrix(xs1, xs2)
+
+    Notes
+    -----------
+    Suggest each components of vectors in x1 and x2 is 0~1.
+
+    '''
+    nx = xs1.shape[1]
+    RR = cdist(xs1, xs2, metric='euclidean')
+    RR = RR/np.sqrt(1.0*nx)
+    return RR
+
+
+#* ===========================================
+#* Transformation
 #* ===========================================
 
 def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray, 
@@ -1672,7 +1761,7 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-    Linearly stretch a 2D curve when certain point is fixed
+    Linearly stretch a 2D curve when a certain point is fixed
 
     Parameters
     ------------------
@@ -1716,46 +1805,6 @@ def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0,
         y_[i] = y_[i] + rr*dy
 
     return x_, y_
-
-def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
-    '''
-    Interpolate a basic section by ratio.
-    
-    Parameters
-    ------------
-    sec0, sec1 : BasicSection
-        sections at both ends.
-    ratio : float
-        interpolation ratio.
-    
-    Examples
-    --------------
-    >>> sec = interp_basic_sec(sec0, sec1, ratio)
-    '''
-    
-    sec = copy.deepcopy(sec0)
-
-    sec.xLE   = (1-ratio)*sec0.xLE   + ratio*sec1.xLE
-    sec.yLE   = (1-ratio)*sec0.yLE   + ratio*sec1.yLE
-    sec.zLE   = (1-ratio)*sec0.zLE   + ratio*sec1.zLE
-    sec.chord = (1-ratio)*sec0.chord + ratio*sec1.chord
-    sec.twist = (1-ratio)*sec0.twist + ratio*sec1.twist
-    sec.thick = (1-ratio)*sec0.thick + ratio*sec1.thick
-
-    sec.xx = (1-ratio)*sec0.xx + ratio*sec1.xx
-    
-    if isinstance(sec.yy, np.ndarray):
-        sec.yy = (1-ratio)*sec0.yy + ratio*sec1.yy
-    else:
-        sec.yu = (1-ratio)*sec0.yu + ratio*sec1.yu
-        sec.yl = (1-ratio)*sec0.yl + ratio*sec1.yl
-
-    sec.x  = (1-ratio)*sec0.x + ratio*sec1.x
-    sec.y  = (1-ratio)*sec0.y + ratio*sec1.y
-    sec.z  = (1-ratio)*sec0.z + ratio*sec1.z
-
-    return sec
-
 
 def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
                  flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -1864,184 +1913,48 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
     return x, y, z
 
 
-def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
+#* ===========================================
+#* Interpolation
+#* ===========================================
+
+def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
     '''
-    Output airfoil data to tecplot ASCII format file.
-
-    Parameters
-    -----------
-    x, y : ndarray
-        coordinates of the curve.
-    ID : int
-        if `ID`=0, create new file and write header.
-        If `ID`>0, append to existed file.
-    '''
-    nn = x.shape[0]
-
-    if ID == 0:
-        with open(fname, 'w') as f:
-            f.write('Variables= X  Y  \n ')
-
-    with open(fname, 'a') as f:
-        f.write('zone T="%d" i= %d \n'%(ID, nn))
-        for i in range(nn):
-            f.write('   %20.9f  %20.9f \n'%(x[i], y[i]))
-        f.write('\n')
-
-def read_curves(fname='curve.dat'):
-    '''
-    Read curves from a tecplot format file.
+    Interpolate a basic section by ratio.
     
     Parameters
     ------------
-    fname : str
-        file name.
-    
-    Returns
-    -----------
-    xs, ys : list of list of float
-        coordinates of multiple curves
-
-    Examples
-    -----------
-    >>> xs, ys = read_curves(fname='curve.dat')
-
-    '''
-
-    xs = []
-    ys = []
-    with open(fname, 'r') as f:
-        lines = f.readlines()
-
-        for line in lines:
-
-            line = line.split()
-            if len(line)<=1:
-                continue
-
-            if line[0] in 'zone':
-                xs.append([])
-                ys.append([])
-                continue
-
-            if len(line)!=2:
-                continue            
-            
-            xs[-1].append(float(line[0]))
-            ys[-1].append(float(line[1]))
-
-    return xs, ys
-
-def read_tecplot(fname='tecplot.dat'):
-    '''
-    Read a tecplot format data file.
-    
-    Parameters
-    ------------
-    fname : str
-        file name.
-    
-    Returns
-    -----------
-    data : list of ndarray
-        data of all zones, shape [ni,nj,nk,nv]. 
-    name_var : list of str
-        name of variables.
-    titles : list of str
-        title of zones
+    sec0, sec1 : BasicSection
+        sections at both ends.
+    ratio : float
+        interpolation ratio.
     
     Examples
-    -------------
-    >>> data, name_var, titles = read_tecplot(fname='tecplot.dat')
-    
-
+    --------------
+    >>> sec = interp_basic_sec(sec0, sec1, ratio)
     '''
-    name_var = []
-    data = []
-    titles = []
-    n_var = 0
     
-    with open(fname, 'r') as f:
-        
-        lines = f.readlines()
-        nLine = len(lines)
-        iLine = 0
+    sec = copy.deepcopy(sec0)
+
+    sec.xLE   = (1-ratio)*sec0.xLE   + ratio*sec1.xLE
+    sec.yLE   = (1-ratio)*sec0.yLE   + ratio*sec1.yLE
+    sec.zLE   = (1-ratio)*sec0.zLE   + ratio*sec1.zLE
+    sec.chord = (1-ratio)*sec0.chord + ratio*sec1.chord
+    sec.twist = (1-ratio)*sec0.twist + ratio*sec1.twist
+    sec.thick = (1-ratio)*sec0.thick + ratio*sec1.thick
+
+    sec.xx = (1-ratio)*sec0.xx + ratio*sec1.xx
     
-        while iLine < nLine:
-            
-            line = lines[iLine].split()
-            if len(line) == 0:
-                iLine += 1
-                continue
-            
-            if line[0] in 'Variables=' or line[0] in 'VARIABLES=' :
-                
-                line = re.split(r'[=",\s]', lines[iLine])
-                while '' in line:
-                    line.remove('')
+    if isinstance(sec.yy, np.ndarray):
+        sec.yy = (1-ratio)*sec0.yy + ratio*sec1.yy
+    else:
+        sec.yu = (1-ratio)*sec0.yu + ratio*sec1.yu
+        sec.yl = (1-ratio)*sec0.yl + ratio*sec1.yl
 
-                name_var = line[1:]
-                n_var = len(name_var)
-                iLine += 1
-                continue
-        
-            if line[0] in 'zone' or line[0] in 'ZONE' or line[0] in 'Zone':
-                line = re.split(r'[=\s]', lines[iLine])
-                while '' in line:
-                    line.remove('')
-                
-                if 'i' in line:
-                    ni = int(line[line.index('i')+1])
-                elif 'I' in line:
-                    ni = int(line[line.index('I')+1])
-                else:
-                    ni = 1
-                    
-                if 'j' in line:
-                    nj = int(line[line.index('j')+1])
-                elif 'J' in line:
-                    nj = int(line[line.index('J')+1])
-                else:
-                    nj = 1
-                    
-                if 'k' in line:
-                    nk = int(line[line.index('k')+1])
-                elif 'K' in line:
-                    nk = int(line[line.index('K')+1])
-                else:
-                    nk = 1
-                    
-                if 'T' in line:
-                    # 非贪婪模式：寻找最短的可能匹配 https://www.cnblogs.com/baxianhua/p/8571967.html
-                    str_pat = re.compile(r'\"(.*?)\"')
-                    name = str_pat.findall(lines[iLine])
-                    titles.append(name[0])
-                else:
-                    titles.append('')
-                    
-                data_ = np.zeros((ni,nj,nk,n_var))
-                iLine += 1
-                
-                for k in range(nk):
-                    for j in range(nj):
-                        for i in range(ni):
-                            
-                            line = ['#']
-                            while line[0] == '#':
-                                line = lines[iLine].split()
-                                iLine += 1
-                                
-                            for v in range(n_var):
-                                data_[i,j,k,v] = float(line[v])
-                                
-                data.append(data_.copy())
-                continue
+    sec.x  = (1-ratio)*sec0.x + ratio*sec1.x
+    sec.y  = (1-ratio)*sec0.y + ratio*sec1.y
+    sec.z  = (1-ratio)*sec0.z + ratio*sec1.z
 
-    return data, name_var, titles
-
-#* ===========================================
-#* Intersection and interpolation
-#* ===========================================
+    return sec
 
 def interp_from_curve(x0, x: np.ndarray, y: np.ndarray):
     '''
@@ -2111,36 +2024,11 @@ def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -
         y0[i0,:] = np.dot(np.transpose(ys), ws)/w_all
         
     return y0
+
     
-def dis_matrix(xs1: np.ndarray, xs2: np.ndarray) -> np.ndarray:
-    '''
-    Calculate the distance between vectors in xs1 and xs2.
-
-    Parameters
-    ------------
-    xs1 : ndarray [n1, nx]
-        vectors of all samples.
-    xs2 : ndarray [n2, nx]
-        vectors of all samples.
-    
-    Returns
-    ---------
-    RR : ndarray [n1, n2]
-        `dis=sqrt(sum((x1-x2)**2)/nx)`
-
-    Examples
-    -----------
-    >>> RR = dis_matrix(xs1, xs2)
-
-    Notes
-    -----------
-    Suggest each components of vectors in x1 and x2 is 0~1.
-
-    '''
-    nx = xs1.shape[1]
-    RR = cdist(xs1, xs2, metric='euclidean')
-    RR = RR/np.sqrt(1.0*nx)
-    return RR
+#* ===========================================
+#* Intersection
+#* ===========================================
     
 def curve_intersect(x1, y1, x2, y2):
     '''
@@ -2744,8 +2632,235 @@ def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_r
 
     
 #* ===========================================
-#* Format transfer
+#* I/O and format transfer
 #* ===========================================
+
+def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
+    '''
+    Output airfoil data to tecplot ASCII format file.
+
+    Parameters
+    -----------
+    x, y : ndarray
+        coordinates of the curve.
+    ID : int
+        if `ID`=0, create new file and write header.
+        If `ID`>0, append to existed file.
+    '''
+    nn = x.shape[0]
+
+    if ID == 0:
+        with open(fname, 'w') as f:
+            f.write('Variables= X  Y  \n ')
+
+    with open(fname, 'a') as f:
+        f.write('zone T="%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
+            f.write('   %20.9f  %20.9f \n'%(x[i], y[i]))
+        f.write('\n')
+
+def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.dat', ID=0, info=False) -> None:
+    '''
+    Output airfoil data to tecplot ASCII format file
+
+    Parameters
+    -----------
+    x, yu, yl : ndarray
+        coordinates of the baseline airfoil.
+    ID : int
+        if `ID`=0, create new file and write header.
+        If `ID`>0, append to existed file.
+    info: bool
+        if True, include curvature, thickness and camber
+    '''
+    nn = x.shape[0]
+    curv_u = np.zeros(nn)
+    curv_l = np.zeros(nn)
+    camber = np.zeros(nn)
+    thickness = np.zeros(nn)
+    
+    if ID == 0:
+        # Write header
+        with open(fname, 'w') as f:
+            if info: 
+                line = 'Variables= X  Y  Curvature Thickness Camber \n '
+            else:
+                line = 'Variables= X  Y  \n '
+            f.write(line)
+
+    if info:
+        
+        curv_u = curve_curvature(x, yu)
+        curv_l = curve_curvature(x, yl)
+
+        thickness = yu-yl
+        camber = 0.5*(yu+yl)
+        
+    with open(fname, 'a') as f:
+        f.write('zone T="Upp-%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
+            line = '   %20.9f  %20.9f'%(x[i], yu[i])
+            if info:
+                line = line + '  %20.9f  %20.9f  %20.9f'%(curv_u[i], thickness[i], camber[i])
+            f.write(line+'\n')
+            
+        f.write('zone T="Low-%d" i= %d \n'%(ID, nn))
+        for i in range(nn):
+            line = '   %20.9f  %20.9f'%(x[i], yl[i])
+            if info:
+                line = line + '  %20.9f  %20.9f  %20.9f'%(curv_l[i], thickness[i], camber[i])
+            f.write(line+'\n')
+
+def read_curves(fname='curve.dat'):
+    '''
+    Read curves from a tecplot format file.
+    
+    Parameters
+    ------------
+    fname : str
+        file name.
+    
+    Returns
+    -----------
+    xs, ys : list of list of float
+        coordinates of multiple curves
+
+    Examples
+    -----------
+    >>> xs, ys = read_curves(fname='curve.dat')
+
+    '''
+
+    xs = []
+    ys = []
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+
+        for line in lines:
+
+            line = line.split()
+            if len(line)<=1:
+                continue
+
+            if line[0] in 'zone':
+                xs.append([])
+                ys.append([])
+                continue
+
+            if len(line)!=2:
+                continue            
+            
+            xs[-1].append(float(line[0]))
+            ys[-1].append(float(line[1]))
+
+    return xs, ys
+
+def read_tecplot(fname='tecplot.dat'):
+    '''
+    Read a tecplot format data file.
+    
+    Parameters
+    ------------
+    fname : str
+        file name.
+    
+    Returns
+    -----------
+    data : list of ndarray
+        data of all zones, shape [ni,nj,nk,nv]. 
+    name_var : list of str
+        name of variables.
+    titles : list of str
+        title of zones
+    
+    Examples
+    -------------
+    >>> data, name_var, titles = read_tecplot(fname='tecplot.dat')
+    
+
+    '''
+    name_var = []
+    data = []
+    titles = []
+    n_var = 0
+    
+    with open(fname, 'r') as f:
+        
+        lines = f.readlines()
+        nLine = len(lines)
+        iLine = 0
+    
+        while iLine < nLine:
+            
+            line = lines[iLine].split()
+            if len(line) == 0:
+                iLine += 1
+                continue
+            
+            if line[0] in 'Variables=' or line[0] in 'VARIABLES=' :
+                
+                line = re.split(r'[=",\s]', lines[iLine])
+                while '' in line:
+                    line.remove('')
+
+                name_var = line[1:]
+                n_var = len(name_var)
+                iLine += 1
+                continue
+        
+            if line[0] in 'zone' or line[0] in 'ZONE' or line[0] in 'Zone':
+                line = re.split(r'[=\s]', lines[iLine])
+                while '' in line:
+                    line.remove('')
+                
+                if 'i' in line:
+                    ni = int(line[line.index('i')+1])
+                elif 'I' in line:
+                    ni = int(line[line.index('I')+1])
+                else:
+                    ni = 1
+                    
+                if 'j' in line:
+                    nj = int(line[line.index('j')+1])
+                elif 'J' in line:
+                    nj = int(line[line.index('J')+1])
+                else:
+                    nj = 1
+                    
+                if 'k' in line:
+                    nk = int(line[line.index('k')+1])
+                elif 'K' in line:
+                    nk = int(line[line.index('K')+1])
+                else:
+                    nk = 1
+                    
+                if 'T' in line:
+                    # 非贪婪模式：寻找最短的可能匹配 https://www.cnblogs.com/baxianhua/p/8571967.html
+                    str_pat = re.compile(r'\"(.*?)\"')
+                    name = str_pat.findall(lines[iLine])
+                    titles.append(name[0])
+                else:
+                    titles.append('')
+                    
+                data_ = np.zeros((ni,nj,nk,n_var))
+                iLine += 1
+                
+                for k in range(nk):
+                    for j in range(nj):
+                        for i in range(ni):
+                            
+                            line = ['#']
+                            while line[0] == '#':
+                                line = lines[iLine].split()
+                                iLine += 1
+                                
+                            for v in range(n_var):
+                                data_[i,j,k,v] = float(line[v])
+                                
+                data.append(data_.copy())
+                continue
+
+    return data, name_var, titles
 
 def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tuple[np.ndarray, int]:
     '''

@@ -1761,7 +1761,7 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
     '''
-    Linearly stretch a 2D curve when a certain point is fixed
+    Linearly stretch a 2D curve when a certain point (on the curve) is fixed.
 
     Parameters
     ------------------

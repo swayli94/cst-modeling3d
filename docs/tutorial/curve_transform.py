@@ -111,7 +111,19 @@ def stretch_curve():
     plt.plot(x0, yu0, 'k')
     plt.plot(x0, yl0, 'k')
     
+    
     dx=0.5; dy=0.5; xm=1.0; ym=0.0; xf=0.0; yf=0.0
+    xu_, yu_ = stretch_fixed_point(x0, yu0, dx=dx, dy=dy, xm=xm, ym=ym, xf=xf, yf=yf)
+    xl_, yl_ = stretch_fixed_point(x0, yl0, dx=dx, dy=dy, xm=xm, ym=ym, xf=xf, yf=yf)
+    
+    plt.plot(xu_, yu_, 'b')
+    plt.plot(xl_, yl_, 'b')
+    plt.plot([xf], [yf], 'bo')
+    plt.plot([xm, xm+dx], [ym, ym+dy], 'b--')
+    plt.text(0.0, 0.45, 'stretch (%.1f, %.1f) to (%.1f, %.1f), fixed point (%.2f, %.2f)'%(xm, ym, xm+dx, ym+dy, xf, yf), fontsize=12, color='b')
+    
+    
+    dx=0.2; dy=0.0; xm=0.0; ym=0.0; xf=x0[500]; yf=yu0[500]
     xu_, yu_ = stretch_fixed_point(x0, yu0, dx=dx, dy=dy, xm=xm, ym=ym, xf=xf, yf=yf)
     xl_, yl_ = stretch_fixed_point(x0, yl0, dx=dx, dy=dy, xm=xm, ym=ym, xf=xf, yf=yf)
     
@@ -119,7 +131,8 @@ def stretch_curve():
     plt.plot(xl_, yl_, 'g')
     plt.plot([xf], [yf], 'go')
     plt.plot([xm, xm+dx], [ym, ym+dy], 'g--')
-    plt.text(0.1, 0.45, 'stretch (%.1f, %.1f) to (%.1f, %.1f), fixed point (%.1f, %.1f)'%(xm, ym, xm+dx, ym+dy, xf, yf), fontsize=12, color='g')
+    plt.text(0.0, 0.40, 'stretch (%.1f, %.1f) to (%.1f, %.1f), fixed point (%.2f, %.2f)'%(xm, ym, xm+dx, ym+dy, xf, yf), fontsize=12, color='g')
+    
     
     dx=0.0; dy=0.5; xm=0.0; ym=0.0; xf=0.5; yf=0.0
     xu_, yu_ = stretch_fixed_point(x0, yu0, dx=dx, dy=dy, xm=xm, ym=ym, xf=xf, yf=yf)
@@ -129,7 +142,7 @@ def stretch_curve():
     plt.plot(xl_, yl_, 'r')
     plt.plot([xf], [yf], 'ro')
     plt.plot([xm, xm+dx], [ym, ym+dy], 'r--')
-    plt.text(0.1, 0.40, 'stretch (%.1f, %.1f) to (%.1f, %.1f), fixed point (%.1f, %.1f)'%(xm, ym, xm+dx, ym+dy, xf, yf), fontsize=12, color='r')
+    plt.text(0.0, 0.35, 'stretch (%.1f, %.1f) to (%.1f, %.1f), fixed point (%.2f, %.2f)'%(xm, ym, xm+dx, ym+dy, xf, yf), fontsize=12, color='r')
     
     plt.xlabel('X')
     plt.ylabel('Y')

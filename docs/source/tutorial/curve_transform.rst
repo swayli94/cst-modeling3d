@@ -49,7 +49,10 @@ The following figure shows the normalization of any airfoil.
 Stretch curve
 ------------------------
 
-The following figure shows the result of stretching a curve.
+The following figure shows the result of stretching a curve. 
+It linearly stretch a curve when a certain point (`xf`, `yf`) is fixed.
+The fixed point is suggested on one of the ends of the given curve.
+Otherwise, it may gives counterintuitive results, e.g., the green and red curves.
 
 .. code-block:: python
     :linenos:

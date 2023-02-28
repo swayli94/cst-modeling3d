@@ -120,7 +120,7 @@ class BasicSection():
         ------------
         nn : int
             number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.geo_secs`.
+            It's here for the consistency with `Section.section` and `BasicSurface.update_sections`.
         flip_x : bool
             whether flip `xx` in the reverse order, by default False.
         projection : bool
@@ -132,7 +132,7 @@ class BasicSection():
 
         '''
         if not isinstance(self.xx, np.ndarray):
-            raise Exception('The 2D curve has not been constructed')
+            raise Exception('The 2D curve (sec.xx, sec.yy, sec.yu, sec.yl) has not been constructed')
 
         #* Flip xx
         if flip_x:
@@ -170,6 +170,9 @@ class BasicSection():
             self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
             self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
             self.z = np.ones_like(self.x)*self.zLE
+
+        if self.x.shape[0] <= 1:
+            raise Exception('The 3D curve (sec.x, sec.y, sec.z) is not successfully constructed')
 
 
 class BasicSurface():
@@ -400,7 +403,7 @@ class BasicSurface():
         return key_value
 
 
-    def geo_secs(self, flip_x=False) -> None:
+    def update_sections(self, flip_x=False) -> None:
         '''
         Update surface sections, including the construction of 2D unit curves (optional)
         and transforming to 3D curves.
@@ -416,7 +419,13 @@ class BasicSurface():
 
     def geo(self, flip_x=False, update_sec=True) -> None:
         '''
-        Generate surface geometry
+        Generate surface geometry.
+        
+        First, update sections by calling `sec.section()` (optional): \n
+            1) update the 2D curve `sec.xx, sec.yy, sec.yu, sec.yl`; \n
+            2) transform the 2D curve to the 3D curve `sec.x, sec.y, sec.z`; \n
+        Then, interpolate the 3D surface `[surf_x, surf_y, sur_z]` from 3D curves.
+        
         
         Parameters
         -----------
@@ -424,23 +433,27 @@ class BasicSurface():
             whether flip `xx` in the reverse order, by default False.
         update_sec : bool
             whether update sections, by default True.
-
+        
         '''
+        #* Update sections
         if update_sec:
-            self.geo_secs(flip_x=flip_x)
+            self.update_sections(flip_x=flip_x)
 
+        #* Interpolate the 3D surface from 3D curves.
         self.surfs = []
-
+        
         if self.l2d:
+            
             sec_ = copy.deepcopy(self.secs[0])
             sec_.zLE = 1.0
             sec_.z = np.ones_like(sec_.x)
-            surf = self.section_surf(self.secs[0], sec_, ns=self.ns)
+            surf = self.section2surf(self.secs[0], sec_, ns=self.ns)
             self.surfs.append(surf)
 
         else:
+            
             for i in range(self.n_sec-1):
-                surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
+                surf = self.section2surf(self.secs[i], self.secs[i+1], ns=self.ns)
                 self.surfs.append(surf)
 
     def geo_axisymmetric(self, phi, flip_x=False, update_sec=True) -> None:
@@ -457,9 +470,11 @@ class BasicSurface():
             whether update sections, by default True.
 
         '''
+        #* Update sections
         if update_sec:
-            self.geo_secs(flip_x=flip_x)
+            self.update_sections(flip_x=flip_x)
 
+        #* Interpolate the 3D surface from 3D curves.
         self.surfs = []
 
         if self.l2d:
@@ -472,9 +487,9 @@ class BasicSurface():
 
 
     @staticmethod
-    def section_surf(sec0: BasicSection, sec1: BasicSection, ns=101) -> List[np.ndarray]:
+    def section2surf(sec0: BasicSection, sec1: BasicSection, ns=101) -> List[np.ndarray]:
         '''
-        Interpolate surface section between curves.
+        Interpolate surface from section 3D curves.
         
         Parameters
         ----------
@@ -491,10 +506,12 @@ class BasicSurface():
         
         Examples
         ---------
-        >>> surf = section_surf(sec0, sec1, ns)
+        >>> surf = section2surf(sec0, sec1, ns)
 
         '''
-
+        if sec0.x.shape[0]<=1 or sec1.x.shape[0]<=1:
+            raise Exception('The 3D curve (sec.x, sec.y, sec.z) is not available')
+        
         nn = sec0.x.shape[0]
         surf_x = np.zeros((ns,nn))
         surf_y = np.zeros((ns,nn))
@@ -535,6 +552,9 @@ class BasicSurface():
         ---------
         >>> surf = section_surf_axisymmetric(sec0, sec1, phi0, phi1, ns)
         '''
+        if sec0.x.shape[0]<=1 or sec1.x.shape[0]<=1:
+            raise Exception('The 3D curve (sec.x, sec.y, sec.z) is not available')
+        
         nn = sec0.x.shape[0]
         surf_x = np.zeros((ns,nn))
         surf_y = np.zeros((ns,nn))
@@ -1297,7 +1317,7 @@ class BasicSurface():
 
         Notes
         -------
-        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip() \n
+        1. Must run before update_sections(), geo(), geo_axisymmetric() and flip() \n
         2. This will automatically update the curves of all sections \n
         3. X is the flow direction (chord direction) \n
 

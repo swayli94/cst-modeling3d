@@ -219,7 +219,7 @@ class Wing(BasicSurface):
         self.layout_center()
 
         for i in range(self.n_sec-1):
-            surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
+            surf = self.section2surf(self.secs[i], self.secs[i+1], ns=self.ns)
             self.surfs.append(surf)
 
 

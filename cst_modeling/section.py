@@ -65,7 +65,6 @@ class Section(BasicSection):
         ------------
         nn : int
             number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.geo_secs`.
         cst_u, cst_l : ndarray
             CST coefficients of upper and lower surfaces (optional)
         flip_x : bool
@@ -155,7 +154,6 @@ class OpenSection(BasicSection):
         ------------
         nn : int
             number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.geo_secs`.
         cst : ndarray
             CST coefficients of upper and lower surfaces (optional)
         flip_x : bool

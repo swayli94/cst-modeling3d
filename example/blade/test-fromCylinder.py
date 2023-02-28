@@ -83,7 +83,7 @@ if __name__ == "__main__":
     for origin in origins:
         print(origin)
 
-    blade.geo_secs()
+    blade.update_sections()
     blade.surf_to_cylinder(flip=True, origin=origins)
     blade.output_section(TwoD=False)
 

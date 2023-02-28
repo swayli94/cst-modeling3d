@@ -166,7 +166,7 @@ class WingVariableCamber(Surface):
 
             self.add_sec(z_secs)
 
-        self.geo_secs()
+        self.update_sections()
 
         zLE_secs = self.zLEs
 

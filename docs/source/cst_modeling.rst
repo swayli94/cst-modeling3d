@@ -4,7 +4,7 @@ cst\_modeling
 cst\_modeling.basic
 --------------------------
 
-.. automodule:: cst_modeling.basic
+.. automodule:: basic
    :members:
    :undoc-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ cst\_modeling.basic
 cst\_modeling.section
 -------------------------
 
-.. automodule:: cst_modeling.section
+.. automodule:: section
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ cst\_modeling.section
 cst\_modeling.surface
 ----------------------------
 
-.. automodule:: cst_modeling.surface
+.. automodule:: surface
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,7 +32,7 @@ cst\_modeling.tools
 tools.naca
 --------------------------
 
-.. automodule:: cst_modeling.tools.naca
+.. automodule:: tools.naca
    :members:
    :undoc-members:
    :show-inheritance:

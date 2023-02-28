@@ -11,5 +11,3 @@ temp*
 *.ini
 *.pyc
 
-make.bat
-Makefile

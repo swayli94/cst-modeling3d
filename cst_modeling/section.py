@@ -820,7 +820,7 @@ def curve_curvature(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 #* CST foils
 #* ===========================================
 
-def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0):
+def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
     '''
     Constructing upper and lower curves of an airfoil based on CST method
 
@@ -838,7 +838,9 @@ def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0):
         specified relative maximum thickness (optional)
     tail: float
         relative tail thickness (optional)
-
+    xn1, xn12: float
+        CST parameters
+        
     Returns
     --------
     x, yu, yl: ndarray
@@ -855,8 +857,8 @@ def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0):
     '''
     cst_u = np.array(cst_u)
     cst_l = np.array(cst_l)
-    x_, yu = cst_curve(nn, cst_u, x=x)
-    x_, yl = cst_curve(nn, cst_l, x=x)
+    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2)
+    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2)
     
     thick = yu-yl
     it = np.argmax(thick)
@@ -1036,8 +1038,8 @@ def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.nda
 #* Fitting a curve/foil with CST
 #* ===========================================
 
-def cst_foil_fit(xu: np.ndarray, yu: np.ndarray, 
-                 xl: np.ndarray, yl: np.ndarray, n_cst=7) -> Tuple[np.ndarray, np.ndarray]:
+def cst_foil_fit(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray,
+                n_cst=7, xn1=0.5, xn2=1.0) -> Tuple[np.ndarray, np.ndarray]:
     '''
     Using CST method to fit an airfoil
 
@@ -1047,6 +1049,8 @@ def cst_foil_fit(xu: np.ndarray, yu: np.ndarray,
         coordinates
     n_cst: int
         number of CST coefficients
+    xn1, xn12: float
+        CST parameters
         
     Returns
     -------
@@ -1055,7 +1059,7 @@ def cst_foil_fit(xu: np.ndarray, yu: np.ndarray,
 
     Examples
     ---------
-    >>> cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=7)
+    >>> cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=7, xn1=0.5, xn2=1.0)
 
     Notes
     -----
@@ -1064,8 +1068,8 @@ def cst_foil_fit(xu: np.ndarray, yu: np.ndarray,
     But yu[0] yl[0] should be 0.
 
     '''
-    cst_u = fit_curve(xu, yu, n_cst=n_cst)
-    cst_l = fit_curve(xl, yl, n_cst=n_cst)
+    cst_u = fit_curve(xu, yu, n_cst=n_cst, xn1=xn1, xn2=xn2)
+    cst_l = fit_curve(xl, yl, n_cst=n_cst, xn1=xn1, xn2=xn2)
     return cst_u, cst_l
 
 def fit_curve(x: np.ndarray, y: np.ndarray, n_cst=7, xn1=0.5, xn2=1.0):
@@ -1092,7 +1096,7 @@ def fit_curve(x: np.ndarray, y: np.ndarray, n_cst=7, xn1=0.5, xn2=1.0):
 
     Examples
     ---------
-    >>> coef = fit_curve(x, y, n_cst, xn1, xn2)
+    >>> coef = fit_curve(x, y, n_cst=7, xn1=0.5, xn2=1.0)
 
     '''
     # Array A: A[nn, n_cst], nn=len(x).
@@ -1208,8 +1212,12 @@ def fit_curve_partial(x: np.ndarray, y: np.ndarray, n_cst=7, ip0=0, ip1=0,
             A[ip-ip0][i-ic0] = xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i) * C_n1n2
 
     solution = lstsq(A, y[ip0:ip1], rcond=None)
+    
+    coef = np.zeros(n_cst)
+    for i in range(ic0, ic1):
+        coef[i] = solution[0][i-ic0]
 
-    return solution[0]
+    return coef
 
 
 #* ===========================================

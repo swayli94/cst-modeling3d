@@ -60,18 +60,85 @@ The four airfoils have the same CST coefficients, but their `t` and `tail` setti
     x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, x=None, t=0.05, tail=0.0)   # blue
     x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, x=None, t=0.05, tail=0.01)  # green
 
-.. figure:: ../../tutorial/figures/cst_airfoil.jpg
+.. figure:: ../../tutorial/figures/cst_airfoil-t-tail.jpg
     :width: 70 %
     :align: center
 
-    CST airfoil
+    CST airfoil (changing t and tail)
+
+The following figure shows the difference between airfoils when the CST parameter `xn1` and `xn2` are changed.
+The four airfoils have the same CST coefficients, the maximum relative thickness `t` is also fixed.
+
+A smaller `xn1` or `xn2` gives the CST method more power to describe the shape in the leading edge or trailing edge.
+Sometimes, using a small `xn1` is suggested when the leading edge needs delicate modification. 
+
+.. code-block:: python
+    :linenos:
+    
+    x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, t=0.11)                   # black
+    x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, t=0.11, xn1=0.1, xn2=1.0) # red
+    x, yu, yl, tmax, rLE = cst_foil(1001, cst_u, cst_l, t=0.11, xn1=0.5, xn2=0.5) # green
+
+.. figure:: ../../tutorial/figures/cst_airfoil-xn1-xn2.jpg
+    :width: 70 %
+    :align: center
+
+    CST airfoil (changing xn1 and xn2)
+
+
+Fitting airfoil
+------------------------------
+
+Given an airfoil, you can use CST method for fitting.
+
+.. code-block:: python
+    :linenos:
+    
+    cst_u, cst_l = cst_foil_fit(x, yu, x, yl, n_cst=10, xn1=0.3, xn2=1.0)
+
+.. figure:: ../../tutorial/figures/fitting_airfoil.jpg
+    :width: 70 %
+    :align: center
+
+    Fitting airfoil with CST
+
+
+Fitting curve
+------------------------------
+
+Given a curve, you can use CST method for fitting.
+The curve can be a unit chord length curve, i.e., x in [0,1].
+It can also have any end point, but it must be a function after 
+being transformed back to a unit curve, i.e., `y=f(x)`.
+
+.. code-block:: python
+    :linenos:
+    
+    coef = fit_curve(x, y, n_cst=10, xn1=0.5, xn2=1.0)
+
+    coef, scale, rotation, thick = fit_curve_with_twist(x, y, n_cst=10, xn1=0.5, xn2=1.0)
+
+    coef = fit_curve_partial(x, y, ip0=200, ip1=501, ic0=2, ic1=11, n_cst=20, xn1=0.3, xn2=1.0)
+
+.. figure:: ../../tutorial/figures/fitting_curve.jpg
+    :width: 70 %
+    :align: center
+
+    Fitting curve with CST
+
+You can also use CST to fit part of a curve. Sometimes this can be useful.
+
+.. figure:: ../../tutorial/figures/fitting_curve_partial.jpg
+    :width: 70 %
+    :align: center
+
+    Fitting partial curve with CST
 
 
 Curve curvature
 ------------------------------
 
 Calculating the curvature of a curve is very useful in aerodynamic design. 
-Designers often looks at it.
 
 .. code-block:: python
     :linenos:

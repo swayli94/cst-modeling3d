@@ -40,7 +40,8 @@ extensions = [
     'sphinx.ext.todo',          # write "todo" entries that can be shown or hidden on build
     'sphinx.ext.coverage',      # checks for documentation coverage
     'sphinx.ext.viewcode',      # include links to the source code of documented Python objects
-    'sphinx.ext.githubpages'    # create .nojekyll file to publish the document on GitHub pages
+    'sphinx.ext.githubpages',   # create .nojekyll file to publish the document on GitHub pages
+    'sphinx.ext.napoleon'       # numpy style documentation
 ]
 
 # Add any paths that contain templates here, relative to this directory.

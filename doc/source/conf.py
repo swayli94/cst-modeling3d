@@ -41,7 +41,7 @@ extensions = [
     'sphinx.ext.coverage',      # checks for documentation coverage
     'sphinx.ext.viewcode',      # include links to the source code of documented Python objects
     'sphinx.ext.githubpages',   # create .nojekyll file to publish the document on GitHub pages
-    'sphinx.ext.napoleon'       # numpy style documentation
+    'sphinx.ext.napoleon'       # 
 ]
 
 # Add any paths that contain templates here, relative to this directory.

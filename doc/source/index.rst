@@ -11,7 +11,8 @@ CST Modeling
     :numbered: 3
     :caption: Content:
 
-    tutorial
+    introduction
+    tutorial/index
 
 
 .. toctree::

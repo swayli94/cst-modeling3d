@@ -9,10 +9,10 @@ cst\_modeling.basic
    :undoc-members:
    :show-inheritance:
 
-cst\_modeling.foil
+cst\_modeling.section
 -------------------------
 
-.. automodule:: cst_modeling.foil
+.. automodule:: cst_modeling.section
    :members:
    :undoc-members:
    :show-inheritance:

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, project=False)
+    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, projection=False)
     fairing.read_setting('Fairing.txt')
 
 

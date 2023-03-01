@@ -2,7 +2,7 @@
 
 import numpy as np
 from cst_modeling.basic import fromCylinder
-from cst_modeling.foil import fit_curve_with_twist, find_circle_3p
+from cst_modeling.section import fit_curve_with_twist, find_circle_3p
 from cst_modeling.surface import OpenSurface
 
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     n_sec = 12
 
-    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, project=False)
+    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, projection=False)
 
     CST = []
     origins = []
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     for origin in origins:
         print(origin)
 
-    blade.geo_secs()
-    blade.Surf2Cylinder(flip=True, origin=origins)
+    blade.update_sections()
+    blade.surf_to_cylinder(flip=True, origin=origins)
     blade.output_section(TwoD=False)
 

@@ -7,10 +7,11 @@ post/
 
 temp*
 
-*.txt
-*.dat
 *.lay
 *.grd
 *.ini
+*.pyc
+
+
 *DS_Store
 !example/3BSN/show.lay

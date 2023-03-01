@@ -1,6 +1,6 @@
 
 import numpy as np
-from cst_modeling.foil import dist_clustcos, intersect_point
+from cst_modeling.section import dist_clustcos, intersect_point
 from cst_modeling.surface import surf_axisymmetric, output_plot3d, plot3d_to_igs
 from numpy.core.numeric import zeros_like
 

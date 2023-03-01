@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
-from cst_modeling.foil import dist_clustcos, cst_foil
+from cst_modeling.section import dist_clustcos, cst_foil
 
 
 def base_shape(x_ref: np.ndarray, x_LE: float, x_TE: float, 
@@ -212,14 +212,14 @@ class Wing(BasicSurface):
     
     def __init__(self, sections: list, ns=101):
         
-        super().__init__(n_sec=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, project=True)
+        super().__init__(n_sec=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, projection=True)
         
         self.secs = sections
         
         self.layout_center()
 
         for i in range(self.n_sec-1):
-            surf = self.section_surf(self.secs[i], self.secs[i+1], ns=self.ns)
+            surf = self.section2surf(self.secs[i], self.secs[i+1], ns=self.ns)
             self.surfs.append(surf)
 
 

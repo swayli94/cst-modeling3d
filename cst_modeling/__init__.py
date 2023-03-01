@@ -1,4 +1,4 @@
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 __name__ = "cst_modeling"
 
 '''
@@ -8,7 +8,7 @@ Information of modeling
 
     The flow direction is in +X direction;
     The symmetry plane is XY plane, the up direction is +Y;
-    The spanwise direction is +Z;
+    The span-wise direction is +Z;
 
 2. Curve orientation
 

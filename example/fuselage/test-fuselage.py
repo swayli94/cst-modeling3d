@@ -13,7 +13,7 @@ if __name__ == "__main__":
     #* Nose
     #* ============================================
 
-    nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, project=False)
+    nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, projection=False)
     nose.read_setting('Fuselage.txt')
 
     #* Top curve
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     #* ============================================
     if True:
 
-        tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, project=False)
+        tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, projection=False)
         tube.read_setting('Fuselage.txt')
 
         tube.secs[0].xx = Y

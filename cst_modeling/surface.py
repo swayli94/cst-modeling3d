@@ -2,16 +2,12 @@
 Construct surface with sections/open-sections
 '''
 import os
+from typing import List
+
 import numpy as np
 
 from .basic import BasicSurface, rotate
-from .foil import OpenSection, Section, interplot_sec
-
-#!---------------------------------------------------
-#! For compatibility with v1
-from .basic import output_plot3d, plot3d_to_igs
-#!---------------------------------------------------
-
+from .section import OpenSection, Section
 
 #* ===========================================
 #* CST surfaces
@@ -19,25 +15,28 @@ from .basic import output_plot3d, plot3d_to_igs
 
 class OpenSurface(BasicSurface):
     '''
-    Open surface defined by multiple OpenSection objects
-
-    >>> OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, project=True)
+    Open surface defined by multiple OpenSection objects.
+    
+    Examples
+    ----------
+    >>> surf = OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, projection=True)
     '''
-    def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, project=True):
+    def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, projection=True):
 
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
         n_ = max(1, n_sec)
         self.secs = [ OpenSection() for _ in range(n_) ]
 
-    def read_setting(self, fname):
+    def read_setting(self, fname) -> None:
         '''
-        Read in Surface layout and CST parameters from file
+        Read in Surface layout and CST parameters from file.
 
-        ### Inputs:
-        ```text
-        fname:  settings file name
-        ```
+        Parameters
+        ----------
+        fname : str
+            settings file name
+
         '''
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
@@ -120,7 +119,7 @@ class OpenSurface(BasicSurface):
                                 cst_r[j] = float(line1[i1])
                                 i1 += 1
 
-                        self.secs[i].set_params(refine=cst_r)
+                        self.secs[i].refine = cst_r
 
                     found_key = 0
 
@@ -146,7 +145,7 @@ class OpenSurface(BasicSurface):
                                 cst_r[j] = float(line1[i1])
                                 i1 += 1
 
-                        self.secs[i].set_params(cst_flip=cst_r)
+                        self.secs[i].cst_flip = cst_r
 
                     found_key = 0
 
@@ -165,52 +164,26 @@ class Surface(BasicSurface):
     '''
     Surface defined by multiple Section objects, i.e., foils
 
-    >>> Surface(n_sec=0, name='Wing', nn=1001, ns=101, project=True)
-
-    ### Inputs:
-    ```text
-    n_sec:   number of control sections (2D if set to 0 or 1)
-    name:    name of the surface
-    nn:      number of points of upper/lower section
-    ns:      number of spanwise points
-    project: True ~ projected chord length does not change when twisted
-    ```
-
-    ### Note:
-    ```text
-    +x:     flow direction (m)
-    +y:     upside (m)
-    +z:     spanwise (m)
-    twist:  +z direction (deg)
-    chord:  chord length (m)
-    thick:  relative maximum thickness
-    tail:   absolute tail thickness (m)
-    ```
-
-    ### Attributes:
-    ```text
-    secs:   list of [Section] class
-    surfs:  list of [surf_x, surf_y, surf_z], they are [ns, nn] ndarray
-    ```
+    Examples
+    -----------
+    >>> surf = Surface(n_sec=0, name='Wing', nn=1001, ns=101, projection=True)
     '''
-    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, project=True):
-        '''
-        Initialize the CST surface (upper & lower)
-        '''
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, projection=True):
 
-        n_ = max(1, n_sec)
-        self.secs = [ Section() for _ in range(n_) ]
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
-    def read_setting(self, fname, tail=0.0):
+        self.secs = [ Section() for _ in range(max(1, n_sec)) ]
+
+    def read_setting(self, fname, tail=0.0) -> None:
         '''
         Read in Surface layout and CST parameters from file
 
-        ### Inputs:
-        ```text
-        fname:  settings file name
-        tail:   float or list, tail thickness (m) of each section
-        ```
+        Parameters
+        ----------
+        fname : str
+            settings file name.
+        tail : float or list
+            tail thickness (m) of each section.
         '''
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
@@ -315,11 +288,9 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].set_params(
-                            refine_fixed_t=True,
-                            refine_u=cst_ur,
-                            refine_l=cst_lr,
-                        )
+                        self.secs[i].refine_fixed_t=True
+                        self.secs[i].refine_u = cst_ur
+                        self.secs[i].refine_l = cst_lr
 
                     found_key = 0
 
@@ -354,10 +325,8 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].set_params(
-                            cst_flip_u=cst_ur,
-                            cst_flip_l=cst_lr,
-                        )
+                        self.secs[i].cst_flip_u = cst_ur
+                        self.secs[i].cst_flip_l = cst_lr
 
                     found_key = 0
 
@@ -372,70 +341,18 @@ class Surface(BasicSurface):
         # Locate layout center for plot
         self.layout_center()
 
-    def add_sec(self, location: list, axis='Z'):
+    def output_tecplot(self, fname=None, one_piece=False, split=False) -> None:
         '''
-        Add sections to the surface, the new sections are interpolated from current ones
+        Output the surface to `*.dat` in Tecplot format.
 
-        ### Inputs:
-        ```text
-        location: list of spanwise location (must within current sections)
-        axis:     the direction for interpolation Y,Z
-        ```
-
-        ### Note:   
-        ```text
-        1. Must run before geo_secs(), geo(), geo_axisymmetric() and flip()
-        2. Need to call geo() or geo_axisymmetric() to update the surfaces
-        3. This will automatically update the curves of all sections
-        4. X is the flow direction (chord direction)
-        ```
-        '''
-        if self.l2d:
-            print('Can not add sections in 2D case')
-            return
-
-        if len(location) == 0:
-            print('Must specify locations when adding sections')
-            return
-
-        #* First update current sections
-        self.geo_secs()
-
-        #* Find new section's location
-        for loc in location:
-            
-            found = False
-            
-            for j in range(self.n_sec-1):
-                
-                if axis in 'Y':
-                    if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
-                        rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
-                        found = True
-
-                if axis in 'Z':
-                    if (self.secs[j].zLE-loc)*(self.secs[j+1].zLE-loc)<0.0:
-                        rr = (loc - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
-                        found = True
-                
-                if found:
-                    sec_add = interplot_sec(self.secs[j], self.secs[j+1], ratio=abs(rr))
-                    self.secs.insert(j+1, sec_add)
-                    break
-            
-            if not found:
-                print('Warning: [Surface.add_sec] location %.3f in %s axis is not valid'%(loc, axis))
-
-    def output_tecplot(self, fname=None, one_piece=False, split=False):
-        '''
-        Output the surface to *.dat in Tecplot format
-
-        ### Inputs:
-        ```text
-        fname:      the name of the file
-        one_piece:  if True, combine the spanwise sections into one piece
-        split:      if True, split to upper and lower surfaces
-        ```
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        one_piece : bool
+            if True, combine the span-wise sections into one piece.
+        split : bool
+            if True, split to upper and lower surfaces.
         '''
         if not split:
             super().output_tecplot(fname=fname, one_piece=one_piece)
@@ -453,13 +370,14 @@ class Surface(BasicSurface):
             if not one_piece:
 
                 for isec in range(n_piece):
+                    
                     surf_x = self.surfs[isec][0]
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
 
                     # surf_x[ns,nt], ns => spanwise
                     ns = self.ns
-                    nt = self.nn
+                    nt = surf_x.shape[1]
 
                     f.write('zone T="sec-u %d" i= %d j= %d \n'%(isec, nt, ns))
                     for i in range(ns):
@@ -475,14 +393,16 @@ class Surface(BasicSurface):
                 
                 npoint = n_sec*(self.ns-1) + 1
                 ns = self.ns
-                nt = self.nn
             
                 f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
 
                 for isec in range(n_piece):
+                    
                     surf_x = self.surfs[isec][0]
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
+                    
+                    nt = surf_x.shape[1]
 
                     if isec>=n_piece-2:
                         i_add = 0
@@ -496,9 +416,12 @@ class Surface(BasicSurface):
                 f.write('zone T="sec-l" i= %d j= %d \n'%(nt, npoint))
 
                 for isec in range(n_piece):
+                    
                     surf_x = self.surfs[isec][0]
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
+                    
+                    nt = surf_x.shape[1]
 
                     if isec>=n_piece-2:
                         i_add = 0
@@ -509,15 +432,16 @@ class Surface(BasicSurface):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
 
-    def output_plot3d(self, fname=None, split=False):
+    def output_plot3d(self, fname=None, split=False) -> None:
         '''
-        Output the surface to *.grd in plot3d format
+        Output the surface to `*.grd` in plot3d format.
 
-        ### Inputs:
-        ```text
-        fname:      the name of the file
-        split:      if True, split to upper and lower surfaces
-        ```
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        split : bool
+            if True, split to upper and lower surfaces.
         '''
         if not split:
             super().output_plot3d(fname=fname)
@@ -530,12 +454,12 @@ class Surface(BasicSurface):
 
         # surf_x[ns,nt], ns => spanwise
         ns = self.ns
-        nt = self.nn
 
         with open(fname, 'w') as f:
 
             f.write('%d \n '%(n_piece*2))   # Number of surfaces
             for isec in range(n_piece*2):
+                nt = self.surfs[isec][0].shape[1]
                 f.write('%d %d 1\n '%(nt, ns))
 
             for isec in range(n_piece):
@@ -543,6 +467,7 @@ class Surface(BasicSurface):
                 X = self.surfs[isec][0]
                 Y = self.surfs[isec][1]
                 Z = self.surfs[isec][2]
+                nt = X.shape[1]
 
                 #* Upper surface
                 ii = 0
@@ -599,24 +524,29 @@ class Surface(BasicSurface):
 #* Supportive functions
 #* ===========================================
 
-def surf_axisymmetric(xx: np.ndarray, yy: np.ndarray, phi0=0.0, phi1=360.0, ns=1001):
+def surf_axisymmetric(xx: np.ndarray, yy: np.ndarray, phi0=0.0, phi1=360.0, ns=1001) -> List[np.ndarray]:
     '''
-    Axisymmetric surface between curves
+    Axisymmetric surface between curves.
+    
+    Parameters
+    -----------
+    xx, yy : ndarray
+        generatrix profile
+    phi0, phi1 : float
+        angle (degree) about X-axis (X-Y plane is 0 degree)
+    ns : int
+        number of points in the interpolated direction.
+    
+    Returns
+    ---------
+    surf : list of ndarray
+        coordinates of the surface, `[surf_x, surf_y, surf_z]`,
+        `surf_x`'s shape is `[ns, nn]`. 
 
+    Examples
+    ------------
     >>> surf = surf_axisymmetric(xx, yy, phi0=0.0, phi1=360.0, ns=1001)
 
-    ### Inputs:
-    ```text
-    xx, yy:         generatrix profile
-    phi0, phi1:     angle (degree) about X-axis (X-Y plane is 0 degree)
-    ns:             number of spanwise points
-    ```
-
-    ### Return: 
-    ```text
-    surf:   [surf_x, surf_y, surf_z]
-            list of ndarray [ns, nn]
-    ```
     '''
     nn = xx.shape[0]
     surf_x = np.zeros((ns,nn))

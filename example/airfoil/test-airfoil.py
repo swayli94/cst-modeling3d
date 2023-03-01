@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from cst_modeling.foil import cst_foil, cst_curve, cst_foil_fit, foil_bump_modify, foil_increment
+from cst_modeling.section import cst_foil, cst_curve, cst_foil_fit, foil_bump_modify, foil_increment
 
 from matplotlib import pyplot as plt
 

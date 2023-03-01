@@ -4,9 +4,9 @@ Auxiliary functions for surface modeling
 import numpy as np
 import copy
 
-from .basic import curve_intersect
-from .foil import Section, transform, interplot_from_curve
-from .surface import Surface
+from ..basic import curve_intersect, transform
+from ..section import Section, interp_from_curve
+from ..surface import Surface
 
 def section_flap(sec: Section, ratio, angle, dy_axis=None):
     '''
@@ -38,18 +38,18 @@ def section_flap(sec: Section, ratio, angle, dy_axis=None):
     yl_new2 = np.concatenate((sec.yl[:il1], yl_[il2:]), axis=0)
 
     xx_u = np.linspace(sec.xx[iu1], xu_[-1], nu_flap)
-    yy_u = interplot_from_curve(xx_u, xu_new2, yu_new2)
+    yy_u = interp_from_curve(xx_u, xu_new2, yu_new2)
     xu_new = np.concatenate((sec.xx[:iu1], xx_u), axis=0)
     yu_new = np.concatenate((sec.yu[:iu1], yy_u), axis=0)
 
     xx_l = np.linspace(sec.xx[il1], xl_[-1], nl_flap)
-    yy_l = interplot_from_curve(xx_l, xl_new2, yl_new2)
+    yy_l = interp_from_curve(xx_l, xl_new2, yl_new2)
     xl_new = np.concatenate((sec.xx[:il1], xx_l), axis=0)
     yl_new = np.concatenate((sec.yl[:il1], yy_l), axis=0)
 
     #* Update 3D section
     xu_, xl_, yu_, yl_ = transform(xu_new, xl_new, yu_new, yl_new, 
-        scale=sec.chord, rot=sec.twist, dx=sec.xLE, dy=sec.yLE, proj=True)
+        scale=sec.chord, rot=sec.twist, dx=sec.xLE, dy=sec.yLE, projection=True)
 
     sec.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
     sec.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
@@ -68,7 +68,7 @@ class WingVariableCamber(Surface):
     fname:   name of control file
     nn:      number of points of upper/lower section
     ns:      number of spanwise
-    project: True ~ projected chord length does not change when twisted
+    projection: True ~ projected chord length does not change when twisted
 
     flap_loc:   list [2*n_flap], z coordinates of the flap ends. 
                 [z_flap1_1, z_flap1_2, z_flap2_1, z_flap2_2, ...]
@@ -93,15 +93,15 @@ class WingVariableCamber(Surface):
     def __init__(self, n_sec=0, name='WingVC', fname='Wing.txt', **kwargs):
 
         tail = 0.0
-        project = True
+        projection = True
         nn = 1001
         ns = 101
 
         if 'tail' in kwargs.keys():
             tail = kwargs['tail']
 
-        if 'project' in kwargs.keys():
-            project = kwargs['project']
+        if 'projection' in kwargs.keys():
+            projection = kwargs['projection']
 
         if 'nn' in kwargs.keys():
             nn = kwargs['nn']
@@ -109,7 +109,7 @@ class WingVariableCamber(Surface):
         if 'ns' in kwargs.keys():
             ns = kwargs['ns']
 
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, project=project)
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
         self.read_setting(fname, tail=tail)
 
@@ -166,9 +166,9 @@ class WingVariableCamber(Surface):
 
             self.add_sec(z_secs)
 
-        self.geo_secs()
+        self.update_sections()
 
-        zLE_secs = self.zLE_secs
+        zLE_secs = self.zLEs
 
         for i in range(self.n_flap):
             i1 = zLE_secs.index(z_secs[4*i]) + 1
@@ -200,20 +200,20 @@ class DeflectSurf():
 
     >>> DeflectSurf(surf: Surface, z0, z1, r0, r1, trans_len=0.5)
 
-    ### Inputs:
-    ```text
+    Parameters
+    ----------
     z0, z1:     span-wise coordinates of the start and end sections
     r0, r1:     chord-wise ratio defining the deflection axis
     trans_len:  span-wise transition length (m)
-    ```
 
-    ### Parameters:
-    ```text
+
+    Attributes
+    ------------
     LE0, LE1, TE0, TE1: ndarray, [x, y, z], LE & TE coordinates of the two end sections of the deflection region
     AX0, AX1: ndarray, [x, y, z], axis ends coordinates. By default, AX = (1-r)*LE + r*TE
 
     i_sec0, i_sec1: section index to locate z0 and z1
-    ```
+
     '''
 
     def __init__(self, surf: Surface, z0, z1, r0, r1, trans_len=0.5):
@@ -238,21 +238,6 @@ class DeflectSurf():
         self.AX0 = np.array([self.x0, self.y0, self.z0])
         self.AX1 = np.array([self.x1, self.y1, self.z1])
 
-    def deflect(self, angle: float):
-        '''
-        Deflecting surface
-
-        Inputs:
-        ---
-        angle:  deflection angle (degree), positive means downwards deflection
-        '''
-
-        surf2 = copy.deepcopy(self.surfs)
-
-
-
-
-        pass
 
     def _locate_ends(self):
         '''

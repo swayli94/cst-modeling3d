@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     #* ==========================================
     #* Suction side
-    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, project=False)
+    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, projection=False)
 
     blade1.read_setting('Fan.txt')
 
@@ -17,14 +17,14 @@ if __name__ == "__main__":
     blade1.geo()
 
     # Convert back to cylinder
-    blade1.Surf2Cylinder(flip=True, origin=origins)
+    blade1.surf_to_cylinder(flip=True, origin=origins)
 
     # This outputs the surface to fname in tecplot format
     blade1.output_tecplot(fname='Blade-suction.dat')
 
     #* ==========================================
     #* Pressure side
-    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, project=False)
+    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, projection=False)
 
     blade2.read_setting('Fan.txt')
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     blade2.geo()
 
-    blade2.Surf2Cylinder(flip=True, origin=origins)
+    blade2.surf_to_cylinder(flip=True, origin=origins)
 
     blade2.output_tecplot(fname='Blade-pressure.dat')
 

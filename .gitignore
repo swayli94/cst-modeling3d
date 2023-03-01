@@ -3,6 +3,7 @@ cst_modeling3d.egg-info/
 dist/
 build/
 .vscode/
+post/
 
 temp*
 

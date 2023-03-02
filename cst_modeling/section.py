@@ -681,8 +681,8 @@ def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarra
     twist = np.arctan(yTE/xTE)*180/np.pi
     chord = np.sqrt(xTE**2+yTE**2)
 
-    xu_, yu_, _ = rotate(xu_, yu_, None, angle=-twist, axis='Z')
-    xl_, yl_, _ = rotate(xl_, yl_, None, angle=-twist, axis='Z')
+    xu_, yu_, _ = rotate(xu_, yu_, np.zeros_like(xu_), angle=-twist, axis='Z')
+    xl_, yl_, _ = rotate(xl_, yl_, np.zeros_like(xu_), angle=-twist, axis='Z')
 
     #* Scale
     yu_ = yu_ / xu_[-1]
@@ -1102,7 +1102,7 @@ def fit_curve_with_twist(x: np.ndarray, y: np.ndarray, n_cst=7,
 
     x_ = (x - x[0])/chord
     y_ = (y - y[0])/chord
-    x_, y_, _ = rotate(x_, y_, None, angle=-twist, axis='Z')
+    x_, y_, _ = rotate(x_, y_, np.zeros_like(x_), angle=-twist, axis='Z')
     thick = np.max(y_, axis=0)
 
     coef = fit_curve(x_, y_, n_cst=n_cst, xn1=xn1, xn2=xn2)

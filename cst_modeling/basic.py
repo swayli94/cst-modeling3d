@@ -1707,8 +1707,8 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
     #* Rotation
     if not rot is None:
-        xu_new, yu_new, _ = rotate(xu_new, yu_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
-        xl_new, yl_new, _ = rotate(xl_new, yl_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
+        xu_new, yu_new, _ = rotate(xu_new, yu_new, np.zeros_like(xu_new), angle=rot, origin=[xr, yr, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_new, yl_new, np.zeros_like(xu_new), angle=rot, origin=[xr, yr, 0.0], axis='Z')
 
     return xu_new, xl_new, yu_new, yl_new
 
@@ -1738,25 +1738,68 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     >>> x_, y_, z_ = rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X')
     
     '''
-    cc = np.cos( angle/180.0*np.pi )
-    ss = np.sin( angle/180.0*np.pi )
-    x_ = copy.deepcopy(x)
-    y_ = copy.deepcopy(y)
-    z_ = copy.deepcopy(z)
-
     if axis in 'X':
-        y_ = origin[1] + (y-origin[1])*cc - (z-origin[2])*ss
-        z_ = origin[2] + (y-origin[1])*ss + (z-origin[2])*cc
-
+        axis_vector=[1,0,0]
     if axis in 'Y':
-        z_ = origin[2] + (z-origin[2])*cc - (x-origin[0])*ss
-        x_ = origin[0] + (z-origin[2])*ss + (x-origin[0])*cc
-
+        axis_vector=[0,1,0]
     if axis in 'Z':
-        x_ = origin[0] + (x-origin[0])*cc - (y-origin[1])*ss
-        y_ = origin[1] + (x-origin[0])*ss + (y-origin[1])*cc
+        axis_vector=[0,0,1]
+
+    points = rotate_vector(x, y, z, angle=angle, origin=origin, axis_vector=axis_vector)
+    x_ = points[:,0]
+    y_ = points[:,1]
+    z_ = points[:,2]
 
     return x_, y_, z_
+
+def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np.ndarray:
+    '''
+    Rotate 3D points (vectors) by axis-angle representation.
+
+    Parameters
+    ----------
+    x, y, z : float or ndarray [:]
+        coordinates of the points.
+    angle : float
+        rotation angle (deg) about the axis (right-hand rule).
+    origin : ndarray [3]
+        origin of the rotation axis.
+    axis_vector : ndarray [3]
+        indicating the direction of an axis of rotation.
+        The input `axis_vector` will be normalized to a unit vector `e`.
+        The rotation vector, or Euler vector, is `angle*e`.
+
+    Returns
+    --------
+    points : ndarray [3] or [:,3]
+        coordinates of the rotated points
+        
+    Examples
+    --------
+    >>> points = rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1])
+    
+    References
+    ----------
+    
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+    
+    https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
+    
+    https://en.wikipedia.org/wiki/Rotation_matrix
+    
+    '''
+    origin = np.array(origin)
+    vector = np.transpose(np.array([x, y, z]))  # [3] or [:,3]
+    vector = vector - origin
+    
+    rotation_vector = np.array(axis_vector)/np.linalg.norm(axis_vector)
+
+    rot = Rotation.from_rotvec(angle*rotation_vector, degrees=True)
+    
+    # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
+    points = rot.apply(vector) + origin
+    
+    return points
 
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
@@ -1807,7 +1850,7 @@ def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0,
     return x_, y_
 
 def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
-                 flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                 flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the cylinder curve to a 2D plane curve.
 
@@ -1817,8 +1860,8 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
         coordinates of the curve on a cylinder. `x` and `y` must not be 0 at the same time.
     flip : bool
         if True, flip the X of the extracted plane curve.
-    origin: {None, list of float}
-        if provided a list [x0, y0], the cylinder origin is [x0, y0].
+    origin: array_like
+        the cylinder origin, [x0, y0] (or [x0, y0, 0]).
 
     Returns
     ---------
@@ -1844,9 +1887,8 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     '''
     coef = -1.0 if flip else 1.0
 
-    if origin is not None:
-        x = x - origin[0]
-        y = y - origin[1]
+    x = x - origin[0]
+    y = y - origin[1]
 
     rr = np.sqrt(x*x+y*y)
     tt = np.arctan2(y, x) * coef
@@ -1858,7 +1900,7 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     return X, Y, Z
 
 def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
-               flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+               flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the plane sections to curves on a cylinder.
 
@@ -1868,8 +1910,8 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
         coordinates of the curve on a plane. `Z` must not be 0.
     flip : bool
         if True, flip the X of the extracted plane curve.
-    origin: {None, list of float}
-        if provided a list [x0, y0], the cylinder origin is [x0, y0].
+    origin: array_like
+        the cylinder origin, [x0, y0] (or [x0, y0, 0]).
 
     Returns
     ---------
@@ -1906,60 +1948,11 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
         x[i] = r*np.cos(theta)
         y[i] = r*np.sin(theta)
 
-    if origin is not None:
-        x = x + origin[0]
-        y = y + origin[1]
+    x = x + origin[0]
+    y = y + origin[1]
 
     return x, y, z
 
-def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np.ndarray:
-    '''
-    Rotate 3D points (vectors) by axis-angle representation.
-
-    Parameters
-    ----------
-    x, y, z : float or ndarray [:]
-        coordinates of the points.
-    angle : float
-        rotation angle (deg) about the axis (right-hand rule).
-    origin : ndarray [3]
-        origin of the rotation axis.
-    axis_vector : ndarray [3]
-        indicating the direction of an axis of rotation.
-        The input `axis_vector` will be normalized to a unit vector `e`.
-        The rotation vector, or Euler vector, is `angle*e`.
-
-    Returns
-    --------
-    points : ndarray [3] or [:,3]
-        coordinates of the rotated points
-        
-    Examples
-    --------
-    >>> points = rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1])
-    
-    References
-    ----------
-    
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
-    
-    https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
-    
-    https://en.wikipedia.org/wiki/Rotation_matrix
-    
-    '''
-    origin = np.array(origin)
-    vector = np.transpose(np.array([x, y, z]))  # [3] or [:,3]
-    vector = vector - origin
-    
-    rotation_vector = np.array(axis_vector)/np.linalg.norm(axis_vector)
-
-    rot = Rotation.from_rotvec(angle*rotation_vector, degrees=True)
-    
-    # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
-    points = rot.apply(vector) + origin
-    
-    return points
 
 #* ===========================================
 #* Interpolation

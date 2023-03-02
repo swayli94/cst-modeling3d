@@ -28,12 +28,15 @@ translation (`dx`, `dy`), scale (`scale`, `x0`, `y0`), and rotation (`rot`, `xr`
 
     Transform airfoil
 
-There is also a function `rotate` that can rotate a curve about the `X`, `Y` or `Z` axis.
+There are also a function `rotate` that can rotate a curve about the `X`, `Y` or `Z` axis.
+And a function `rotate_vector` that can rotate points about any given axis.
 
 .. code-block:: python
     :linenos:
 
-    x_, y_, z_ = rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X')
+    x_, y_, z_ = rotate(x, y, z, angle=10, origin=[0, 0, 0], axis='Z')
+
+    curve = rotate_vector(x, y, z, angle=10, origin=[0, 0, 0], axis_vector=[0,0,1])
 
 
 Normalize airfoil
@@ -107,7 +110,11 @@ The transformation is defined by :eq:`cylinder2plane`. This shows that the 2D cu
     \right.
     :label: cylinder2plane
 
-:numref:`cylinder_to_plane` shows the cylinder curve and the corresponding plane curve. 
+:numref:`cylinder_to_plane` shows the cylinder curve and the corresponding plane curve.
+
+- An increment of the azimuth angle :math:`\theta` leads to an increment of :math:`X` (airfoil).
+- An increment of the :math:`z` coordinate (blade) leads to the same displacement of :math:`Y` (airfoil).
+- The radius of cylinder :math:`r_0` is the :math:`Z` coordinates of the plane (airfoil).
 
 .. code-block:: python
     :linenos:

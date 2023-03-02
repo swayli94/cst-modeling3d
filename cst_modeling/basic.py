@@ -8,7 +8,6 @@ from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 from scipy import spatial
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.distance import cdist
@@ -2066,12 +2065,49 @@ def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -
         
     return y0
 
+def plane_3points(P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    '''
+    Calculate the plane function and the coordinates of given points (`xs`, `ys`).
+    
+    The plane function is `a*x+b*y+c*z+d=0`.
+    
+    Parameters
+    -------------
+    P0, P1, P3 : ndarray [3]
+        coordinates of three points of plane P0123.
+    xs, ys : ndarray [:] or [:,:]
+        X and Y coordinates of plane points.
+    
+    Returns
+    -------
+    zs : ndarray [:] or [:,:]
+    
+    Examples
+    ---------
+    >>> xs = plane_3points(P0, P1, P3, xs, ys)
+    '''
+    a1 = P1[0] - P0[0]
+    b1 = P1[1] - P0[1]
+    c1 = P1[2] - P0[2]
+    a2 = P3[0] - P0[0]
+    b2 = P3[1] - P0[1]
+    c2 = P3[2] - P0[2]
+    a = b1 * c2 - b2 * c1
+    b = a2 * c1 - a1 * c2
+    c = a1 * b2 - b1 * a2
+    d = (- a * P0[0] - b * P0[1] - c * P0[2])
+    
+    if c == 0:
+        return np.zeros_like(xs)
+    else:
+        return (a*xs+b*ys+d)/(-c)
+    
     
 #* ===========================================
 #* Intersection
 #* ===========================================
     
-def curve_intersect(x1, y1, x2, y2):
+def intersect_index(x1, y1, x2, y2):
     '''
     Find the intersect index between two curves.
     
@@ -2091,7 +2127,7 @@ def curve_intersect(x1, y1, x2, y2):
         
     Examples
     -----------
-    >>> i1, i2, points = curve_intersect(x1, y1, x2, y2)
+    >>> i1, i2, points = intersect_index(x1, y1, x2, y2)
 
     '''
 
@@ -2543,7 +2579,7 @@ def reconstruct_curve_by_length(curve: np.ndarray, n:int) -> np.ndarray:
     fx = interp1d(tt, curve[:,0], kind='cubic')
     fy = interp1d(tt, curve[:,1], kind='cubic')
     fz = interp1d(tt, curve[:,2], kind='cubic')
-    
+
     new_curve = np.zeros((n,3))
     
     for i in range(n):

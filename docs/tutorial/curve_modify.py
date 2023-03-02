@@ -119,6 +119,26 @@ def foil_bump_modification():
     plt.savefig('figures/foil_bump_modification.jpg', dpi=300)
     plt.close()
 
+def reconstruct_curve():
+    '''
+    Reconstruct a curve
+    '''
+    from cst_modeling.basic import reconstruct_curve_by_length
+
+    x = np.linspace(0, 1, 51)
+    y = np.sin(3*np.pi*x)
+    
+    curve = np.concatenate((x[:,None], y[:,None], np.zeros([x.shape[0],1])), axis=1)
+    
+    new_curve = reconstruct_curve_by_length(curve, n=201)
+    
+    plt.figure()
+    
+    plt.plot(x, y, 'k.-')
+    plt.plot(new_curve[:,0], new_curve[:,1]+0.5, 'r.-')
+    
+    plt.savefig('figures/reconstruct_curve.jpg', dpi=300)
+    plt.close()
 
     
 if __name__ == '__main__':
@@ -128,3 +148,5 @@ if __name__ == '__main__':
     foil_increment_curve()
     
     foil_bump_modification()
+    
+    reconstruct_curve()

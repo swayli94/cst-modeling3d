@@ -69,6 +69,22 @@ The difference can be noticed, which is caused by CST fitting and the logic of `
     Foil modification with bumps
 
 
+Reconstruct a curve
+-------------------------------
 
+Function `reconstruct_curve_by_length` can reconstruct a curve ([:,3]) with equidistant points.
 
+**NEEDS IMPROVEMENT**
+
+.. code-block:: python
+    :linenos:
+    
+    new_curve = reconstruct_curve_by_length(curve, n)
+
+.. _reconstruct_curve:
+.. figure:: ../../tutorial/figures/reconstruct_curve.jpg
+    :width: 70 %
+    :align: center
+
+    Reconstruct a curve with equidistant points
 

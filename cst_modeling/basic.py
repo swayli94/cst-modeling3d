@@ -1533,7 +1533,7 @@ class BasicSurface():
             'wireframe', or 'surface'
         '''
         fig = plt.figure(fig_id)
-        ax = Axes3D(fig)
+        ax = fig.add_subplot(projection='3d')
 
         for surf in self.surfs:
             if type in 'wireframe':

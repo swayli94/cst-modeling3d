@@ -9,7 +9,9 @@ Tutorial
     curve_modify
     curve_transform
     section
-    io
+    surface
+    intersection
+    others
 
 
 

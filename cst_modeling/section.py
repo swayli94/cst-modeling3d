@@ -1219,9 +1219,9 @@ def foil_bump_modify(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
         kind = 'G'
 
     if side > 0:
-        yu_new = add_bump(x, yu_new, xc, h*t0, s, kind=kind)
+        yu_new = yu_new + bump_function(x, xc, h*t0, s, kind=kind)
     else:
-        yl_new = add_bump(x, yl_new, xc, h*t0, s, kind=kind)
+        yl_new = yl_new + bump_function(x, xc, h*t0, s, kind=kind)
 
     if keep_tmax:
 
@@ -1355,9 +1355,9 @@ def foil_increment_curve(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
     return yu_, yl_
 
-def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.ndarray:
+def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.ndarray:
     '''
-    Add a bump on current curve [x, y].
+    A bump distribution [x, y].
 
     Parameters
     -----------
@@ -1376,19 +1376,19 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
 
     Returns
     ---------
-    y_new : ndarray
+    y_bump : ndarray
         coordinates
 
     Examples
     ---------
-    >>> y_new = add_bump(x, y, xc, h, s, kind)
+    >>> y_bump = bump_function(x, xc, h, s, kind)
 
     '''
-    y_new = y.copy()
+    y_bump = np.zeros_like(x)
 
     if xc<=0 or xc>=1:
         print('Bump location not valid (0,1): xc = %.3f'%(xc))
-        return y_new
+        return y_bump
 
     if 'G' in kind:
 
@@ -1400,7 +1400,7 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
             else:
                 sigma = s/6.0
             aa = -np.power(x[i]-xc,2)/2.0/sigma**2
-            y_new[i] += h*np.exp(aa)
+            y_bump[i] += h*np.exp(aa)
 
     else:
         
@@ -1429,8 +1429,8 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
         for i in range(len(x)):
             rr = np.pi*np.power(x[i],s0)
             dy = h*np.power(np.sin(rr),Pow)
-            y_new[i] += dy
+            y_bump[i] += dy
 
-    return y_new
+    return y_bump
 
 

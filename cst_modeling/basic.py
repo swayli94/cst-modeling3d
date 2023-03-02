@@ -4,15 +4,15 @@ Basic classes for sections and surfaces, and fundamental functions
 import copy
 import os
 import re
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.interpolate import CubicSpline
 from scipy import spatial
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.distance import cdist
-from typing import Tuple, List
+from scipy.spatial.transform import Rotation
 
 
 class BasicSection():
@@ -1912,6 +1912,54 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
 
     return x, y, z
 
+def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np.ndarray:
+    '''
+    Rotate 3D points (vectors) by axis-angle representation.
+
+    Parameters
+    ----------
+    x, y, z : float or ndarray [:]
+        coordinates of the points.
+    angle : float
+        rotation angle (deg) about the axis (right-hand rule).
+    origin : ndarray [3]
+        origin of the rotation axis.
+    axis_vector : ndarray [3]
+        indicating the direction of an axis of rotation.
+        The input `axis_vector` will be normalized to a unit vector `e`.
+        The rotation vector, or Euler vector, is `angle*e`.
+
+    Returns
+    --------
+    points : ndarray [3] or [:,3]
+        coordinates of the rotated points
+        
+    Examples
+    --------
+    >>> points = rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1])
+    
+    References
+    ----------
+    
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+    
+    https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
+    
+    https://en.wikipedia.org/wiki/Rotation_matrix
+    
+    '''
+    origin = np.array(origin)
+    vector = np.transpose(np.array([x, y, z]))  # [3] or [:,3]
+    vector = vector - origin
+    
+    rotation_vector = np.array(axis_vector)/np.linalg.norm(axis_vector)
+
+    rot = Rotation.from_rotvec(angle*rotation_vector, degrees=True)
+    
+    # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
+    points = rot.apply(vector) + origin
+    
+    return points
 
 #* ===========================================
 #* Interpolation

@@ -367,7 +367,8 @@ class Surface(BasicSurface):
                 
                 npoint = n_sec*(self.ns-1) + 1
                 ns = self.ns
-            
+                nt = int((self.surfs[0][0].shape[1]+1)/2)
+                
                 f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
 
                 for isec in range(n_piece):
@@ -375,8 +376,6 @@ class Surface(BasicSurface):
                     surf_x = self.surfs[isec][0]
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
-                    
-                    nt = int((surf_x.shape[1]+1)/2)
 
                     if isec>=n_piece-2:
                         i_add = 0
@@ -395,8 +394,6 @@ class Surface(BasicSurface):
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
                     
-                    nt = int((surf_x.shape[1]+1)/2)
-
                     if isec>=n_piece-2:
                         i_add = 0
                     else:

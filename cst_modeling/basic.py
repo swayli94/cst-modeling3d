@@ -342,16 +342,19 @@ class BasicSurface():
         '''
         Locate layout center for plot
         '''
-        x_range = [self.secs[0].xLE, self.secs[0].xLE]
+        x_range = [self.secs[0].xLE, self.secs[0].xLE+self.secs[0].chord]
         y_range = [self.secs[0].yLE, self.secs[0].yLE]
-        z_range = [self.secs[0].zLE, self.secs[0].zLE]
-        for i in range(self.n_sec):
-            x_range[0] = min(x_range[0], self.secs[i].xLE)
-            x_range[1] = max(x_range[1], self.secs[i].xLE+self.secs[i].chord)
-            y_range[0] = min(y_range[0], self.secs[i].yLE)
-            y_range[1] = max(y_range[1], self.secs[i].yLE)
-            z_range[0] = min(z_range[0], self.secs[i].zLE)
-            z_range[1] = max(z_range[1], self.secs[i].zLE)
+        z_range = [self.secs[0].zLE, self.secs[0].zLE+self.l2d]
+        
+        if not self.l2d:
+            
+            for i in range(self.n_sec):
+                x_range[0] = min(x_range[0], self.secs[i].xLE)
+                x_range[1] = max(x_range[1], self.secs[i].xLE+self.secs[i].chord)
+                y_range[0] = min(y_range[0], self.secs[i].yLE)
+                y_range[1] = max(y_range[1], self.secs[i].yLE)
+                z_range[0] = min(z_range[0], self.secs[i].zLE)
+                z_range[1] = max(z_range[1], self.secs[i].zLE)
         
         span = np.array([x_range[1]-x_range[0], y_range[1]-y_range[0], z_range[1]-z_range[0]])
         self.half_span = span.max()/2.0
@@ -1329,6 +1332,8 @@ class BasicSurface():
             print('Must specify locations when adding sections')
             return
         
+        if self.secs[0].xx is None:
+            self.update_sections()
 
         #* Find new section's location
         for loc in location:
@@ -1520,9 +1525,9 @@ class BasicSurface():
 
         f.close()
 
-    def plot(self, fig_id=1, type='wireframe') -> None:
+    def plot(self, fig_id=1, type='wireframe', show=True):
         '''
-        Plot surface
+        Plot surface (the figure is not closed).
 
         Parameters
         ------------
@@ -1530,7 +1535,16 @@ class BasicSurface():
             ID of the figure
         type : str
             'wireframe', or 'surface'
+        show : bool
+            whether plot on screen
+            
+        Return
+        ---------
+        ax
+            figure (subplot) handle
         '''
+        self.layout_center()
+        
         fig = plt.figure(fig_id)
         ax = fig.add_subplot(projection='3d')
 
@@ -1546,7 +1560,11 @@ class BasicSurface():
         ax.set_xlim3d(self.center[0]-self.half_span, self.center[0]+self.half_span)
         ax.set_ylim3d(self.center[1]-self.half_span, self.center[1]+self.half_span)
         ax.set_zlim3d(self.center[2]-self.half_span, self.center[2]+self.half_span)
-        plt.show()
+
+        if show:
+            plt.show()
+            
+        return ax
 
 
 #* ===========================================

@@ -31,8 +31,9 @@ release = 'v0.2.2'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',       # automatically insert docstrings from modules
-    'sphinx.ext.mathjax',       # include math, rendered in the browser by MathJax
+    'sphinx.ext.autodoc',           # automatically insert docstrings from modules
+    "sphinx.ext.autosectionlabel",  # refer sections by its title
+    'sphinx.ext.mathjax',           # include math, rendered in the browser by MathJax
     'sphinx_rtd_theme',
     'sphinx.ext.napoleon',      # Google' style docstring
     'sphinx.ext.doctest',       # automatically test code snippets in doctest blocks
@@ -41,7 +42,6 @@ extensions = [
     'sphinx.ext.coverage',      # checks for documentation coverage
     'sphinx.ext.viewcode',      # include links to the source code of documented Python objects
     'sphinx.ext.githubpages',   # create .nojekyll file to publish the document on GitHub pages
-    'sphinx.ext.napoleon'       # 
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -90,6 +90,22 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False
 }
+
+
+# ----------------------------------------------------------------------------
+# Auto Section Label
+# https://www.sphinx-doc.org/en/master/usage/extensions/autosectionlabel.html
+
+# True to prefix each section label with the name of the document it is in, followed by a colon. 
+# For example, index:Introduction for a section called Introduction that appears in document index.rst. 
+# Useful for avoiding ambiguity when the same section heading appears in different documents.
+autosectionlabel_prefix_document = True
+
+
+# If set, autosectionlabel chooses the sections for labeling by its depth. 
+# For example, when set 1 to autosectionlabel_maxdepth, labels are generated only for top level sections, 
+# and deeper sections are not labeled. It defaults to None (disabled).
+autosectionlabel_maxdepth = 3
 
 
 # ----------------------------------------------------------------------------

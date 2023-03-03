@@ -143,3 +143,80 @@ It is a 3D surface of a 2D airfoil, which can be used for meshing in ICEM CFD.
      0.0   0.0
 
 
+Built-in functions
+----------------------
+
+(1) Essential functions
+++++++++++++++++++++++++
+
+The following functions are essential to construct surfaces.
+
+- **geo(flip_x=False, update_sec=True)**: 
+  
+  generate surfaces by linear interpolation. It will update control sections when `update_sec=True`.
+
+- **geo_axisymmetric(phi, flip_x=False, update_sec=True)**:
+  
+  generate axisymmetric surfaces by linear interpolation and rotation.
+
+- **update_sections(flip_x=False)**:
+
+  update control sections. It first construct the 2D unit curves (optional),
+  and then transform them to 3D curves.
+
+- **output_tecplot(fname, one_piece=False)**:
+  
+  output surface in Tecplot format.
+
+- **output_plot3d(fname)**: 
+  
+  output surface in Plot3D format.
+
+- **output_section(fname, TwoD=True)**: 
+  
+  output control sections (3D curves or 2D curves).
+
+
+(2) Useful functions
+++++++++++++++++++++++++
+
+There are some useful built-in functions users should be aware of.
+
+- **add_sec(location, axis='Z')**:
+
+  add sections to the surface. This can be helpful for meshing.
+  
+  The new sections are interpolated from the existed ones.
+
+- **translate(dX=0.0, dY=0.0, dZ=0.0)**:
+  
+  translate the surfaces by `[dX, dY, dZ]`.
+
+- **scale(scale=1.0, X0=0.0, Y0=0.0, Z0=0.0)**:
+
+  scale the surfaces by `scale`, the scale center is `[X0, Y0, Z0]`.
+
+- **split(ips)**:
+
+  split all surfaces in the chord-wise direction by the splitting points.
+
+  The index of splitting points in the 3D control curves are `ips`.
+
+  Length of `surfs` is multiplied by len(ips)+1.
+
+- **smooth(i_sec0, i_sec1, smooth0=False, smooth1=False, dyn0=None, ratio_end=10)**:
+
+  smooth the span-wise curves between control sections `i_sec0` and `i_sec1`.
+
+- **smooth_axisymmetric(i_sec0, i_sec1, phi)**
+
+  smooth the axisymmetric curves between control sections `i_sec0` and `i_sec1`.
+
+- **bend(i_sec0, i_sec1, leader=None, kx=None, ky=None, kc=None, rot_x=False)**:
+
+  bend surfaces between control sections `i_sec0` and `i_sec1` by a guide curve, i.e., leader.
+
+- **plot()**:
+
+  plot surfaces.
+

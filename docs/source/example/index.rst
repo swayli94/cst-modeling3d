@@ -6,6 +6,8 @@ Examples
 
     swept-wing
     delta-wing
+    inlet-nozzle
+    fuselage
 
 
 

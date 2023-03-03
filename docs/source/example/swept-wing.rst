@@ -1,6 +1,8 @@
 Swept wing
 ================
 
+Codes: :download:`swept-wing.py <../../example/swept-wing.py>`
+
 3D airfoil
 --------------------------
 

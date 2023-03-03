@@ -1,6 +1,7 @@
 Delta wing
 ================
 
+Codes: :download:`delta-wing.py <../../example/delta-wing.py>`
 
 Diamond wing
 --------------------------------------

@@ -54,7 +54,7 @@ Generate a 3D swept wing for transonic jets (with winglet).
 .. literalinclude:: ../../example/swept-wing.py
     :language: python
     :linenos:
-    :caption: transonic_wing
+    :caption: transonic_wing_winglet
     :pyobject: transonic_wing_winglet
 
 

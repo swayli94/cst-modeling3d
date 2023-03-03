@@ -8,6 +8,7 @@ Examples
     delta-wing
     inlet-nozzle
     fuselage
+    fan
 
 
 

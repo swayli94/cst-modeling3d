@@ -1,6 +1,19 @@
 Fuselage
 =====================
 
+Civil aircraft fuselage
+--------------------------
+
+:download:`fuselage.py <../../example/fuselage.py>`
+
+.. _fuselage:
+.. figure:: ../../example/figures/fuselage.jpg
+    :width: 50 %
+    :align: center
+
+    Civil aircraft fuselage
+
+
 Hypersonic aircraft
 --------------------------
 
@@ -8,7 +21,7 @@ Hypersonic aircraft
 
 .. _hypersonic_aircraft_1:
 .. figure:: ../../example/figures/hypersonic_aircraft_1.jpg
-    :width: 70 %
+    :width: 50 %
     :align: center
 
     Hypersonic aircraft

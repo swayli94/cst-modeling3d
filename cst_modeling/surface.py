@@ -41,7 +41,7 @@ class OpenSurface(BasicSurface):
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
 
         found_surf = False
         found_key = 0
@@ -120,32 +120,6 @@ class OpenSurface(BasicSurface):
                                 i1 += 1
 
                         self.secs[i].refine = cst_r
-
-                    found_key = 0
-
-                elif found_surf and found_key == 4:
-                    iL += 2
-                    line = lines[iL].split()
-                    n_cst_refine = int(line[0])
-
-                    if n_cst_refine <= 0:
-                        iL += self.n_sec*3
-                        found_key = 0
-                        continue
-
-                    for i in range(self.n_sec):
-
-                        iL += 2
-                        line1 = lines[iL].split()
-                        cst_r = np.zeros(n_cst_refine)
-
-                        i1 = 0
-                        for j in range(n_cst_refine):
-                            if i1<len(line1):
-                                cst_r[j] = float(line1[i1])
-                                i1 += 1
-
-                        self.secs[i].cst_flip = cst_r
 
                     found_key = 0
 

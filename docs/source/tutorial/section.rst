@@ -35,6 +35,26 @@ The 2D-to-3D transformation is applied when calling `BasicSection.section()`.
     sec.section(flip_x=False, projection=True)
 
 
+Class: OpenSection
+----------------------
+
+`OpenSection` is a child class of `BasicSection`, which uses CST method for constructing
+the unit 2D **open curve**. The `OpenSection.section()` automatically construct the 2D curve 
+and transform it to the 3D curve.
+
+.. code-block:: python
+    :linenos:
+
+    sec = OpenSection(thick=None, chord=2.0, twist=-3.0, lTwistAroundLE=False)
+    
+    sec.section(cst=cst, nn=1001, flip_x=False, projection=True)
+
+Several additional attributes are available:
+
+- the CST coefficients of the curve `cst`;
+- the refinement CST coefficients `refine`.
+
+
 Class: Section
 ----------------------
 
@@ -57,26 +77,6 @@ Several additional attributes are available:
 - the slope of the mean camber line at trailing edge `te_slope`, i.e., :math:`dy/dx`;
 - the CST coefficients of the upper and lower surface `cst_u, cst_l`;
 - the refinement CST coefficients `refine_u, refine_l`.
-
-
-Class: OpenSection
-----------------------
-
-`OpenSection` is a child class of `BasicSection`, which uses CST method for constructing
-the unit 2D **open curve**. The `OpenSection.section()` automatically construct the 2D curve 
-and transform it to the 3D curve.
-
-.. code-block:: python
-    :linenos:
-
-    sec = OpenSection(thick=None, chord=2.0, twist=-3.0, lTwistAroundLE=False)
-    
-    sec.section(cst=cst, nn=1001, flip_x=False, projection=True)
-
-Several additional attributes are available:
-
-- the CST coefficients of the curve `cst`;
-- the refinement CST coefficients `refine`.
 
 
 Class: RoundTipSection

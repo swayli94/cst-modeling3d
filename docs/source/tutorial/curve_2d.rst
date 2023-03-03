@@ -106,6 +106,25 @@ Given an airfoil, you can use CST method for fitting.
     Fitting airfoil with CST
 
 
+Fitting blade
+----------------------
+
+Given a blade (round tips at both ends), you can use CST method for fitting.
+The CST parameters `xn1, xn2` need to be adjusted.
+
+.. _fitting_blade:
+.. figure:: ../../tutorial/figures/fitting_blade.jpg
+    :width: 90 %
+    :align: center
+
+    Fitting blade
+
+.. code-block:: python
+    :linenos:
+
+    cst_u, cst_l = cst_foil_fit(xx, yu, xx, yl, n_cst=7, xn1=0.1, xn2=0.1)
+
+
 Fitting curve
 ------------------------------
 

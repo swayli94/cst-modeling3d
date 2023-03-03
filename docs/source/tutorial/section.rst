@@ -114,17 +114,19 @@ Compared with `Section`, several additional parameters are needed:
 - angle `aLE` (deg) of the slope at leading edge, i.e., :math:`dy/dx`;
 
 
-Fitting blade
-----------------------
+Fitting blade with RoundTipSection
+------------------------------------
 
-Given a blade (round tips at both ends), you can use `RoundTipSection` for fitting.
+Given a blade (round tips at both ends), you also can use `RoundTipSection` for fitting.
+Compared with the direct use of CST fitting (:numref:`fitting_blade`), 
+`RoundTipSection` is more suitable for thin plate.
 
-.. _fitting_blade:
-.. figure:: ../../tutorial/figures/fitting_blade.jpg
+.. _fitting_blade_RoundTipSection:
+.. figure:: ../../tutorial/figures/fitting_blade_RoundTipSection.jpg
     :width: 90 %
     :align: center
 
-    Fitting blade
+    Fitting blade with RoundTipSection
 
 .. code-block:: python
     :linenos:

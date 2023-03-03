@@ -33,9 +33,9 @@ def base_shape():
     plt.savefig('figures/base_shape.jpg', dpi=300)
     plt.close()
 
-def fitting_blade():
+def fitting_blade_RoundTip():
     '''
-    Fitting blade (DFVLR L030-4)
+    Fitting blade (DFVLR L030-4) with RoundTipSection
     '''
     
     from scipy.interpolate import interp1d
@@ -79,17 +79,17 @@ def fitting_blade():
 
     BaseLERatio     = 0.4
     BaseTERatio     = 0.4
-    BaseAbsThick    = 0.04
+    BaseAbsThick    = 0.03
     BaseRelRadiusLE = 0.02
-    BaseRelRadiusTE = 0.03
+    BaseRelRadiusTE = 0.04
     
     BaseAlphaLE = 6
     BaseAlphaTE = -10
 
-    x_, y_ = RoundTipSection.base_shape(xx, 0.0, 1.0, BaseLERatio, BaseTERatio, 
+    _, y_base = RoundTipSection.base_shape(xx, 0.0, 1.0, BaseLERatio, BaseTERatio, 
                                         BaseRelRadiusLE, BaseRelRadiusTE, BaseAbsThick/2.0, i_split=None)
     
-    dy_ = RoundTipSection.base_camber(xx, a_LE=BaseAlphaLE, a_TE=BaseAlphaTE)
+    dy_base = RoundTipSection.base_camber(xx, a_LE=BaseAlphaLE, a_TE=BaseAlphaTE)
 
 
     #* ==================================================================
@@ -97,37 +97,37 @@ def fitting_blade():
     xn1 = 0.1
     xn2 = 0.1
 
-    yu_ = yu - y_ + dy_
-    yl_ = yl + y_ + dy_
+    yu_remain = yu - ( y_base + dy_base)
+    yl_remain = yl - (-y_base + dy_base)
     
-    cst_u, cst_l = cst_foil_fit(xx, yu_, xx, yl_, n_cst=7, xn1=xn1, xn2=xn2)
+    cst_u, cst_l = cst_foil_fit(xx, yu_remain, xx, yl_remain, n_cst=7, xn1=xn1, xn2=xn2)
     
     np.set_printoptions(formatter={'float': '{: 0.4f}'.format}, linewidth=200)
     print(cst_u)
     print(cst_l)
     print()
     
-    _, yuc, ylc, _, _ = cst_foil(xx.shape[0], cst_u, cst_l, xx, t=None, xn1=xn1, xn2=xn2)
+    _, yu_cst, yl_cst, _, _ = cst_foil(xx.shape[0], cst_u, cst_l, xx, t=None, xn1=xn1, xn2=xn2)
 
     plt.figure(figsize=(10,4))
     plt.plot(xx, yu, 'k')
-    plt.plot(xx, y_+dy_, 'b--')
-    plt.plot(xx, yuc + y_ - dy_, 'r--')
-    plt.plot(xx, 10*np.abs(yu_-yuc), 'g')
+    plt.plot(xx, y_base+dy_base, 'b--')
+    plt.plot(xx, yu_cst + y_base + dy_base, 'r--')
+    plt.plot(xx, 10*np.abs(yu_remain-yu_cst), 'g')
     
     plt.legend(['reference', 'base shape', 'fitting', '10*error'])
     
     plt.plot(xx, yl, 'k')
-    plt.plot(xx,-y_+dy_, 'b--')
-    plt.plot(xx, ylc - y_ - dy_, 'r--')
-    plt.plot(xx, 10*np.abs(ylc-ylc), 'g')
+    plt.plot(xx,-y_base+dy_base, 'b--')
+    plt.plot(xx, yl_cst - y_base + dy_base, 'r--')
+    plt.plot(xx, 10*np.abs(yl_remain-yl_cst), 'g')
     
     plt.xlim((-0.05, 1.05))
     plt.ylim((-0.01, 0.06))
     plt.xlabel('X')
     plt.ylabel('Y')
     
-    plt.savefig('figures/fitting_blade.jpg', dpi=300)
+    plt.savefig('figures/fitting_blade_RoundTipSection.jpg', dpi=300)
     plt.close()
 
 
@@ -136,5 +136,5 @@ if __name__ == '__main__':
 
     base_shape()
     
-    fitting_blade()
+    fitting_blade_RoundTip()
     

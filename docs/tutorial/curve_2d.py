@@ -48,7 +48,7 @@ def cst_base_function():
         x, y = cst_curve(101, cst, xn1=0.5, xn2=0.5)
         plt.plot(x, y)
 
-    plt.text(0.2, 0.17, 'xn1=0.5, xn2=0.9', fontsize=12)
+    plt.text(0.2, 0.17, 'xn1=0.5, xn2=0.5', fontsize=12)
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.xlim((-0.05, 1.05))
@@ -221,6 +221,73 @@ def fitting_airfoil():
     plt.xlabel('X')
     plt.savefig('figures/fitting_airfoil.jpg', dpi=300)
     plt.close()
+    
+def fitting_blade():
+    '''
+    Fitting blade (DFVLR L030-4)
+    '''
+    
+    from scipy.interpolate import interp1d
+    from cst_modeling.section import dist_clustcos, cst_foil_fit, cst_foil
+
+    with open('data/blade-ref.dat', 'r') as f:
+        
+        lines = f.readlines()
+
+        xu = []
+        yu = []
+        xl = []
+        yl = []
+        
+        i = 0
+        for line in lines[2:]:
+            
+            line = line.split()
+            
+            if len(line)==0:
+                continue
+            elif len(line)>2:
+                i += 1
+                continue
+                    
+            if i%2==1:
+                xu.append(float(line[0]))
+                yu.append(float(line[1]))
+            else:
+                xl.append(float(line[0]))
+                yl.append(float(line[1]))
+
+        xx = dist_clustcos(501)
+        fu = interp1d(xu, yu, kind='linear')
+        fl = interp1d(xl, yl, kind='linear')
+        yu = fu(xx)
+        yl = fl(xx)
+
+    xn1 = 0.1
+    xn2 = 0.1
+
+    cst_u, cst_l = cst_foil_fit(xx, yu, xx, yl, n_cst=7, xn1=xn1, xn2=xn2)
+
+    _, yu_cst, yl_cst, _, _ = cst_foil(xx.shape[0], cst_u, cst_l, xx, t=None, xn1=xn1, xn2=xn2)
+
+    plt.figure(figsize=(10,4))
+    plt.plot(xx, yu, 'k')
+    plt.plot(xx, yu_cst, 'r--')
+    plt.plot(xx, 10*np.abs(yu-yu_cst), 'g')
+    
+    plt.legend(['reference', 'fitting', '10*error'])
+    
+    plt.plot(xx, yl, 'k')
+    plt.plot(xx, yl_cst, 'r--')
+    plt.plot(xx, 10*np.abs(yl-yl_cst), 'g')
+    
+    plt.xlim((-0.05, 1.05))
+    plt.ylim((-0.01, 0.06))
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    
+    plt.savefig('figures/fitting_blade.jpg', dpi=300)
+    plt.close()
 
 def fitting_curve():
     '''
@@ -278,6 +345,8 @@ if __name__ == '__main__':
     curve_curvature()
     
     fitting_airfoil()
+    
+    fitting_blade()
     
     fitting_curve()
     

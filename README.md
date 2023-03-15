@@ -14,6 +14,10 @@ The curves, e.g., foil's upper and lower surfaces, are constructed via CST metho
 pip install cst-modeling3d
 ```
 
+## Tutorial
+
+https://cst-modeling3d.readthedocs.io/en/latest/
+
 ## Example
 
 ### (1) Airfoil

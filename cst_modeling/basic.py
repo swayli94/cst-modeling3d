@@ -112,6 +112,49 @@ class BasicSection():
         self.y = np.zeros(1)
         self.z = np.zeros(1)
 
+    def set_params(self, init=False, **kwargs):
+        '''
+        Set parameters of the section
+
+        ### Inputs:
+        ```text
+        init:   True, set to default values
+        ```
+
+        ### kwargs:
+        ```text
+        xLE, yLE, zLE, chord, twist, thick (None)
+        ```
+        '''
+        if init:
+            self.xLE = 0.0
+            self.yLE = 0.0
+            self.zLE = 0.0
+            self.chord = 1.0
+            self.twist = 0.0
+            self.thick = 0.0
+            self.thick_set = None
+
+            return
+
+        if 'xLE' in kwargs.keys():
+            self.xLE = kwargs['xLE']
+
+        if 'yLE' in kwargs.keys():
+            self.yLE = kwargs['yLE']
+
+        if 'zLE' in kwargs.keys():
+            self.zLE = kwargs['zLE']
+
+        if 'chord' in kwargs.keys():
+            self.chord = kwargs['chord']
+
+        if 'twist' in kwargs.keys():
+            self.twist = kwargs['twist']
+
+        if 'thick' in kwargs.keys():
+            self.thick_set = kwargs['thick']
+    
     def section(self, nn=1001, flip_x=False, projection=True) -> None:
         '''
         Calculate the 3D curve coordinates from the known 2D curve.
@@ -426,6 +469,8 @@ class BasicSurface():
         '''
         Update surface sections, including the construction of 2D unit curves (optional)
         and transforming to 3D curves.
+
+        previous: geo_secs
 
         Parameters
         ----------
@@ -1418,6 +1463,7 @@ class BasicSurface():
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  Z \n ')
 
+            nt = self.surfs[0][0].shape[1]
             ns = self.ns
 
             if not one_piece:

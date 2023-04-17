@@ -1416,7 +1416,7 @@ class BasicSurface():
                     
                     nt = surf_x.shape[1]
 
-                    if i_sec>=n_piece-2:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -1811,7 +1811,7 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     
     rotation_vector = np.array(axis_vector)/np.linalg.norm(axis_vector)
 
-    rot = Rotation.from_rotvec(angle*rotation_vector, degrees=True)
+    rot = Rotation.from_rotvec(angle*rotation_vector/180.0*np.pi)
     
     # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
     points = rot.apply(vector) + origin

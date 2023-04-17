@@ -377,7 +377,7 @@ class Surface(BasicSurface):
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
 
-                    if isec>=n_piece-2:
+                    if isec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -394,7 +394,7 @@ class Surface(BasicSurface):
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
                     
-                    if isec>=n_piece-2:
+                    if isec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1

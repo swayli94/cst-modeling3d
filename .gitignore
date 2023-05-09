@@ -9,6 +9,7 @@ dump
 
 *.lay
 *.grd
+*.igs
 *.ini
 *.pyc
 

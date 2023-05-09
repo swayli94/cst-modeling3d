@@ -3062,7 +3062,7 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0) -> None:
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
 
-def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.igs', is_planar=True):
+def output_curves_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.igs', n_degree=3, is_planar=True):
     '''
     Output curves in the Initial Graphics Exchange Specification (IGES) format.
     
@@ -3072,11 +3072,20 @@ def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.i
         coordinates of the curve(s), [:] or [n_curve,:]
     fname : str
         file name. 
+    n_degree : int
+        degree of basis functions.
+        0=Determined by data; 1=Line; 2=Circular arc; 
+        3=Elliptical arc; 4=Parabolic arc; 5=Hyperbolic arc.
     is_planar : bool
         whether is planar curve in X-Y plane.
+        
+    References
+    ------------
+    https://wiki.eclipse.org/IGES_file_Specification
     '''
     
-    print('ERROR: [output_curve_igs] IS NOT DONE')
+    # CATIA can not load all entities.
+    print('Warning: [output_curve_igs] works for ICEM CFD, Pointwise, but not CATIA')
     
     #* Curve dimension
     if len(x.shape) == 1:
@@ -3089,10 +3098,6 @@ def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.i
         n_curve = x.shape[0]
         n_point = x.shape[1]
     
-    #* Degree of basis functions
-    # 0=Determined by data; 1=Line; 2=Circular arc; 3=Elliptical arc; 4=Parabolic arc; 5=Hyperbolic arc;
-    n_degree = 1    
-
     #* Output IGES format file
     f = open(fname, 'w')
 
@@ -3109,7 +3114,7 @@ def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.i
     iType = 126 # Rational B-Spline Curve
     
     iLineStart = 1
-    nLineCount = 2 + 3*n_point + n_degree
+    nLineCount = 3 + 3*n_point + n_degree
     
     for ic in range(n_curve):
         
@@ -3119,7 +3124,7 @@ def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.i
         f.write(' %7d %7d %7d %7d %7d %7d %7d %7d'%(iType, iLineStart, n_degree, 0, 0, 0, 0, 0))
         f.write(' %1d %1d %1d %1dD %6d\n'%(0, 0, 0, 0, ic*2+1))
         f.write(' %7d %7d %7d %7d %7d'%(iType, 0, 0, nLineCount, 0))
-        f.write('                BSp Curv{:<3d}'.format(ic+1) + '    0D %6d\n'%(ic*2+2))
+        f.write('                BSp Curv{:<3d}'.format(ic*2+1) + '    0D %6d\n'%(ic*2+2))
         
         iLineStart += nLineCount
     
@@ -3129,37 +3134,37 @@ def output_curve_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.i
         
         # Starting
         iLine += 1
-        f.write(' %4d, %4d, %4d, %4d, %4d, %4d, %4d;'%(iType, n_point-1, n_degree, is_planar, 0, 0, 0))
-        f.write('%30dP %6d\n'%(ic+1, iLine))
+        f.write(' %4d, %4d, %4d, %4d, %4d, %4d, %4d,'%(iType, n_point-1, n_degree, is_planar, 0, 0, 0))
+        f.write('%30dP %6d\n'%(ic*2+1, iLine))
 
-        # Knot sequence
-        xKnot = knotx(n_point, n_degree)
+        # Knot sequence (n_point + n_degree + 1)
+        xKnot = knotx(n_point, n_degree+1)
         for ix in range(xKnot.shape[0]):
             iLine += 1
-            f.write('%19.10e, %51dP %6d\n'%(xKnot[ix], ic+1, iLine))
+            f.write('%19.10e, %51dP %6d\n'%(xKnot[ix], ic*2+1, iLine))
         ximin = xKnot[0]
         ximax = xKnot[-1]
         
-        # Weight sequence
+        # Weight sequence (n_point)
         for _ in range(n_point):
             iLine += 1
-            f.write('%19.10e, %51dP %6d\n'%(1.0, ic+1, iLine))
+            f.write('%19.10e, %51dP %6d\n'%(1.0, ic*2+1, iLine))
         
-        # Node coordinates
+        # Node coordinates (3*n_point)
         for i in range(n_point):
             iLine += 1
             f.write('%19.10e,%19.10e,%19.10e,%12dP %6d\n'%(
-                x[ic,i], y[ic,i], z[ic,i], ic+1, iLine))
+                x[ic,i], y[ic,i], z[ic,i], ic*2+1, iLine))
     
         # Ending
         # Start parameter value, End parameter value, Unit normal x, y, z (if planar)
         iLine += 1
         f.write('%14.6e,%14.6e,%11.3e,%11.3e,%11.3e;%6dP %6d\n'%(
-            ximin, ximax, 0, 0, 1, ic+1, iLine))
+            ximin, ximax, 0, 0, 1, ic*2+1, iLine))
     
     
     #* Ending section
-    f.write('S %6dG %6dD %6dP %6d %40s %6d\n'%(1, 3, n_curve, iLine, 'T', 1))
+    f.write('S %6dG %6dD %6dP %6d %40s %6d\n'%(1, 4, 2*n_curve, iLine, 'T', 1))
     f.close()
 
 
@@ -3174,7 +3179,7 @@ def plot3d_to_igs(fname='igs'):
 
     #* Read plot3d format file
     if not os.path.exists(fname+'.grd'):
-        raise Exception(fname+' does not exist for format transfermation')
+        raise Exception(fname+' does not exist for format transformation')
     
     with open(fname+'.grd', 'r') as f:
         lines = f.readlines()

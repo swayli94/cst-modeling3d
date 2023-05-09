@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from cst_modeling.basic import output_curve_igs, output_plot3d
+from cst_modeling.basic import output_curves_igs, output_plot3d
 from cst_modeling.section import cst_foil
 
 
@@ -25,5 +25,8 @@ if __name__ == "__main__":
     y = np.concatenate(y, axis=0)
     z = np.zeros_like(x)
     
-    output_curve_igs(x, y, z, fname='airfoil.igs', is_planar=True)
+    #output_curves_igs(x0, yu, np.zeros_like(x0), fname='airfoil-u.igs', n_degree=1, is_planar=True)
+    #output_curves_igs(x0, yl, np.zeros_like(x0), fname='airfoil-l.igs', n_degree=0, is_planar=True)
+    
+    output_curves_igs(x, y, z, fname='airfoil.igs', is_planar=True)
     

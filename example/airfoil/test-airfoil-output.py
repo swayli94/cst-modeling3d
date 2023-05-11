@@ -20,13 +20,12 @@ if __name__ == "__main__":
 
     output_plot3d(x, y, z, fname='airfoil.grd')
     
-    
-    x = np.concatenate(x, axis=0)
-    y = np.concatenate(y, axis=0)
+    x = np.concatenate(x, axis=0)*1000
+    y = np.concatenate(y, axis=0)*1000
     z = np.zeros_like(x)
     
     #output_curves_igs(x0, yu, np.zeros_like(x0), fname='airfoil-u.igs', n_degree=1, is_planar=True)
     #output_curves_igs(x0, yl, np.zeros_like(x0), fname='airfoil-l.igs', n_degree=0, is_planar=True)
     
-    output_curves_igs(x, y, z, fname='airfoil.igs', is_planar=True)
+    output_curves_igs(x, y, z, fname='airfoil.igs', n_degree=3, is_planar=True)
     

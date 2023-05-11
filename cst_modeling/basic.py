@@ -3082,10 +3082,9 @@ def output_curves_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.
     References
     ------------
     https://wiki.eclipse.org/IGES_file_Specification
-    '''
     
-    # CATIA can not load all entities.
-    print('Warning: [output_curve_igs] works for ICEM CFD, Pointwise, but not CATIA')
+    https://filemonger.com/specs/igs/devdept.com/version6.pdf
+    '''
     
     #* Curve dimension
     if len(x.shape) == 1:
@@ -3132,9 +3131,13 @@ def output_curves_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.
     iLine = 0
     for ic in range(n_curve):
         
+        is_closed = False       # is the starting and ending point the same
+        is_polynomial = True    # if all weights are equal, otherwise, the curve is rational
+        is_periodic = False     # actually has no difference
+        
         # Starting
         iLine += 1
-        f.write(' %4d, %4d, %4d, %4d, %4d, %4d, %4d,'%(iType, n_point-1, n_degree, is_planar, 0, 0, 0))
+        f.write(' %4d, %4d, %4d, %4d, %4d, %4d, %4d,'%(iType, n_point-1, n_degree, is_planar, is_closed, is_polynomial, is_periodic))
         f.write('%30dP %6d\n'%(ic*2+1, iLine))
 
         # Knot sequence (n_point + n_degree + 1)
@@ -3158,8 +3161,9 @@ def output_curves_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.
     
         # Ending
         # Start parameter value, End parameter value, Unit normal x, y, z (if planar)
+        # (note: '%**dP' must have at least '%9d')
         iLine += 1
-        f.write('%14.6e,%14.6e,%11.3e,%11.3e,%11.3e;%6dP %6d\n'%(
+        f.write('%10.3f,%10.3f,%12.5f,%12.5f,%12.5f;%11dP %6d\n'%(
             ximin, ximax, 0, 0, 1, ic*2+1, iLine))
     
     

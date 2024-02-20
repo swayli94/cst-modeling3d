@@ -13,6 +13,7 @@ CST Modeling
 
     introduction
     tutorial/index
+    example/index
 
 
 .. toctree::

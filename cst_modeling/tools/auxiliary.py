@@ -4,7 +4,7 @@ Auxiliary functions for surface modeling
 import numpy as np
 import copy
 
-from ..basic import curve_intersect, transform
+from ..basic import intersect_index, transform
 from ..section import Section, interp_from_curve
 from ..surface import Surface
 
@@ -26,8 +26,8 @@ def section_flap(sec: Section, ratio, angle, dy_axis=None):
     nn = len(sec.xx)
     xu_, xl_, yu_, yl_ = transform(sec.xx, sec.xx, sec.yu, sec.yl, rot=angle, x0=ratio, y0=dy_axis)
 
-    iu1, iu2, _ = curve_intersect(sec.xx, sec.yu, xu_, yu_)
-    il1, il2, _ = curve_intersect(sec.xx, sec.yl, xl_, yl_)
+    iu1, iu2, _ = intersect_index(sec.xx, sec.yu, xu_, yu_)
+    il1, il2, _ = intersect_index(sec.xx, sec.yl, xl_, yl_)
     nu_flap = nn - iu1
     nl_flap = nn - il1
 

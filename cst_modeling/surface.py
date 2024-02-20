@@ -41,7 +41,7 @@ class OpenSurface(BasicSurface):
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface read setting')
         
-        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
 
         found_surf = False
         found_key = 0
@@ -120,32 +120,6 @@ class OpenSurface(BasicSurface):
                                 i1 += 1
 
                         self.secs[i].refine = cst_r
-
-                    found_key = 0
-
-                elif found_surf and found_key == 4:
-                    iL += 2
-                    line = lines[iL].split()
-                    n_cst_refine = int(line[0])
-
-                    if n_cst_refine <= 0:
-                        iL += self.n_sec*3
-                        found_key = 0
-                        continue
-
-                    for i in range(self.n_sec):
-
-                        iL += 2
-                        line1 = lines[iL].split()
-                        cst_r = np.zeros(n_cst_refine)
-
-                        i1 = 0
-                        for j in range(n_cst_refine):
-                            if i1<len(line1):
-                                cst_r[j] = float(line1[i1])
-                                i1 += 1
-
-                        self.secs[i].cst_flip = cst_r
 
                     found_key = 0
 
@@ -377,7 +351,7 @@ class Surface(BasicSurface):
 
                     # surf_x[ns,nt], ns => spanwise
                     ns = self.ns
-                    nt = surf_x.shape[1]
+                    nt = int((surf_x.shape[1]+1)/2)
 
                     f.write('zone T="sec-u %d" i= %d j= %d \n'%(isec, nt, ns))
                     for i in range(ns):
@@ -393,7 +367,8 @@ class Surface(BasicSurface):
                 
                 npoint = n_sec*(self.ns-1) + 1
                 ns = self.ns
-            
+                nt = int((self.surfs[0][0].shape[1]+1)/2)
+                
                 f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
 
                 for isec in range(n_piece):
@@ -401,10 +376,8 @@ class Surface(BasicSurface):
                     surf_x = self.surfs[isec][0]
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
-                    
-                    nt = surf_x.shape[1]
 
-                    if isec>=n_piece-2:
+                    if isec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -421,9 +394,7 @@ class Surface(BasicSurface):
                     surf_y = self.surfs[isec][1]
                     surf_z = self.surfs[isec][2]
                     
-                    nt = surf_x.shape[1]
-
-                    if isec>=n_piece-2:
+                    if isec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -458,8 +429,9 @@ class Surface(BasicSurface):
         with open(fname, 'w') as f:
 
             f.write('%d \n '%(n_piece*2))   # Number of surfaces
-            for isec in range(n_piece*2):
-                nt = self.surfs[isec][0].shape[1]
+            for isec in range(n_piece):
+                nt = int((self.surfs[isec][0].shape[1]+1)/2)
+                f.write('%d %d 1\n '%(nt, ns))
                 f.write('%d %d 1\n '%(nt, ns))
 
             for isec in range(n_piece):
@@ -467,7 +439,7 @@ class Surface(BasicSurface):
                 X = self.surfs[isec][0]
                 Y = self.surfs[isec][1]
                 Z = self.surfs[isec][2]
-                nt = X.shape[1]
+                nt = int((X.shape[1]+1)/2)
 
                 #* Upper surface
                 ii = 0

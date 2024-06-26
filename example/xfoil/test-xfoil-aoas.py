@@ -25,10 +25,10 @@ if __name__ == "__main__":
     run_xfoil(AoAs=[-2.0, 5.0, 1.0], Cls=None,
     Minf=0.1, Re=1e6, nNodes=161, iterVis=10, 
     fname_airfoil='airfoil.dat', delete_temp=True,
-    fname_cp=None, fname_raw='raw.bin', fname_polar='polar.dat')
+    fname_cp=None, fname_raw='raw-aoas.bin', fname_polar='polar-aoas.dat')
 
-    result1 = read_xfoil_dump('raw.bin')
-    result2 = read_xfoil_polar('polar.dat')
+    result1 = read_xfoil_dump('raw-aoas.bin')
+    result2 = read_xfoil_polar('polar-aoas.dat')
 
     numCase = result1['numCase']
     AoAs= result1['AoAs']
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     Cps = result1['Cp']
     Cfs = result1['Cf']
     
-    with open('Cp.dat', 'w') as f:
+    with open('Cp-aoas.dat', 'w') as f:
         
         f.write('Variables= X Cp Cf \n')
         
@@ -58,7 +58,7 @@ if __name__ == "__main__":
             f.write('\n')
     
     os.remove('airfoil.dat')
-    os.remove('raw.bin')
+    os.remove('raw-aoas.bin')
 
     plt.figure(figsize=(12,8))
     plt.subplot(2,2,1)
@@ -88,6 +88,6 @@ if __name__ == "__main__":
     plt.xlabel('X')
     plt.ylabel('Cf')
     
-    plt.savefig('xfoil.png', dpi=300)
+    plt.savefig('xfoil-aoas.png', dpi=300)
     
     

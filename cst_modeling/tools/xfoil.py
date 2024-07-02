@@ -51,6 +51,9 @@ def run_xfoil(AoAs=None, Cls=None,
     #* Write input file
     with open(fname_setting, 'w') as f:
         
+        f.write('\n')                               # Load default parameters from file xfoil.def (if applicable)
+        f.write('\n')
+        
         f.write('LOAD %s \n'%(fname_airfoil))       # Airfoil coordinates
         
 

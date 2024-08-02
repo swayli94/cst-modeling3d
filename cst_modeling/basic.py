@@ -1655,6 +1655,65 @@ def dis_matrix(xs1: np.ndarray, xs2: np.ndarray) -> np.ndarray:
     RR = RR/np.sqrt(1.0*nx)
     return RR
 
+def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
+    '''
+    Determine the radius and origin of a circle by 3 points (2D)
+    
+    Parameters
+    -----------
+    p1, p2, p3: list or ndarray [2]
+        coordinates of points, [x, y]
+        
+    Returns
+    ----------
+    R: float
+        radius
+    XC: ndarray [2]
+        circle center
+
+    Examples
+    ----------
+    >>> R, XC = find_circle_3p(p1, p2, p3)
+
+    '''
+
+    # http://ambrsoft.com/TrigoCalc/Circle3D.htm
+
+    A = p1[0]*(p2[1]-p3[1]) - p1[1]*(p2[0]-p3[0]) + p2[0]*p3[1] - p3[0]*p2[1]
+    if np.abs(A) <= 1E-20:
+        raise Exception('Finding circle: 3 points in one line')
+    
+    p1s = p1[0]**2 + p1[1]**2
+    p2s = p2[0]**2 + p2[1]**2
+    p3s = p3[0]**2 + p3[1]**2
+
+    B = p1s*(p3[1]-p2[1]) + p2s*(p1[1]-p3[1]) + p3s*(p2[1]-p1[1])
+    C = p1s*(p2[0]-p3[0]) + p2s*(p3[0]-p1[0]) + p3s*(p1[0]-p2[0])
+    D = p1s*(p3[0]*p2[1]-p2[0]*p3[1]) + p2s*(p1[0]*p3[1]-p3[0]*p1[1]) + p3s*(p2[0]*p1[1]-p1[0]*p2[1])
+
+    x0 = -B/2/A
+    y0 = -C/2/A
+    R  = np.sqrt(B**2+C**2-4*A*D)/2/np.abs(A)
+
+    '''
+    x21 = p2[0] - p1[0]
+    y21 = p2[1] - p1[1]
+    x32 = p3[0] - p2[0]
+    y32 = p3[1] - p2[1]
+
+    if x21 * y32 - x32 * y21 == 0:
+        raise Exception('Finding circle: 3 points in one line')
+
+    xy21 = p2[0]*p2[0] - p1[0]*p1[0] + p2[1]*p2[1] - p1[1]*p1[1]
+    xy32 = p3[0]*p3[0] - p2[0]*p2[0] + p3[1]*p3[1] - p2[1]*p2[1]
+    
+    y0 = (x32 * xy21 - x21 * xy32) / 2 * (y21 * x32 - y32 * x21)
+    x0 = (xy21 - 2 * y0 * y21) / (2.0 * x21)
+    R = np.sqrt(np.power(p1[0]-x0,2) + np.power(p1[1]-y0,2))
+    '''
+
+    return R, np.array([x0, y0])
+
 
 #* ===========================================
 #* Transformation

@@ -24,10 +24,10 @@ if __name__ == "__main__":
     
     geo3d.geo()
     
-    geo3d.output_tecplot(fname='Wing.dat')
+    geo3d.output_tecplot(fname='wing.dat')
     
-    geo3d.output_plot3d(fname='Wing.grd')
+    geo3d.output_plot3d(fname='wing.grd')
     
-    plot3d_to_igs(fname='Wing')
+    plot3d_to_igs(fname='wing')
 
 

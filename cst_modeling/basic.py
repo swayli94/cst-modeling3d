@@ -111,6 +111,49 @@ class BasicSection():
         self.y = np.zeros(1)
         self.z = np.zeros(1)
 
+    def set_params(self, init=False, **kwargs):
+        '''
+        Set parameters of the section
+
+        ### Inputs:
+        ```text
+        init:   True, set to default values
+        ```
+
+        ### kwargs:
+        ```text
+        xLE, yLE, zLE, chord, twist, thick (None)
+        ```
+        '''
+        if init:
+            self.xLE = 0.0
+            self.yLE = 0.0
+            self.zLE = 0.0
+            self.chord = 1.0
+            self.twist = 0.0
+            self.thick = 0.0
+            self.thick_set = None
+
+            return
+
+        if 'xLE' in kwargs.keys():
+            self.xLE = kwargs['xLE']
+
+        if 'yLE' in kwargs.keys():
+            self.yLE = kwargs['yLE']
+
+        if 'zLE' in kwargs.keys():
+            self.zLE = kwargs['zLE']
+
+        if 'chord' in kwargs.keys():
+            self.chord = kwargs['chord']
+
+        if 'twist' in kwargs.keys():
+            self.twist = kwargs['twist']
+
+        if 'thick' in kwargs.keys():
+            self.thick_set = kwargs['thick']
+    
     def section(self, nn=1001, flip_x=False, projection=True) -> None:
         '''
         Calculate the 3D curve coordinates from the known 2D curve.
@@ -172,6 +215,25 @@ class BasicSection():
 
         if self.x.shape[0] <= 1:
             raise Exception('The 3D curve (sec.x, sec.y, sec.z) is not successfully constructed')
+    
+    def rotate(self, **kwargs):
+        '''
+        Rotate the 3D curve according to origin
+
+        >>> sec.rotate(angle, origin, axis)
+
+        ### Inputs:
+        ```text
+        angle:  rotation angle (deg)
+        origin: rotation origin
+        axis:   rotation axis (use positive direction to define angle)
+        '''
+
+        if len(self.x) + len(self.y) + len(self.z) < 4:
+            print('Warning: The section is not generated, use geo_secs() first')
+            return
+
+        self.x, self.y, self.z = rotate(self.x, self.y, self.z, **kwargs)
 
 
 class BasicSurface():
@@ -409,6 +471,8 @@ class BasicSurface():
         '''
         Update surface sections, including the construction of 2D unit curves (optional)
         and transforming to 3D curves.
+
+        previous: geo_secs
 
         Parameters
         ----------
@@ -707,6 +771,25 @@ class BasicSurface():
         self.center[1] = (self.center[1]-Y0)*scale + Y0
         self.center[2] = (self.center[2]-Z0)*scale + Z0
 
+    def rotate(self, **kwargs):
+        '''
+        Rotate the surface according to the origin and axis with the angle
+        
+        `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
+
+        `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
+
+        `angle`: The rotation angle in degree
+        '''
+        for surf in self.surfs:
+            points = np.array(surf).reshape(3, -1).T
+            xnew, ynew, znew = rotation_3d(points, **kwargs).T
+            surf[0] = xnew.reshape(self.ns, self.nn)
+            surf[1] = ynew.reshape(self.ns, self.nn)
+            surf[2] = znew.reshape(self.ns, self.nn)
+
+        center_point = self.center.reshape(1, 3)
+        self.center[0], self.center[1], self.center[2] = rotation_3d(center_point, **kwargs)[0]
 
     def split(self, ips: list) -> None:
         '''
@@ -1384,6 +1467,7 @@ class BasicSurface():
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  Z \n ')
 
+            nt = self.surfs[0][0].shape[1]
             ns = self.ns
 
             if not one_piece:
@@ -1876,6 +1960,65 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     points = rot.apply(vector) + origin
     
     return points
+
+# The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
+def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
+    '''
+    ### Description
+    This function rotate a set of points based on the origin and the axis given by the inputs
+
+    ### Inputs
+    `pp`: The point set that is going to be rotated. `pp.shape = (n_points, 3)`
+
+    `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
+
+    `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
+
+    `angle`: The rotation angle in degree
+
+    ### Outputs
+    `xnew, ynew, znew`: The rotated points.
+    '''
+    # Translate the points to a coordinate system that has the origin defined by the input
+    # The points have to be translated back to the original frame before return.
+    
+    nn = pp.shape[0]
+    for i in range(nn):
+        pp[i, :] = pp[i, :] - origin
+    xnew, ynew, znew = np.zeros(nn), np.zeros(nn), np.zeros(nn)
+    
+    norm = np.sqrt(axis @ axis)
+    if norm < 1e-8:
+        raise Exception("The length of the axis is too short!")
+    e3 = axis / norm
+
+    angle_rad = np.pi * angle / 180.0
+
+    for i in range(nn):
+        vec = pp[i, :].copy()
+
+        # compute the parallel component
+        vec_p = (vec @ e3) * e3
+        # compute the normal component
+        vec_n = vec - vec_p
+
+        # define the local coordinate system
+        e1 = vec_n
+        e2 = np.cross(e3, e1)
+
+        # rotate
+        vec_n_rot = e1 * np.cos(angle_rad) + e2 * np.sin(angle_rad)
+
+        # assemble the vector
+        vec_new = vec_n_rot + vec_p
+        xnew[i], ynew[i], znew[i] = vec_new[0], vec_new[1], vec_new[2]
+
+    # transform back to the original frame
+    xnew, ynew, znew = xnew + origin[0], ynew + origin[1], znew + origin[2]
+
+    pp_new = np.hstack((xnew.reshape(-1,1), ynew.reshape(-1,1), znew.reshape(-1,1)))
+    # print(pp_new.shape)
+    return pp_new
 
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
@@ -3327,6 +3470,7 @@ def plot3d_to_igs(fname='igs'):
 
         # Node coordinates
         xyz, kLine = read_block_plot3d(lines, kLine, ni, nj, nk)
+        xyz = xyz * ratio
         for k in range(nk):
             for j in range(nj):
                 for i in range(ni):

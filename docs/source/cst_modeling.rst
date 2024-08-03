@@ -25,6 +25,14 @@ cst\_modeling.surface
    :undoc-members:
    :show-inheritance:
 
+cst\_modeling.foil
+----------------------------
+
+.. automodule:: cst_modeling.foil
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 cst\_modeling.tools
 =====================

@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
 
     #* Leading edge modification
-    if True:
+    if False:
 
         for tail, rLE, width_bump in [(0.0, 0.015, 1.0), (0.004, 0.005, 0.8)]:
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
             
             
     #* Trailing edge wedge angle modification
-    if True:
+    if False:
 
         for tail, wedge_angle, width_bump in [(0.0, 15.0, 0.2), (0.004, 2.0, 0.6)]:
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
             
             
     #* Trailing edge slope angle modification
-    if True:
+    if False:
 
         for tail, slope_angle, width_bump in [(0.0, 15.0, 0.8), (0.004, 1.0, 0.2)]:
 
@@ -143,7 +143,7 @@ if __name__ == '__main__':
             
     
     #* Change airfoil camber
-    if True:
+    if False:
         
         for xc, h, w in [(0.3, 0.01, 1.0), (0.8, 0.005, 0.6)]:
 
@@ -178,4 +178,46 @@ if __name__ == '__main__':
 
             plt.savefig(os.path.join(path, 'airfoil-modify-camber-x-%.1f.png'%(xc)), dpi=300)
     
-      
+    
+    #* Add bump to airfoil surfaces
+    if True:
+    
+        for keep_tmax in [True, False]:
+    
+            x, yu, yl, t0, rLE_old = cst_foil(1001, cst_u, cst_l, x=None, t=0.11, tail=0.0)
+            
+            geo_old = FoilGeoFeatures(x, yu, yl)
+
+            modify = FoilModification(x, yu, yl)
+            
+            modify.add_bump(bumps=[(0.3, 0.01, 1.0, 'upper', 'H'), (0.85, 0.008, 0.6, 'lower', 'H')], keep_tmax=keep_tmax)
+            
+            geo_new = FoilGeoFeatures(modify.x, modify.yu, modify.yl)
+            
+            plt.figure(figsize=(16,8))
+            
+            plt.plot(x, yu, 'k')
+            plt.plot(x, yl, 'k', label='_nolegend_')
+            
+            plt.plot(x, geo_old.get_feature('thickness'), 'k--', lw=0.5)
+            plt.plot(x, geo_old.get_feature('camber'), 'b--', lw=0.5)
+            
+            plt.plot(modify.x, modify.yu, 'r', lw=1.0)
+            plt.plot(modify.x, modify.yl, 'r', lw=1.0, label='_nolegend_')
+            
+            plt.plot(modify.x, geo_new.get_feature('thickness'), 'r--', lw=0.5)
+            plt.plot(modify.x, geo_new.get_feature('camber'), 'g--', lw=0.5)
+
+            plt.xlim((-0.2, 1.2))
+            plt.ylim((-0.2, 0.2))
+            plt.axis('equal')
+            plt.legend(['Airfoil (old)', 'Thickness (old)', 'Camber (old)', 'Airfoil (new)', 'Thickness (new)', 'Camber (new)'])
+
+            if keep_tmax:
+                plt.title('Add bump to airfoil surfaces (keep tmax)')
+                plt.savefig(os.path.join(path, 'airfoil-modify-bump-keep-tmax.png'), dpi=300)
+            else:
+                plt.title('Add bump to airfoil surfaces')
+                plt.savefig(os.path.join(path, 'airfoil-modify-bump.png'), dpi=300)
+    
+    

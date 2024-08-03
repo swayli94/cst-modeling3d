@@ -422,6 +422,8 @@ class FoilModification():
         self.X_LE = 0.05
         self.X_TE = 0.95
         
+        self.MAX_TRY = 5
+        
     @property
     def tail(self) -> float:
         '''
@@ -650,7 +652,7 @@ class FoilModification():
         
         n_try = 0
         
-        while abs(rLE-rLE_new) > 1E-4 and n_try < 5:
+        while abs(rLE-rLE_new) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, tmax, rLE = self.add_bump_to_thickness(
                 geo.X_RLE, 2.0*(rLE_new-rLE), width_bump, kind='H', keep_tmax=True)
@@ -687,7 +689,7 @@ class FoilModification():
         
         n_try = 0
         
-        while abs(wedge_angle-wedge_angle_new) > 1E-1 and n_try < 5:
+        while abs(wedge_angle-wedge_angle_new) > 1E-1 and n_try < self.MAX_TRY:
         
             dt = 0.5*np.deg2rad(wedge_angle_new-wedge_angle) * (1-self.X_TE)
         
@@ -729,7 +731,7 @@ class FoilModification():
         
         n_try = 0
         
-        while abs(slope_angle-slope_angle_new) > 1E-1 and n_try < 5:
+        while abs(slope_angle-slope_angle_new) > 1E-1 and n_try < self.MAX_TRY:
         
             dt = 0.5*np.deg2rad(slope_angle_new-slope_angle) * (1-self.X_TE)
         
@@ -740,8 +742,6 @@ class FoilModification():
             slope_angle = geo.get_trailing_edge_slope_angle()
 
             n_try += 1
-            
-            print(n_try, slope_angle, dt)
             
         return cst_u, cst_l, tmax, slope_angle_new
 

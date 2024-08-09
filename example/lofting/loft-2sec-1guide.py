@@ -22,7 +22,9 @@ if __name__ == "__main__":
     
     fname_save = os.path.join(path, 'surface-2sec-1guide.dat')
 
-    #* Build an airfoil
+
+    #* Build airfoil sections 
+    
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
     cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
 
@@ -43,6 +45,8 @@ if __name__ == "__main__":
     sec1.rot_y = 0.0
 
 
+    #* Lofting
+    
     loft = Lofting_2Profile(sec0, sec1, n_spanwise=101, is_guide_curve_at_LE=True)
 
     surf_x, surf_y, surf_z = loft.sweep()

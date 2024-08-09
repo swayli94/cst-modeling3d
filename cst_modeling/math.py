@@ -158,6 +158,41 @@ def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
 
     return R, np.array([x0, y0])
 
+def angle_between_vectors(a: np.ndarray, b: np.ndarray, in_degree=True) -> float:
+    '''
+    Calculate the angle between two vectors.
+    
+    Parameters
+    ------------
+    a, b : ndarray [3]
+        vectors
+        
+    in_degree : bool
+        if True, return the angle in degree.
+        
+    Returns
+    ---------
+    angle : float
+        angle between two vectors, in [0, 180] or [0, pi].
+    '''
+    # Calculate the dot product of vectors a and b
+    dot_product = np.dot(a, b)
+    
+    # Calculate the magnitudes of vectors a and b
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    
+    # Calculate the cosine of the angle
+    cos_theta = dot_product / (norm_a * norm_b)
+    
+    # Calculate the angle in radians in [0, pi]
+    angle_radians = np.arccos(np.clip(cos_theta, -1.0, 1.0))  # Clip to avoid numerical issues
+    
+    if in_degree:
+        angle_degrees = np.rad2deg(angle_radians)
+    
+    return angle_degrees
+
 
 #* ===========================================
 #* Transformation

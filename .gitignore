@@ -10,4 +10,4 @@ dump
 *.lay
 *.ini
 *.pyc
-
+*.dat

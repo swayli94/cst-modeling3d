@@ -4,8 +4,9 @@ Auxiliary functions for surface modeling
 import numpy as np
 import copy
 
-from ..basic import intersect_index, transform
-from ..section import Section, interp_from_curve
+from ..math import intersect_index, interp_from_curve
+from ..basic import transform
+from ..section import Section
 from ..surface import Surface
 
 def section_flap(sec: Section, ratio, angle, dy_axis=None):

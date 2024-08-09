@@ -6,7 +6,8 @@ from typing import List
 
 import numpy as np
 
-from .basic import BasicSurface, rotate
+from .math import rotate
+from .basic import BasicSurface
 from .section import OpenSection, Section
 
 #* ===========================================

@@ -7,7 +7,8 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .basic import BasicSection, rotate, interp_from_curve, find_circle_3p
+from .math import rotate, interp_from_curve, find_circle_3p
+from .basic import BasicSection
 
 
 #* ===========================================

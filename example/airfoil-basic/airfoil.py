@@ -6,7 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from cst_modeling.section import cst_foil
-from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
+from cst_modeling.basic import BasicSection, BasicSurface
+from cst_modeling.io import plot3d_to_igs
 
 
 if __name__ == "__main__":

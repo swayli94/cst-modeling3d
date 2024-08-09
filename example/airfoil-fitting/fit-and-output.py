@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from cst_modeling.section import cst_foil, cst_foil_fit
-from cst_modeling.basic import output_curves_igs, output_plot3d
+from cst_modeling.io import output_curves_igs, output_plot3d
 
 
 if __name__ == "__main__":

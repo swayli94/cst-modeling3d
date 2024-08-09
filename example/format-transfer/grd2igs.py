@@ -1,6 +1,6 @@
 
 
-from cst_modeling.basic import plot3d_to_igs
+from cst_modeling.io import plot3d_to_igs
 
 
 if __name__ == "__main__":

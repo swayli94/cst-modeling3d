@@ -5,7 +5,8 @@ Diamond wing
 import numpy as np
 from scipy.interpolate import interp1d
 
-from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
+from cst_modeling.io import plot3d_to_igs
+from cst_modeling.basic import BasicSection, BasicSurface
 from cst_modeling.section import dist_clustcos, cst_foil
 
 

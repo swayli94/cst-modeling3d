@@ -33,6 +33,22 @@ cst\_modeling.foil
    :undoc-members:
    :show-inheritance:
 
+cst\_modeling.math
+----------------------------
+
+.. automodule:: cst_modeling.math
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+cst\_modeling.io
+----------------------------
+
+.. automodule:: cst_modeling.io
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 cst\_modeling.tools
 =====================

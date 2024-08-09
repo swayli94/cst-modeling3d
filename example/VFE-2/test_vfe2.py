@@ -1,6 +1,8 @@
 
 import numpy as np
-from cst_modeling.basic import output_plot3d, plot3d_to_igs, intersect_point
+
+from cst_modeling.math import intersect_point
+from cst_modeling.io import output_plot3d, plot3d_to_igs
 from cst_modeling.section import dist_clustcos
 from cst_modeling.surface import surf_axisymmetric
 

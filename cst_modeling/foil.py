@@ -6,7 +6,7 @@ from typing import Tuple, List
 import numpy as np
 from scipy.interpolate import interp1d
 
-from .basic import curve_curvature, find_circle_3p
+from .math import curve_curvature, find_circle_3p
 from .section import cst_foil, cst_foil_fit, bump_function, foil_increment
 
 

@@ -4,7 +4,7 @@ Input and Output functions for the CST modeling package.
 
 import os
 import re
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 
@@ -67,6 +67,45 @@ def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.da
         for i in range(nn):
             line = '   %20.9f  %20.9f \n'%(x[i], yl[i])
 
+def output_surface(surf: List[np.ndarray], fname: str, ID=0, zone_name=None) -> None:
+    '''
+    Output the surface to `*.dat` in Tecplot format.
+    
+    Parameters
+    ------------
+    surf : List[np.ndarray]
+        surface coordinates, i.e., [surf_x, surf_y, surf_z].
+    
+    fname : str
+        name of the output file.
+        
+    ID : int
+        if `ID`=0, create new file and write header.
+        If `ID`>0, append to existed file.
+        
+    zone_name : str
+        name of the zone.
+    '''
+    # surf_x[ns,nt], ns => spanwise
+
+    ns = surf[0].shape[0]
+    nt = surf[0].shape[1]
+
+    if ID == 0:
+        with open(fname, 'w') as f:
+            f.write('Variables= X  Y  Z \n ')
+
+    with open(fname, 'a') as f:
+
+        if zone_name is None:
+            zone_name = '%d'%(ID)
+        
+        f.write('zone T=" %s " i= %d j= %d \n'%(zone_name, nt, ns))
+
+        for i in range(ns):
+            for j in range(nt):
+                f.write('  %.9f   %.9f   %.9f\n'%(surf[0][i,j], surf[1][i,j], surf[2][i,j]))
+    
 def read_tecplot(fname='tecplot.dat'):
     '''
     Read a tecplot format data file.

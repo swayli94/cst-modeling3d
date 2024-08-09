@@ -16,7 +16,7 @@ The 2D-to-3D transformation is defined by:
 - the chord length `chord`, i.e., :math:`|| \mathbf{x}_\text{LE} - \mathbf{x}_\text{TE} || = \text{chord}`;
 - the twist angle `twist` (deg) defining the curve rotation about Z-axis (right hand rule);
 - a flag `lTwistAroundLE` specifies the rotation center being LE or TE;
-- an optional float `thick_set` that specifies the maximum relative thickness of the closed curve.
+- an optional float `specified_thickness` that specifies the maximum relative thickness of the closed curve.
 
 The 2D-to-3D transformation is applied when calling `BasicSection.section()`.
 

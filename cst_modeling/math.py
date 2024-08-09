@@ -168,6 +168,12 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
               projection=False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
     Apply chord length, twist angle(deg) and leading edge position to a 2D curve.
+    
+    The transformation is applied in the following order:
+    
+    1. Translation
+    2. Scaling
+    3. Rotation
 
     Parameters
     -------------
@@ -190,11 +196,6 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
     ---------
     xu_new, xl_new, yu_new, yl_new : ndarray
         coordinates of the new 2D curve.
-
-    Examples
-    ---------
-    >>> xu_new, xl_new, yu_new, yl_new = transform()
-
     '''
     #* Translation
     xu_new = dx + xu
@@ -232,6 +233,83 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
     return xu_new, xl_new, yu_new, yl_new
 
+def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
+                    scale=1.0, x0=None, y0=None, 
+                    rot_z=None, rot_x=None, rot_y=None, xr=None, yr=None, zr=None
+                ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    '''
+    Transform a 2D (unit) curve to a 3D curve by translation, scaling and rotation.
+    
+    The transformation is applied in the following order:
+    
+    1. Translation
+    2. Scaling
+    
+        - Scale center: (x0, y0), the first point of the curve by default.
+        - Scale factor.
+    
+    3. Rotation
+    
+        - Rotate about the z axis by `rot_z` degree.
+        - Rotate about the x axis by `rot_x` degree.
+        - Rotate about the y axis by `rot_y` degree.
+        - Rotate center: (xr, yr, zr), the scale center by default.
+
+    Parameters
+    -------------
+    xx, yy : ndarray
+        a 2D (unit) curve.
+        
+    dx, dy : float
+        translation vector, e.g., leading edge location.
+        
+    scale : bool
+        scale factor.
+        
+    x0, y0 : float
+        the scale center for the 2D curve in the x-y plane.
+        
+    rot_x, rot_y, rot_z : float
+        rotate angle (degree) about the x, y, z axis.
+
+    xr, yr, zr : float
+        the rotation center for the 2D curve
+
+    Returns
+    ---------
+    x, y, z : ndarray
+        coordinates of the 3D curve.
+    '''
+    #* Translation
+    x = dx + xx
+    y = dy + yy
+    z = dz + np.zeros_like(x)
+
+    #* Scale center
+    x0 = x0 if x0 is not None else x[0]
+    y0 = y0 if y0 is not None else y[0]
+        
+    #* Scaling
+    x = x0 + (x-x0)*scale
+    y = y0 + (y-y0)*scale
+
+    #* Rotation center
+    xr = xr if xr is not None else x0
+    yr = yr if yr is not None else y0
+    zr = zr if zr is not None else dz
+    
+    #* Rotation
+    if abs(rot_z) > 1.0E-12:
+        x, y, z = rotate(x, y, z, angle=rot_z, origin=[xr, yr, zr], axis='Z')
+
+    if abs(rot_x) > 1.0E-12:
+        x, y, z = rotate(x, y, z, angle=rot_x, origin=[xr, yr, zr], axis='X')
+
+    if abs(rot_y) > 1.0E-12:
+        x, y, z = rotate(x, y, z, angle=rot_y, origin=[xr, yr, zr], axis='Y')
+
+    return x, y, z
+
 def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
            angle=0.0, origin=[0.0, 0.0, 0.0], axis='X') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
@@ -266,6 +344,7 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
         axis_vector=[0,0,1]
 
     points = rotate_vector(x, y, z, angle=angle, origin=origin, axis_vector=axis_vector)
+    
     x_ = points[:,0]
     y_ = points[:,1]
     z_ = points[:,2]
@@ -316,7 +395,7 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
 
     rot = Rotation.from_rotvec(angle*rotation_vector/180.0*np.pi)
     
-    # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
+    # In terms of rotation matrices, this application is the same as rot.as_matrix().dot(vector).
     points = rot.apply(vector) + origin
     
     return points

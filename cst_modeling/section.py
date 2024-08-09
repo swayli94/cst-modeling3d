@@ -59,7 +59,7 @@ class Section(BasicSection):
 
     def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True) -> None:
         '''
-        Generating the section (3D) by cst_foil. 
+        Generating the section (3D) by `cst_foil`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
 
         Parameters
@@ -84,7 +84,7 @@ class Section(BasicSection):
 
         #* Construct airfoil with CST parameters
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
-            nn, self.cst_u, self.cst_l, t=self.thick_set, tail=self.tail)
+            nn, self.cst_u, self.cst_l, t=self.specified_thickness, tail=self.tail)
         
         #* Trailing edge information
         a1 = [self.xx[-1]-self.xx[-5], self.yu[-1]-self.yu[-5]]
@@ -104,7 +104,7 @@ class Section(BasicSection):
             _, y_tmp = cst_curve(nn, self.refine_l, x=self.xx)
             yl_i += y_tmp
 
-        self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.thick_set)
+        self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.specified_thickness)
 
         #* Transform to 3D
         super().section(flip_x=flip_x, projection=projection)
@@ -137,7 +137,7 @@ class OpenSection(BasicSection):
 
     def section(self, cst=None, nn=1001, flip_x=False, projection=True):
         '''
-        Generating the section (3D) by cst_foil. 
+        Generating the section (3D) by `cst_curve`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
 
         Parameters
@@ -169,9 +169,9 @@ class OpenSection(BasicSection):
 
         #* Apply thickness
         self.thick = np.max(self.yy, axis=0)
-        if isinstance(self.thick_set, float):
-            self.yy = self.yy/self.thick*self.thick_set
-            self.thick = self.thick_set
+        if isinstance(self.specified_thickness, float):
+            self.yy = self.yy/self.thick*self.specified_thickness
+            self.thick = self.specified_thickness
 
         #* Transform to 3D
         super().section(flip_x=flip_x, projection=projection)

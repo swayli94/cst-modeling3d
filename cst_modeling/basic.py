@@ -15,16 +15,19 @@ from .math import rotate, transform, stretch_fixed_point, toCylinder
 
 class BasicSection():
     '''
-    Coordinates of the 2D unit curve and the 3D curve.
+    Coordinates of the 2D unit curve (profile) and the 3D curve (section).
     
     Parameters
     ----------
     thick : {float, None}, optional
         specified maximum relative thickness, by default None.
+        
     chord : float
         chord length (m), by default 1.
+        
     twist : float
         twist angle, by default 0.
+        
     lTwistAroundLE : bool
         whether the twist center is LE, otherwise TE, by default True.
     
@@ -38,56 +41,48 @@ class BasicSection():
     - +x:     flow direction (m)
     - +y:     upside (m)
     - +z:     span-wise (m)
-    - twist:  +z direction (deg)
     - chord:  chord length (m)
     - thick:  relative maximum thickness
     - tail:   absolute tail thickness (m)
-
+    - twist:  rotation angle about the z-axis, +z direction (deg)
+    - rot_x:  rotation angle about the x-axis, +x direction (deg)
+    - rot_y:  rotation angle about the y-axis, +y direction (deg)
     
     Attributes
     ------------
     xLE, yLE, zLE : float
         coordinates of the leading edge.
+        
     thick : float
         actual maximum relative thickness.
+        
     chord : float
         chord length.
+        
     twist : float
-        twist angle.
-    thick_set : {float, None}
+        twist angle (degree), i.e., rotation angle about z axis (rot_z).
+        
+    rot_x, rot_y : float
+        rotation angle (degree) about x and y axis.
+        
+    specified_thickness : float or None
         specified maximum relative thickness, by default None.
+        
     lTwistAroundLE : bool
         whether the twist center is LE, otherwise TE.
+        
     xx, yy, yu, yl : ndarray
         the 2D unit curve coordinates. 
         When it is an open section, only `yy` is available.
         When it is a closed section, only `yu` and `yl` are available. 
         They are then concatenated to one curve, e.g., an airfoil.
+        
     x, y, z : ndarray
         the 3D curve coordinates. The 3D curve is generated from the 2D curve through
         translation, scale, and rotation.
     '''
 
     def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True) -> None:
-        '''
-        Create a BasicSection object
-
-        Parameters
-        ----------
-        thick : {float, None}, optional
-            specified maximum relative thickness, by default None.
-        chord : float
-            chord length (m), by default 1.
-        twist : float
-            twist angle, by default 0.
-        lTwistAroundLE : bool
-            whether the twist center is LE, otherwise TE, by default True.
-        
-        Examples
-        --------
-        >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
-
-        '''
         
         self.xLE = 0.0
         self.yLE = 0.0
@@ -95,38 +90,105 @@ class BasicSection():
         self.chord = chord
         self.twist = twist
         self.thick = 0.0
-        self.thick_set = thick
+        self.specified_thickness = thick
+        
+        #* Rotation angles
+        # The rotation angles are applied after translation and scale
+        # The rotation center is the leading edge (LE) by default
+        self.rot_x = 0.0
+        self.rot_y = 0.0
         
         self.lTwistAroundLE = lTwistAroundLE
 
         #* 2D unit curve
-        self.xx  = None
-        self.yy  = None     # open curve
-        self.yu  = None     # upper surface of closed curve
-        self.yl  = None     # lower surface of closed curve
+        self.xx : np.ndarray = None
+        self.yy : np.ndarray = None     # open curve
+        self.yu : np.ndarray = None     # upper surface of closed curve
+        self.yl : np.ndarray = None     # lower surface of closed curve
 
         #* 3D section
-        self.x = np.zeros(1)
-        self.y = np.zeros(1)
-        self.z = np.zeros(1)
+        self.x : np.ndarray = None
+        self.y : np.ndarray = None
+        self.z : np.ndarray = None
 
-    def section(self, nn=1001, flip_x=False, projection=True) -> None:
+    @property
+    def has_profile(self) -> bool:
+        '''
+        Whether the 2D profile (unit curve) is constructed
+        '''
+        return isinstance(self.xx, np.ndarray)
+    
+    @property
+    def has_section(self) -> bool:
+        '''
+        Whether the 3D section is constructed
+        '''
+        return isinstance(self.x, np.ndarray)
+    
+    @property
+    def is_open_curve(self) -> bool:
+        '''
+        Whether the section is an open curve
+        '''
+        return isinstance(self.yy, np.ndarray)
+
+    @property
+    def n_point_profile(self) -> int:
+        '''
+        Number of points in the 2D profile (unit curve)
+        '''
+        if isinstance(self.xx, np.ndarray):
+            return self.xx.shape[0]
+        else:
+            return 0
+        
+    @property
+    def n_point_section(self) -> int:
+        '''
+        Number of points in the 3D section (3D curve)
+        '''
+        if isinstance(self.x, np.ndarray):
+            return self.x.shape[0]
+        else:
+            return 0
+
+    @property
+    def scale(self) -> float:
+        '''
+        Scale factor, e.g., chord length (m).
+        '''
+        return self.chord
+
+    @property
+    def rot_z(self) -> float:
+        '''
+        Rotation angle (degree) about z axis, i.e., the twist angle.
+        '''
+        return self.twist
+    
+    @rot_z.setter
+    def rot_z(self, value: float) -> None:
+        self.twist = value
+
+    def section(self, flip_x=False, projection=True, nn=None) -> None:
         '''
         Calculate the 3D curve coordinates from the known 2D curve.
 
         Parameters
         ------------
-        nn : int
-            number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.update_sections`.
         flip_x : bool
             whether flip `xx` in the reverse order, by default False.
+            
         projection : bool
             whether keeps the projection length the same when rotating the section, by default True.
         
+        nn : int
+            number of points in `xx`, `yy`, `yu`, and `yl`. 
+            It's here for the consistency with `Section.section` and `BasicSurface.update_sections`.
+        
         Examples
         ------------
-        >>> sec.section(nn=1001, flip_x=False, projection=True)
+        >>> sec.section(flip_x=False, projection=True)
 
         '''
         if not isinstance(self.xx, np.ndarray):
@@ -322,7 +384,7 @@ class BasicSurface():
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick_set = float(line[5])
+                            self.secs[i].specified_thickness = float(line[5])
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -1006,17 +1068,22 @@ class BasicSurface():
         ------------
         i_sec0, i_sec1 : int
             the index of the start section and the end section.
-        leader : {None, list of list}
+            
+        leader : List[List[float]] or None
             coordinates of the leader curve control points (and chord length). \n
             The leader is a spline curve defined by a list of control points.
             The leading edge point at both ends are automatically included in leader. \n
             `leader = [[x,y,z(,c)], [x,y,z(,c)], ...]`.
+            
         kx : {None, float}
             X-axis slope (dx/dz) at both ends [kx0, kx1].
+            
         ky : {None, float}
             Y-axis slope (dy/dz) at both ends [ky0, ky1].
+            
         kc : {None, float}
             chord slope (dc/dz) at both ends [kc0, kc1].
+            
         rot_x : bool
             if True, rotate sections in x-axis to make the section vertical to the leader.
 

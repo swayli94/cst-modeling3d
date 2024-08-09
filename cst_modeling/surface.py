@@ -81,7 +81,7 @@ class OpenSurface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick_set = float(line[5])
+                            self.secs[i].specified_thickness = float(line[5])
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -202,7 +202,7 @@ class Surface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick_set = float(line[5])
+                            self.secs[i].specified_thickness = float(line[5])
 
                         if isinstance(tail, float):
                             self.secs[i].tail  = tail/self.secs[i].chord
@@ -211,8 +211,8 @@ class Surface(BasicSurface):
                         else:
                             raise Exception('tail must be a float or a list with length = section number')
                         
-                        if self.secs[i].thick_set <= 0.0:
-                            self.secs[i].thick_set = None
+                        if self.secs[i].specified_thickness <= 0.0:
+                            self.secs[i].specified_thickness = None
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -263,7 +263,6 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].refine_fixed_t=True
                         self.secs[i].refine_u = cst_ur
                         self.secs[i].refine_l = cst_lr
 
@@ -299,9 +298,6 @@ class Surface(BasicSurface):
                             if i2<len(line2):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
-
-                        self.secs[i].cst_flip_u = cst_ur
-                        self.secs[i].cst_flip_l = cst_lr
 
                     found_key = 0
 

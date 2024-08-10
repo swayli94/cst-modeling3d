@@ -1314,4 +1314,115 @@ def extract_slice(data: List[np.ndarray], locations: List[float], Pref: np.ndarr
     return sections
 
     
+#* ===========================================
+#* Functions
+#* ===========================================
 
+def smooth_omega_shape_function(x: np.ndarray, c0=0.1, c1=0.9, b0=50, b1=50) -> np.ndarray:
+    '''
+    Smooth Omega-shape function, the output equals 0 at both ends, 1 at the middle.
+    There can be plateau at the middle and both ends. The function is smooth.
+    
+    Parameters
+    ----------
+    x : ndarray
+        input values, range in [0,1].
+        
+    c0, c1 : float
+        sharp transition location at both ends.
+        
+    b0, b1 : float
+        sharpness of the sigmoid at both ends.
+        `b` = 1  gives an almost A shape function, 
+        `b` = 25 gives a sigmoid transition with width about 0.1,
+        `b` = 50 gives a sigmoid transition with width about 0.05.     
+        
+    Returns
+    ---------
+    y : ndarray
+        output values, scaled to [0,1].
+        The output equals 0 at both ends, 1 at the middle.
+    '''
+    #* Scale x to [-1,1], and translate by c0, c1, then flip x1
+    
+    if c0 > 0:
+        x0 = 2*(x-c0)
+        r0 = scaled_sigmoid(x0, b0)
+    else:
+        r0 = 0.0
+        
+    if c1 < 1:
+        x1 = 2*(x-c1); x1 = -x1
+        r1 = scaled_sigmoid(x1, b1)
+    else:
+        r1 = 0.0
+    
+    y = r0 + r1
+
+    return (y-np.min(y))/(np.max(y)-np.min(y))
+
+def scaled_sigmoid(x: np.ndarray, b=1) -> np.ndarray:
+    '''
+    Scaled Sigmoid function. 
+    
+    Parameters
+    ----------
+    x : ndarray
+        input values.
+        The sharp transition is at `x=0`, therefore, `x` should be in [-1,1].
+        
+    b : float
+        sharpness of the sigmoid. A larger `b` gives a steeper sigmoid.
+        When `x` in [-1,1], `b` = 1 gives a almost linear function, 
+        `b` = 10 gives a sigmoid transition with width about 1.0,
+        `b` = 50 gives a sigmoid transition with width about 0.1.
+        
+    Returns
+    ---------
+    y : ndarray
+        output values, scaled to [0,1], i.e., `y` at `x[0]` is 0, `y` at `x[-1]` is 1.    
+    '''
+    y = 1.0/(1.0+np.exp(-b*x))
+    return (y-np.min(y))/(np.max(y)-np.min(y))
+
+
+if __name__ == '__main__':
+
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(16,4))
+    
+    xx = np.linspace(-1, 1, 1001, endpoint=True)
+    
+    plt.subplot(1,2,1)
+    plt.title('Scaled Sigmoid function')
+    
+    yy = scaled_sigmoid(xx, b=1)
+    plt.plot(xx, yy, 'k', label='b=1')
+    
+    yy = scaled_sigmoid(xx, b=10)
+    plt.plot(xx, yy, 'g', label='b=10')
+    
+    yy = scaled_sigmoid(xx, b=50)
+    plt.plot(xx, yy, 'r', label='b=50')
+    
+    
+    plt.legend()
+    
+    xx = np.linspace(0, 1, 1001, endpoint=True)
+
+    plt.subplot(1,2,2)
+    plt.title('Smooth Ratio function')
+    
+    yy = smooth_omega_shape_function(xx, c0=0.1, c1=0.9, b0=50, b1=50)
+    plt.plot(xx, yy, 'k', label='c0=0.1, c1=0.9, b0=50, b1=50')
+    
+    yy = smooth_omega_shape_function(xx, c0=0.0, c1=0.8, b0=25, b1=25)
+    plt.plot(xx, yy, 'g', label='c0=0.0, c1=0.8, b0=25, b1=25')
+    
+    yy = smooth_omega_shape_function(xx, c0=0.1, c1=0.9, b0=1, b1=1)
+    plt.plot(xx, yy, 'r', label='c0=0.1, c1=0.9, b0=1, b1=1')
+    
+    plt.legend()
+    
+    plt.show()

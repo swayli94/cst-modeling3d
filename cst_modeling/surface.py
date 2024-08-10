@@ -340,22 +340,22 @@ class Surface(BasicSurface):
 
             if not one_piece:
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
 
                     # surf_x[ns,nt], ns => spanwise
                     ns = self.ns
                     nt = int((surf_x.shape[1]+1)/2)
 
-                    f.write('zone T="sec-u %d" i= %d j= %d \n'%(isec, nt, ns))
+                    f.write('zone T="sec-u %d" i= %d j= %d \n'%(i_sec, nt, ns))
                     for i in range(ns):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j+nt-1], surf_y[i,j+nt-1], surf_z[i,j+nt-1]))
 
-                    f.write('zone T="sec-l %d" i= %d j= %d \n'%(isec, nt, ns))
+                    f.write('zone T="sec-l %d" i= %d j= %d \n'%(i_sec, nt, ns))
                     for i in range(ns):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
@@ -368,13 +368,13 @@ class Surface(BasicSurface):
                 
                 f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
 
-                    if isec>=n_piece-1:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -385,13 +385,13 @@ class Surface(BasicSurface):
 
                 f.write('zone T="sec-l" i= %d j= %d \n'%(nt, npoint))
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
                     
-                    if isec>=n_piece-1:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -426,16 +426,16 @@ class Surface(BasicSurface):
         with open(fname, 'w') as f:
 
             f.write('%d \n '%(n_piece*2))   # Number of surfaces
-            for isec in range(n_piece):
-                nt = int((self.surfs[isec][0].shape[1]+1)/2)
+            for i_sec in range(n_piece):
+                nt = int((self.surfs[i_sec][0].shape[1]+1)/2)
                 f.write('%d %d 1\n '%(nt, ns))
                 f.write('%d %d 1\n '%(nt, ns))
 
-            for isec in range(n_piece):
+            for i_sec in range(n_piece):
 
-                X = self.surfs[isec][0]
-                Y = self.surfs[isec][1]
-                Z = self.surfs[isec][2]
+                X = self.surfs[i_sec][0]
+                Y = self.surfs[i_sec][1]
+                Z = self.surfs[i_sec][2]
                 nt = int((X.shape[1]+1)/2)
 
                 #* Upper surface

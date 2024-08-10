@@ -267,58 +267,60 @@ def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tu
 
     return xyz, iLine0_new
 
-def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0) -> None:
+def output_plot3d(Xs: List[np.ndarray], Ys: List[np.ndarray], Zs: List[np.ndarray], fname: str, scale=1.0) -> None:
     '''
     Output surface to fname in plot3d format.
     
     Parameters
     -------------
-    X, Y, Z: list of ndarray [ns,nn]
-        coordinates
+    Xs, Ys, Zs: List[np.ndarray] [n0][ns,nn]
+        coordinates of multiple surfaces
         
     fname: str
         the name of the file (`*.grd`)
-
+        
+    scale: float
+        scaling factor.
     '''
     # ns: number of spanwise points
     # nn: number of curve points
-    
-    n0 = len(X)
+
+    n0 = len(Xs)
 
     with open(fname, 'w') as f:
         f.write('%d \n '%(n0))     # Number of surfaces
         for i_sec in range(n0):
-            ns = X[i_sec].shape[0]
-            nn = X[i_sec].shape[1]
+            ns = Xs[i_sec].shape[0]
+            nn = Xs[i_sec].shape[1]
             f.write('%d %d 1\n '%(nn, ns))
 
         for i_sec in range(n0):
             ii = 0
-            ns = X[i_sec].shape[0]
-            nn = X[i_sec].shape[1]
+            ns = Xs[i_sec].shape[0]
+            nn = Xs[i_sec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(X[i_sec][i,j]*scale))
+                    f.write(' %.9f '%(Xs[i_sec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
 
             ii = 0
-            ns = Y[i_sec].shape[0]
-            nn = Y[i_sec].shape[1]
+            ns = Ys[i_sec].shape[0]
+            nn = Ys[i_sec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(Y[i_sec][i,j]*scale))
+                    f.write(' %.9f '%(Ys[i_sec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
 
             ii = 0
-            ns = Z[i_sec].shape[0]
-            nn = Z[i_sec].shape[1]
+            ns = Zs[i_sec].shape[0]
+            nn = Zs[i_sec].shape[1]
             for i in range(ns):
                 for j in range(nn):
-                    f.write(' %.9f '%(Z[i_sec][i,j]*scale))
+                    f.write(' %.9f '%(Zs[i_sec][i,j]*scale))
                     ii += 1
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')

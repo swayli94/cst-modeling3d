@@ -9,7 +9,7 @@ from typing import Dict, Tuple, List
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.transform import Rotation
 
-from .math import transform_curve, angle_between_vectors
+from .math import transform_curve, angle_between_vectors, smooth_omega_shape_function
 
 
 class GuideCurve():
@@ -208,9 +208,9 @@ class GuideCurve():
         
         self.global_guide_curve[key] = func(self.global_guide_curve['s'])
         
-    def update_rotation_angle_with_tangent(self, key='all') -> None:
+    def generate_rotation_angle_with_tangent(self, key='all') -> None:
         '''
-        Update the rotation angle with the tangent of the guide curve.
+        Generate the rotation angle with the tangent of the guide curve.
         
         Parameters
         ----------
@@ -281,6 +281,111 @@ class GuideCurve():
             
         if key == 'all' or key == 'rot_y':
             self.global_guide_curve['rot_y'][-1] = self.global_guide_curve['rot_y'][-2]
+        
+        
+    def update_by_spline(self, control_s: np.ndarray, values: np.ndarray, 
+                                slope_s0=None, slope_s1=None, key='x', periodic=False) -> None:
+        '''
+        Update a segment of the global guide curve by a spline interpolation.
+        The segment is determined by the global parametric coordinates of the control points.
+        
+        Parameters
+        ----------
+        control_s : np.ndarray [n_point]
+            The global parametric coordinates of the control points, range in [0, 1].
+            
+        values : np.ndarray [n_point]
+            The global values of the control points.
+            
+        slope_s0, slope_s1 : float
+            The slope of the curve at the start and end points.
+            
+        key : str
+            The key of the global guide curve to update.
+        '''        
+        if periodic:
+            
+            bc_type = 'periodic'
+            
+        else:
+            
+            bcx0 = (2, 0.0)
+            bcx1 = (2, 0.0)
+            
+            if slope_s0 is not None:
+                bcx0 = (1, slope_s0)
+                
+            if slope_s1 is not None:
+                bcx1 = (1, slope_s1)
+            
+            bc_type = (bcx0, bcx1)
+        
+        func = CubicSpline(control_s, values, bc_type=bc_type)
+        
+        for i in range(self.n_total):
+            
+            s = self.global_guide_curve['s'][i]
+            
+            if s < control_s[0] or s > control_s[-1]:
+                continue
+            
+            self.global_guide_curve[key][i] = func(s)
+        
+    def update_rotation_angle_with_tangent(self, key='all', sections : List[Tuple[int, int]] = None) -> None:
+        '''
+        Update a segment of the global guide curve, 
+        changing the rotation angle based on the tangent of guide curve.
+        
+        Parameters
+        ----------
+        key : str
+            The key of the global guide curve to update.
+            It can be 'all', 'rot_x', 'rot_y', 'rot_z'.
+            
+        sections : List[Tuple[int, int]]
+            sections to be rotated, by default None. None means all sections are rotated.
+            The tuple is (start, end) index of the sections.
+            For example, [(0, 1), (2, 4)] means the sections between the 0-1 and 2-4 sections are rotated.
+        '''
+        original_guide_curve = self.global_guide_curve.copy()
+        
+        self.generate_rotation_angle_with_tangent(key=key)
+
+        if sections is not None:
+            
+            #* Create ratio curve (1 for rotated, 0 for original)
+            
+            ratio_curve = np.zeros(self.n_total)
+            
+            for start, end in sections:
+                
+                index0 = start * (self.n_spanwise-1)
+                index1 = end * (self.n_spanwise-1)
+                
+                xx = self.global_guide_curve['s'][index0:index1+1]
+                xx = (xx - xx[0]) / (xx[-1] - xx[0])
+                
+                c0 = 0.0 if start == 0 else 0.1
+                c1 = 1.0 if end == self.n_section-1 else 0.9
+                
+                yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=50, b1=50)
+                
+                ratio_curve[index0:index1+1] = yy
+                
+            #* Interpolate the original and rotated guide curve
+            
+            if key == 'all':
+                keys = ['rot_x', 'rot_y', 'rot_z']
+            else:
+                keys = [key]
+                
+            for key in keys:
+                
+                for i in range(self.n_total):
+                    
+                    r = ratio_curve[i]
+                    
+                    self.global_guide_curve[key][i] = (1.0-r) * original_guide_curve[key][i] + r * self.global_guide_curve[key][i]
         
     def output(self, fname='guide-curve.dat'):
         '''

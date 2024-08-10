@@ -182,6 +182,9 @@ class BasicSection():
         '''
         profile : List[np.ndarray] = [None, None]
         
+        if self.xx is None:
+            raise Exception('The 2D profile (xx, yy, yu, yl) has not been constructed')
+        
         if not self.is_open_curve:
         
             profile[0] = np.concatenate((np.flip(self.xx), self.xx[1:]), axis=0)

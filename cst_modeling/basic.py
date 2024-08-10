@@ -170,6 +170,30 @@ class BasicSection():
     def rot_z(self, value: float) -> None:
         self.twist = value
 
+    def get_profile(self) -> List[np.ndarray]:
+        '''
+        Get the 2D profile (unit curve) coordinates.
+        If it is a closed curve, the upper and lower surface curves are combined.
+        
+        Returns
+        ---------
+        profile : List[np.ndarray] [2][n_point_section]
+            the 2D profile coordinates, [profile_x, profile_y].
+        '''
+        profile : List[np.ndarray] = [None, None]
+        
+        if not self.is_open_curve:
+        
+            profile[0] = np.concatenate((np.flip(self.xx), self.xx[1:]), axis=0)
+            profile[1] = np.concatenate((np.flip(self.yl), self.yu[1:]), axis=0)
+            
+        else:
+            
+            profile[0] = self.xx
+            profile[1] = self.yy
+            
+        return profile
+
     def section(self, flip_x=False, projection=True, nn=None) -> None:
         '''
         Calculate the 3D curve coordinates from the known 2D curve.

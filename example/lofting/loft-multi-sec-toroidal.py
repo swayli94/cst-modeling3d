@@ -58,22 +58,22 @@ if __name__ == "__main__":
 
     thickness = [0.12, 0.10, 0.05, 0.10, 0.12]
 
-    sections = []
+    profiles = []
     for i_sec in range(N_SECTION):
         
         sec = BasicSection()
         sec.xx, sec.yu, sec.yl, sec.thick, _ = cst_foil(N_POINT, cst_u, cst_l, t=thickness[i_sec], tail=0.00)
         
-        sections.append(sec)
+        profiles.append(sec.get_profile())
 
 
     #* Lofting
     
-    loft = Lofting(sections, guide, is_guide_curve_at_LE=True)
+    loft = Lofting(profiles, guide, is_guide_curve_at_LE=True)
 
     loft.sweep(interp_profile_kind='quadratic')
 
-    for i_surf in range(loft.n_section-1):
+    for i_surf in range(loft.n_profile-1):
         
         output_surface(loft.surfs[i_surf], fname_save2, ID=i_surf)
 

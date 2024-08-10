@@ -10,7 +10,6 @@ from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.transform import Rotation
 
 from .math import transform_curve, angle_between_vectors
-from .basic import BasicSection
 
 
 class GuideCurve():
@@ -312,22 +311,22 @@ class Lofting_2Profile():
     
     Parameters
     ----------
-    sec0, sec1 : BasicSection
-        The section objects to provide the 2D profiles.
+    profile_0, profile_1 : List[np.ndarray] [2][n_point]
+        The 2D profiles for interpolation, [profile_x, profile_y].
         
     n_spanwise : int
-        The number of spanwise points for the surface between the two sections.
+        The number of spanwise points for the surface between the two profiles.
         
     is_guide_curve_at_LE : bool
         If True, the guide curve runs through the leading edge point (0,0) of each 2D profile.
         Otherwise, it runs through the point (1,0) of each 2D profile, which is the trailing edge of a unit curve.
         
-        This changes the scaling and rotation center of the sections, 
+        This changes the scaling and rotation center of the profiles, 
         which consequently affects the actual x,y-coordinates of the leading edge.
         When the rotation center is at the leading edge, 
-        the coordinates of the leading edge are directly defined by the xLE, yLE, zLE attributes of the sections.
+        the coordinates of the leading edge are directly defined by the xLE, yLE, zLE attributes of the profiles.
         However, when the rotation center is at the trailing edge, 
-        the coordinates of the leading edge are defined by the xLE, yLE, zLE attributes of the sections, and the scaling factor and rotation angle.
+        the coordinates of the leading edge are defined by the xLE, yLE, zLE attributes of the profiles, and the scaling factor and rotation angle.
         
     Attributes
     ----------
@@ -335,91 +334,61 @@ class Lofting_2Profile():
         The parametric coordinates of the guide curve, range in [0, 1].
     
     guide_curve : Dict[str, np.ndarray] [n_spanwise]
-        The guide curve to sweep the sections.
+        The guide curve to sweep the profiles.
         
         - 's' : The parametric coordinates of the guide curve, range in [0, 1].
         - 'x' : The x-coordinates of the guide curve.
         - 'y' : The y-coordinates of the guide curve.
         - 'z' : The z-coordinates of the guide curve.
-        - 'scale' : The scaling factor of the section at `s`.
-        - 'rot_x' : The rotation angle about the x-axis of the section at `s`.
-        - 'rot_y' : The rotation angle about the y-axis of the section at `s`.
-        - 'rot_z' : The rotation angle about the z-axis of the section at `s`.
-        
-    profile_0, profile_1 : List[np.ndarray] [2][n_point]
-        The 2D profiles for interpolation, [profile_x, profile_y].
-        
+        - 'scale' : The scaling factor of the profile at `s`.
+        - 'rot_x' : The rotation angle about the x-axis of the profile at `s`.
+        - 'rot_y' : The rotation angle about the y-axis of the profile at `s`.
+        - 'rot_z' : The rotation angle about the z-axis of the profile at `s`.
+                
     n_point : int
         The number of points in the 2D profiles.
     '''
 
-    def __init__(self, sec0: BasicSection, sec1: BasicSection, n_spanwise=101, is_guide_curve_at_LE=True) -> None:
+    def __init__(self, profile_0: List[np.ndarray], profile_1: List[np.ndarray], n_spanwise=101, is_guide_curve_at_LE=True) -> None:
         
-        self.sec0 = sec0
-        self.sec1 = sec1
+        self.profile_0 = profile_0
+        self.profile_1 = profile_1
         
         self.n_spanwise = n_spanwise
         
         self.is_guide_curve_at_LE = is_guide_curve_at_LE
         
-        self.check_sections()
+        self.check_profiles()
         
         self.init_guide_curve()
         
-        self.init_profile()
-
-    def check_sections(self) -> None:
+    def check_profiles(self) -> None:
         '''
-        Check the two sections.
+        Check the two profiles.
         '''
-        if not self.sec0.has_profile or not self.sec1.has_profile:
-            raise ValueError('The two 2D profiles must be provided.')
+        self.n_point = self.profile_0[0].shape[0]
         
-        if self.sec0.n_point_profile != self.sec1.n_point_profile:
-            raise ValueError('The two 2D profiles must have the same number of points.')
+        if (self.profile_0[1].shape[0] != self.n_point) or (self.profile_1[0].shape[0] != self.n_point) or (self.profile_1[1].shape[0] != self.n_point):
+            raise ValueError('The 2D profile must have the same number of points.')
         
     def init_guide_curve(self) -> None:
         '''
         Initialize the 3D guide curve, a straight line segment by default.
         '''
         self.guide_curve = {
-            's':        np.linspace(0.0,                1.0,                self.n_spanwise, endpoint=True),
-            'x':        np.linspace(self.sec0.xLE,      self.sec1.xLE,      self.n_spanwise, endpoint=True),
-            'y':        np.linspace(self.sec0.yLE,      self.sec1.yLE,      self.n_spanwise, endpoint=True),
-            'z':        np.linspace(self.sec0.zLE,      self.sec1.zLE,      self.n_spanwise, endpoint=True),
-            'scale':    np.linspace(self.sec0.scale,    self.sec1.scale,    self.n_spanwise, endpoint=True),
-            'rot_x':    np.linspace(self.sec0.rot_x,    self.sec1.rot_x,    self.n_spanwise, endpoint=True),
-            'rot_y':    np.linspace(self.sec0.rot_y,    self.sec1.rot_y,    self.n_spanwise, endpoint=True),
-            'rot_z':    np.linspace(self.sec0.rot_z,    self.sec1.rot_z,    self.n_spanwise, endpoint=True),
+            's':        np.linspace(0.0, 1.0, self.n_spanwise, endpoint=True),
+            'x':        np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
+            'y':        np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
+            'z':        np.linspace(0.0, 1.0, self.n_spanwise, endpoint=True),
+            'scale':    np.linspace(1.0, 1.0, self.n_spanwise, endpoint=True),
+            'rot_x':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
+            'rot_y':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
+            'rot_z':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
         }
 
         if not self.is_guide_curve_at_LE:
             
             self.guide_curve['x'] = self.guide_curve['x'] + self.guide_curve['scale']
-
-    def init_profile(self) -> None:
-        '''
-        Initialize the 2D profiles for interpolation.
-        '''
-        self.profile_0 : List[np.ndarray] = [None, None]
-        self.profile_1 : List[np.ndarray] = [None, None]
-        
-        #* Combine the upper and lower surface curves into one curve.
-        if not self.sec0.is_open_curve:
-        
-            self.profile_0[0] = np.concatenate((np.flip(self.sec0.xx), self.sec0.xx[1:]), axis=0)
-            self.profile_0[1] = np.concatenate((np.flip(self.sec0.yl), self.sec0.yu[1:]), axis=0)
-            self.profile_1[0] = np.concatenate((np.flip(self.sec1.xx), self.sec1.xx[1:]), axis=0)
-            self.profile_1[1] = np.concatenate((np.flip(self.sec1.yl), self.sec1.yu[1:]), axis=0)
-            
-        else:
-            
-            self.profile_0[0] = self.sec0.xx
-            self.profile_0[1] = self.sec0.yy
-            self.profile_1[0] = self.sec1.xx
-            self.profile_1[1] = self.sec1.yy
-            
-        self.n_point = self.profile_0[0].shape[0]
         
     def update_guide_curve(self, **kwargs) -> None:
         '''
@@ -443,7 +412,7 @@ class Lofting_2Profile():
         ----------
         spanwise_profiles : List[List[np.ndarray]] [n_spanwise][2][n_point]
             The profiles for transformation along the spanwise direction.
-            If None, the profiles are interpolated linearly from the two end sections.
+            If None, the profiles are interpolated linearly from the two end profiles.
         
         Returns
         -------
@@ -502,85 +471,55 @@ class Lofting():
     
     Parameters
     ----------
-    sections : List[BasicSection]
-        The section objects to provide the 2D profiles.
+    profiles : List[List[np.ndarray]] [n_profile][2][n_point]
+        The 2D profiles.
         
     global_guide_curve : GuideCurve
-        The global guide curve to sweep the sections.
+        The global guide curve to sweep the profiles.
         
     is_guide_curve_at_LE : bool
         If True, the guide curve runs through the leading edge point (0,0) of each 2D profile.
         Otherwise, it runs through the point (1,0) of each 2D profile, which is the trailing edge of a unit curve.
         
-        This changes the scaling and rotation center of the sections, 
+        This changes the scaling and rotation center of the profiles, 
         which consequently affects the actual x,y-coordinates of the leading edge.
         When the rotation center is at the leading edge, 
-        the coordinates of the leading edge are directly defined by the xLE, yLE, zLE attributes of the sections.
+        the coordinates of the leading edge are directly defined by the xLE, yLE, zLE attributes of the profiles.
         However, when the rotation center is at the trailing edge, 
-        the coordinates of the leading edge are defined by the xLE, yLE, zLE attributes of the sections, and the scaling factor and rotation angle.
+        the coordinates of the leading edge are defined by the xLE, yLE, zLE attributes of the profiles, and the scaling factor and rotation angle.
         
     Attributes
     ----------
-    n_section : int
-        The number of sections to loft.
+    n_profile : int
+        The number of profiles to loft.
     
     n_spanwise : int
-        The number of spanwise points for the surface between the two sections.
+        The number of spanwise points for the surface between the two profiles.
         
     n_total : int
         The total number of points for the guide curve.
     
-    surfs : List[List[np.ndarray]] [n_section-1][3][n_spanwise, n_point]
+    surfs : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
         The 3D coordinates of the surfaces.
     '''
-    def __init__(self, sections: List[BasicSection], global_guide_curve: GuideCurve, 
+    def __init__(self, profiles: List[List[np.ndarray]], global_guide_curve: GuideCurve, 
                     is_guide_curve_at_LE=True) -> None:
         
-        self.sections = sections
-        self.guide_curve = global_guide_curve
+        self.profiles   = profiles
+        self.guide_curve= global_guide_curve
         
-        self.n_section = global_guide_curve.n_section
+        self.n_profile  = global_guide_curve.n_section
         self.n_spanwise = global_guide_curve.n_spanwise
-        self.n_total = global_guide_curve.n_total
+        self.n_total    = global_guide_curve.n_total
+        self.n_point    = profiles[0][0].shape[0]
         
         self.is_guide_curve_at_LE = is_guide_curve_at_LE
         
         self.surfs : List[List[np.ndarray]] = []
         
-        if len(sections) != self.n_section:
-            raise ValueError('The number of sections must be consistent with the guide curve.')
-    
-    def init_all_profiles(self) -> None:
-        '''
-        Initialize the 2D profiles for interpolation.
+        if len(profiles) != self.n_profile:
+            raise ValueError('The number of profiles must be consistent with the guide curve number of section.')
         
-        This is only needed when calling `create_spanwise_profiles`.
-        '''
-        self.profiles : List[List[np.ndarray]] = [[None, None] for _ in range(self.n_section)]
-        
-        self.n_point = None
-        
-        for i_sec in range(self.n_section):
-            
-            sec = self.sections[i_sec]
-        
-            #* Combine the upper and lower surface curves into one curve.
-            if not self.sections[i_sec].is_open_curve:
-            
-                self.profiles[i_sec][0] = np.concatenate((np.flip(sec.xx), sec.xx[1:]), axis=0)
-                self.profiles[i_sec][1] = np.concatenate((np.flip(sec.yl), sec.yu[1:]), axis=0)
-
-            else:
-                
-                self.profiles[i_sec][0] = sec.xx
-                self.profiles[i_sec][1] = sec.yy
-
-            if self.n_point is None:
-                self.n_point = self.profiles[i_sec][0].shape[0]
-                
-            elif self.n_point != self.profiles[i_sec][0].shape[0]:
-                raise ValueError('The number of points in the 2D profiles must be consistent.')
-    
     def create_spanwise_profiles(self, kind='linear') -> List[List[np.ndarray]]:
         '''
         Create the spanwise profiles for the surface.
@@ -592,16 +531,14 @@ class Lofting():
         '''
         ss = self.guide_curve.global_guide_curve['s']
         
-        self.init_all_profiles()
-        
         spanwise_profiles : List[List[np.ndarray]] = [[np.zeros(self.n_point), np.zeros(self.n_point)] for _ in range(self.n_total)]
     
         for i_point in range(self.n_point):
             
             control_point_s = self.guide_curve.section_s_loc
             
-            control_point_x = [self.profiles[i_sec][0][i_point] for i_sec in range(self.n_section)]
-            control_point_y = [self.profiles[i_sec][1][i_point] for i_sec in range(self.n_section)]
+            control_point_x = [self.profiles[i_prf][0][i_point] for i_prf in range(self.n_profile)]
+            control_point_y = [self.profiles[i_prf][1][i_point] for i_prf in range(self.n_profile)]
             
             func_x = interp1d(control_point_s, control_point_x, kind=kind, fill_value='extrapolate')
             func_y = interp1d(control_point_s, control_point_y, kind=kind, fill_value='extrapolate')
@@ -624,32 +561,32 @@ class Lofting():
         ----------
         interp_profile_kind : str
             The kind of interpolation for the spanwise profiles.
-            If None, the profiles are interpolated linearly from the two end sections.
+            If None, the profiles are interpolated linearly from the two end profiles.
             Otherwise, the profiles are interpolated by the specified kind. See scipy.interpolate.interp1d.
         
         Returns
         -------
-        surfs : List[List[np.ndarray]] [n_section-1][3][n_spanwise, n_point]
+        surfs : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
             The 3D coordinates of the surfaces.
         '''
         if interp_profile_kind is not None:
             spanwise_profiles = self.create_spanwise_profiles(kind=interp_profile_kind)
         
-        for i_sec in range(self.n_section-1):
+        for i_prf in range(self.n_profile-1):
             
-            sec0 = self.sections[i_sec]
-            sec1 = self.sections[i_sec+1]
+            profile_0 = self.profiles[i_prf]
+            profile_1 = self.profiles[i_prf+1]
             
-            loft = Lofting_2Profile(sec0, sec1, n_spanwise=self.n_spanwise, is_guide_curve_at_LE=self.is_guide_curve_at_LE)
+            loft = Lofting_2Profile(profile_0, profile_1, n_spanwise=self.n_spanwise, is_guide_curve_at_LE=self.is_guide_curve_at_LE)
             
-            guide_curve = self.guide_curve.get_local_guide_curve(i_sec)
+            guide_curve = self.guide_curve.get_local_guide_curve(i_prf)
             
             loft.update_guide_curve(**guide_curve)
             
             if interp_profile_kind is not None:
                 
-                index0 = i_sec * (self.n_spanwise-1)
-                index1 = (i_sec+1) * (self.n_spanwise-1)
+                index0 = i_prf * (self.n_spanwise-1)
+                index1 = (i_prf+1) * (self.n_spanwise-1)
                 
                 spanwise_profiles_2 = spanwise_profiles[index0:index1+1]
                 

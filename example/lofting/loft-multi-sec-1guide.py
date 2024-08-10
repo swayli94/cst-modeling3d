@@ -61,25 +61,28 @@ if __name__ == "__main__":
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
     cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
 
-    sec0 = BasicSection(chord=1.0)
-    sec1 = BasicSection(chord=0.8)
-    sec2 = BasicSection(chord=0.6)
+    sec0 = BasicSection()
+    sec1 = BasicSection()
+    sec2 = BasicSection()
 
-    sec0.xx, sec0.yu, sec0.yl, sec0.thick, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.12, tail=0.00)
-    sec1.xx, sec1.yu, sec1.yl, sec1.thick, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.09, tail=0.00)
-    sec2.xx, sec2.yu, sec2.yl, sec2.thick, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.08, tail=0.00)
+    sec0.xx, sec0.yu, sec0.yl, _, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.12, tail=0.00)
+    sec1.xx, sec1.yu, sec1.yl, _, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.09, tail=0.00)
+    sec2.xx, sec2.yu, sec2.yl, _, _ = cst_foil(N_POINT, cst_u, cst_l, t=0.08, tail=0.00)
 
+    profile_0 = sec0.get_profile()
+    profile_1 = sec1.get_profile()
+    profile_2 = sec2.get_profile()
 
-    sections = [sec0, sec1, sec2]
+    profiles = [profile_0, profile_1, profile_2]
 
 
     #* Lofting
     
-    loft = Lofting(sections, guide, is_guide_curve_at_LE=True)
+    loft = Lofting(profiles, guide, is_guide_curve_at_LE=True)
 
     loft.sweep(interp_profile_kind='quadratic')
 
-    for i_surf in range(loft.n_section-1):
+    for i_surf in range(loft.n_profile-1):
         
         output_surface(loft.surfs[i_surf], fname_save2, ID=i_surf)
 

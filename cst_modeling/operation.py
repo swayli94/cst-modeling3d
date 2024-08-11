@@ -1,7 +1,7 @@
 '''
 Classes and functions for the operation of surfaces.
 '''
-
+import copy
 import numpy as np
 
 from typing import Dict, Tuple, List
@@ -347,8 +347,8 @@ class GuideCurve():
             The tuple is (start, end) index of the sections.
             For example, [(0, 1), (2, 4)] means the sections between the 0-1 and 2-4 sections are rotated.
         '''
-        original_guide_curve = self.global_guide_curve.copy()
-        
+        original_guide_curve = copy.deepcopy(self.global_guide_curve)
+            
         self.generate_rotation_angle_with_tangent(key=key)
 
         if sections is not None:
@@ -365,10 +365,10 @@ class GuideCurve():
                 xx = self.global_guide_curve['s'][index0:index1+1]
                 xx = (xx - xx[0]) / (xx[-1] - xx[0])
                 
-                c0 = 0.0 if start == 0 else 0.1
-                c1 = 1.0 if end == self.n_section-1 else 0.9
+                c0 = 0.0 if start == 0 else 0.2
+                c1 = 1.0 if end == self.n_section-1 else 0.8
                 
-                yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=50, b1=50)
+                yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=30, b1=30)
                 
                 ratio_curve[index0:index1+1] = yy
                 

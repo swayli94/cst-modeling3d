@@ -229,24 +229,27 @@ class BasicSurface():
         
         section_s_loc = self.spanwise_locations
         
+        s0 = section_s_loc[0]
+        ds = section_s_loc[-1] - section_s_loc[0]
+        
         for i in range(self.n_section):
-            section_s_loc[i] = (section_s_loc[i]-section_s_loc[0])/(section_s_loc[-1]-section_s_loc[0])
+            section_s_loc[i] = (section_s_loc[i]-s0)/ds
         
         control_points = {
             'x':        [sec.xLE    for sec in self.sections],
             'y':        [sec.yLE    for sec in self.sections],
             'z':        [sec.zLE    for sec in self.sections],
             'scale':    [sec.chord  for sec in self.sections],
-            'rot_x':    [0.0        for _ in range(self.n_section)],
-            'rot_y':    [0.0        for _ in range(self.n_section)],
+            'rot_x':    [0.0        for _   in self.sections],
+            'rot_y':    [0.0        for _   in self.sections],
             'rot_z':    [sec.twist  for sec in self.sections],
         }
-
+                   
 
         #* Generate the default (piecewise linear) guide curve
         
         guide = GuideCurve(self.n_section, n_spanwise=self.ns, section_s_loc=section_s_loc)
-        
+
         for key, value in control_points.items():
             guide.generate_by_interp1d(section_s_loc, value, key=key, kind='linear')
         
@@ -257,28 +260,29 @@ class BasicSurface():
                             
             if self.smooth_sections is None:
                 
-                guide.generate_by_spline(section_s_loc, control_points['y'],     key='y',     slope_s0=0.0, slope_s1=None, periodic=False)
-                guide.generate_by_spline(section_s_loc, control_points['rot_z'], key='rot_z', slope_s0=0.0, slope_s1=None, periodic=False)
+                for key in ['x', 'y', 'scale', 'rot_z']:
+                
+                    guide.generate_by_spline(section_s_loc, control_points[key], key=key, slope_s0=None, slope_s1=None, periodic=False)
                 
             else:
                 
                 for start, end in self.smooth_sections:
                     
                     control_s = section_s_loc[start:end+1]
-                    
-                    for key in ['y', 'rot_z']:
+
+                    for key in ['x', 'y', 'scale', 'rot_z']:
                         
                         control_v = control_points[key][start:end+1]
                     
                         if start == 0:
-                            slope_s0 = 0.0
+                            slope_s0 = None
                         else:
-                            slope_s0 = (control_v[start]-control_v[start-1])/(control_s[start]-control_s[start-1])
+                            slope_s0 = (control_points[key][start]-control_points[key][start-1])/(section_s_loc[start]-section_s_loc[start-1])
                             
                         if end == self.n_section-1:
                             slope_s1 = None
                         else:
-                            slope_s1 = (control_v[end+1]-control_v[end])/(control_s[end+1]-control_s[end])
+                            slope_s1 = (control_points[key][end+1]-control_points[key][end])/(section_s_loc[end+1]-section_s_loc[end])
                         
                         guide.update_by_spline(control_s, control_v, key=key, slope_s0=slope_s0, slope_s1=slope_s1, periodic=False)
                     

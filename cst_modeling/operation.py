@@ -9,7 +9,8 @@ from typing import Dict, Tuple, List
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.transform import Rotation
 
-from .math import transform_curve, angle_between_vectors, smooth_omega_shape_function
+from .math import (transform_curve, angle_between_vectors, 
+                    smooth_omega_shape_function, project_vector_to_plane)
 
 
 class GuideCurve():
@@ -58,6 +59,7 @@ class GuideCurve():
             'rot_x':    np.zeros(self.n_total),
             'rot_y':    np.zeros(self.n_total),
             'rot_z':    np.zeros(self.n_total),
+            'rot_axis': np.zeros(self.n_total),
         }
         
         for i_sec in range(self.n_section-1):
@@ -128,24 +130,12 @@ class GuideCurve():
             'rot_x':    self.global_guide_curve['rot_x'][index0:index1+1],
             'rot_y':    self.global_guide_curve['rot_y'][index0:index1+1],
             'rot_z':    self.global_guide_curve['rot_z'][index0:index1+1],
+            'rot_axis': self.global_guide_curve['rot_axis'][index0:index1+1],
         }
                 
         return guide_curve
         
-    def update_with_value(self, **kwargs) -> None:
-        '''
-        Update the global guide curve.
         
-        Parameters
-        ----------
-        kwargs : Dict[str, np.ndarray]
-            The keyword arguments to update the guide curve.
-            Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z'.
-        '''
-        for key, value in kwargs.items():
-            if key in self.global_guide_curve:
-                self.global_guide_curve[key] = value
-
     def generate_by_spline(self, global_control_s: np.ndarray, global_values: np.ndarray, 
                                 slope_s0=None, slope_s1=None, key='x', periodic=False) -> None:
         '''
@@ -216,7 +206,10 @@ class GuideCurve():
         ----------
         key : str
             The key of the global guide curve to update.
-            It can be 'all', 'rot_x', 'rot_y', 'rot_z'.
+            It can be 'all', 'rot_axis', 'rot_x', 'rot_y', 'rot_z'.
+            
+            - 'all' means all rotation angles are updated based on the tangent of the guide curve.
+            - 'rot_axis' means the main axis of the section is firstly defined by 'rot_z', the section is then rotated about the main axis.
         '''
         for i_global in range(self.n_total-1):
             
@@ -241,32 +234,36 @@ class GuideCurve():
                 self.global_guide_curve['rot_x'][i_global] = angles[1]
                 self.global_guide_curve['rot_y'][i_global] = angles[2]
                 
+            elif key == 'rot_axis':
+                
+                rot_z = np.deg2rad(self.global_guide_curve['rot_z'][i_global])
+                
+                main_axis = np.array([np.cos(rot_z), np.sin(rot_z), 0.0])
+                
+                vec0 = np.array([0.0, 0.0, 1.0])
+                vec0 = project_vector_to_plane(vec0, main_axis)
+                
+                vec1 = np.array([x1-x0, y1-y0, z1-z0])
+                vec1 = project_vector_to_plane(vec1, main_axis)
+                
+                angle = angle_between_vectors(vec0, vec1, n=main_axis)
+
+                self.global_guide_curve['rot_axis'][i_global] = angle
+                
             elif key == 'rot_z':
                 
-                vec0 = np.array([1.0, 0.0, 0.0])
-                vec1 = np.array([x1-x0, y1-y0, 0.0])
-                angle = angle_between_vectors(vec0, vec1)
-                sign = np.sign(vec1[1])
-
-                self.global_guide_curve['rot_z'][i_global] = angle * sign
+                angle = angle_between_vectors(a=[1.0, 0.0, 0.0], b=[x1-x0, y1-y0, 0.0], n=[0.0, 0.0, 1.0])
+                self.global_guide_curve['rot_z'][i_global] = angle
                 
             elif key == 'rot_x':
                 
-                vec0 = np.array([0.0, 0.0, 1.0])
-                vec1 = np.array([0.0, y1-y0, z1-z0])
-                angle = angle_between_vectors(vec0, vec1)
-                sign = - np.sign(vec1[1])
-                
-                self.global_guide_curve['rot_x'][i_global] = angle * sign
+                angle = angle_between_vectors(a=[0.0, 0.0, 1.0], b=[0.0, y1-y0, z1-z0], n=[1.0, 0.0, 0.0])
+                self.global_guide_curve['rot_x'][i_global] = angle
                 
             elif key == 'rot_y':
-                
-                vec0 = np.array([0.0, 0.0, 1.0])
-                vec1 = np.array([x1-x0, 0.0, z1-z0])
-                angle = angle_between_vectors(vec0, vec1)
-                sign = np.sign(vec1[0])
-                
-                self.global_guide_curve['rot_y'][i_global] = angle * sign
+
+                angle = angle_between_vectors(a=[0.0, 0.0, 1.0], b=[x1-x0, 0.0, z1-z0], n=[0.0, 1.0, 0.0])
+                self.global_guide_curve['rot_y'][i_global] = angle
                 
             else:
                 
@@ -282,6 +279,76 @@ class GuideCurve():
         if key == 'all' or key == 'rot_y':
             self.global_guide_curve['rot_y'][-1] = self.global_guide_curve['rot_y'][-2]
         
+        if key == 'rot_axis':
+            self.global_guide_curve['rot_axis'][-1] = self.global_guide_curve['rot_axis'][-2]
+        
+        
+    def update_with_value(self, **kwargs) -> None:
+        '''
+        Update the global guide curve.
+        
+        Parameters
+        ----------
+        kwargs : Dict[str, np.ndarray]
+            The keyword arguments to update the guide curve.
+            Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z', 'rot_axis'.
+        '''
+        for key, value in kwargs.items():
+            if key in self.global_guide_curve:
+                self.global_guide_curve[key] = value
+
+    def update_section_with_value(self, key: str, interp_func: callable, sections: Tuple[int, int] = None) -> None:
+        '''
+        Update a segment of the global guide curve, 
+        changing the rotation angle based on the tangent of guide curve.
+        
+        Parameters
+        ----------
+        key : str
+            The key of the global guide curve to update.
+            Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z', 'rot_axis'.
+            
+        interp_func : callable
+            The interpolation function to update the section.
+            `y = interp_func(s)`, where `s` is the local parametric coordinates of the guide curve between the specified sections,
+            `s` ranges in [0, 1].
+            
+        section : Tuple[int, int]
+            index of sections, the surface between the start and end sections are updated.
+            By default None, means the entire surface is updated.
+        '''
+        original_guide_curve = copy.deepcopy(self.global_guide_curve)
+            
+        if sections is None:
+            sections = [(0, self.n_section-1)]
+            
+        index0 = sections[0] * (self.n_spanwise-1)
+        index1 = sections[1] * (self.n_spanwise-1)
+        
+        s0 = self.global_guide_curve['s'][index0]
+        s1 = self.global_guide_curve['s'][index1]
+            
+        #* Create ratio curve (1 for new, 0 for original)
+
+        xx = self.global_guide_curve['s'][index0:index1+1]
+        xx = (xx - xx[0]) / (xx[-1] - xx[0])
+        
+        c0 = 0.0 if sections[0] == 0 else 0.2
+        c1 = 1.0 if sections[1] == self.n_section-1 else 0.8
+        
+        yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=30, b1=30)
+        
+        ratio_curve = np.zeros(self.n_total)
+        ratio_curve[index0:index1+1] = yy
+            
+        #* Interpolate the original and rotated guide curve
+        
+        for i in range(self.n_total):
+            
+            r = ratio_curve[i]
+            s = (self.global_guide_curve['s'][i] - s0) / (s1 - s0)
+            
+            self.global_guide_curve[key][i] = (1.0-r) * original_guide_curve[key][i] + r * interp_func(s)
         
     def update_by_spline(self, control_s: np.ndarray, values: np.ndarray, 
                                 slope_s0=None, slope_s1=None, key='x', periodic=False) -> None:
@@ -340,7 +407,7 @@ class GuideCurve():
         ----------
         key : str
             The key of the global guide curve to update.
-            It can be 'all', 'rot_x', 'rot_y', 'rot_z'.
+            It can be 'all', 'rot_x', 'rot_y', 'rot_z', 'rot_axis'.
             
         sections : List[Tuple[int, int]]
             sections to be rotated, by default None. None means all sections are rotated.
@@ -387,18 +454,19 @@ class GuideCurve():
                     
                     self.global_guide_curve[key][i] = (1.0-r) * original_guide_curve[key][i] + r * self.global_guide_curve[key][i]
         
+        
     def output(self, fname='guide-curve.dat'):
         '''
         Output the guide curve to a file.
         '''
         with open(fname, 'w') as f:
             
-            f.write('Variables= "s", "x", "y", "z", "scale", "rot_x", "rot_y", "rot_z" \n')
+            f.write('Variables= "s", "x", "y", "z", "scale", "rot_x", "rot_y", "rot_z", "rot_axis" \n')
             f.write('zone T="guide-curve"  i= %d \n' % self.n_total)
             
             for i in range(self.n_total):
                 
-                f.write('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f \n' % (
+                f.write('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f \n' % (
                     self.global_guide_curve['s'][i], 
                     self.global_guide_curve['x'][i], 
                     self.global_guide_curve['y'][i], 
@@ -406,7 +474,9 @@ class GuideCurve():
                     self.global_guide_curve['scale'][i], 
                     self.global_guide_curve['rot_x'][i], 
                     self.global_guide_curve['rot_y'][i], 
-                    self.global_guide_curve['rot_z'][i]))
+                    self.global_guide_curve['rot_z'][i],
+                    self.global_guide_curve['rot_axis'][i],
+                    ))
 
         
 class Lofting_2Profile():
@@ -449,6 +519,7 @@ class Lofting_2Profile():
         - 'rot_x' : The rotation angle about the x-axis of the profile at `s`.
         - 'rot_y' : The rotation angle about the y-axis of the profile at `s`.
         - 'rot_z' : The rotation angle about the z-axis of the profile at `s`.
+        - 'rot_axis' : The rotation angle about the main axis of the profile at `s`.
                 
     n_point : int
         The number of points in the 2D profiles.
@@ -489,6 +560,7 @@ class Lofting_2Profile():
             'rot_x':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
             'rot_y':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
             'rot_z':    np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
+            'rot_axis': np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
         }
 
         if not self.is_guide_curve_at_LE:
@@ -503,7 +575,7 @@ class Lofting_2Profile():
         ----------
         kwargs : Dict[str, np.ndarray]
             The keyword arguments to update the guide curve.
-            Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z'.
+            Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z', 'rot_axis'.
         '''
         for key, value in kwargs.items():
             if key in self.guide_curve:
@@ -563,7 +635,8 @@ class Lofting_2Profile():
             surf_x[i], surf_y[i], surf_z[i] = transform_curve(xx, yy, 
                     dx=dx, dy=gy, dz=gz,
                     scale=self.guide_curve['scale'][i], x0=x0, y0=gy,
-                    rot_x=self.guide_curve['rot_x'][i], rot_y=self.guide_curve['rot_y'][i], rot_z=self.guide_curve['rot_z'][i],
+                    rot_x=self.guide_curve['rot_x'][i], rot_y=self.guide_curve['rot_y'][i], 
+                    rot_z=self.guide_curve['rot_z'][i], rot_axis=self.guide_curve['rot_axis'][i],
                     xr=xr, yr=gy, zr=gz)
                     
         return surf_x, surf_y, surf_z

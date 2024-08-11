@@ -73,13 +73,16 @@ class BasicSurface():
         surface coordinates, i.e., a list of [surf_x, surf_y, surf_z].
         The surface coordinates `surf_*` are 2D arrays with shape (ns, nn).
         
+    section_s_loc : List[float]
+        span-wise parametric locations of the sections.
+        
     half_size : float
         half of the size of the entire surface for plotting.
         
     center : ndarray
         surface center for plotting.
     '''
-    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
@@ -95,7 +98,7 @@ class BasicSurface():
         
         #* Attributes
         
-        self.sections = [ BasicSection() for _ in range(max(1, n_section)) ]
+        self.sections = [ BasicSection() for _ in range(max(1, n_sec)) ]
         self.surfaces : List[List[np.ndarray]] = []
         
         self.lofting : Lofting = None
@@ -225,15 +228,24 @@ class BasicSurface():
         guide: GuideCurve
             default guide curve object.
         '''
-        #* Setup the control points
+        #* Calculate parametric coordinates for the sections
         
-        section_s_loc = self.spanwise_locations
+        section_s_loc = [0.0]
         
-        s0 = section_s_loc[0]
-        ds = section_s_loc[-1] - section_s_loc[0]
+        for i in range(self.n_section-1):
+            
+            section_s_loc.append(section_s_loc[i] + np.sqrt((self.sections[i+1].xLE-self.sections[i].xLE)**2 + 
+                                                            (self.sections[i+1].yLE-self.sections[i].yLE)**2 + 
+                                                            (self.sections[i+1].zLE-self.sections[i].zLE)**2) )
+
+        ds = section_s_loc[-1]
         
         for i in range(self.n_section):
-            section_s_loc[i] = (section_s_loc[i]-s0)/ds
+            section_s_loc[i] = (section_s_loc[i])/ds
+            
+        self.section_s_loc = section_s_loc
+        
+        #* Setup the control points
         
         control_points = {
             'x':        [sec.xLE    for sec in self.sections],
@@ -243,6 +255,7 @@ class BasicSurface():
             'rot_x':    [0.0        for _   in self.sections],
             'rot_y':    [0.0        for _   in self.sections],
             'rot_z':    [sec.twist  for sec in self.sections],
+            'rot_axis': [0.0        for _   in self.sections],
         }
                    
 
@@ -354,7 +367,8 @@ class BasicSurface():
         The `prepare()` method should be called first to prepare the profiles and lofting object.
         '''
         if self.lofting is None:
-            raise Exception('Please call `prepare()` first, to prepare the profiles and lofting object.')
+            #raise Exception('Please call `prepare()` first, to prepare the profiles and lofting object.')
+            self.prepare()
 
         kind = None
         
@@ -479,6 +493,35 @@ class BasicSurface():
         self.center[0] += dX
         self.center[1] += dY
         self.center[2] += dZ
+
+    def split(self, index_splitting_point: List[int]) -> None:
+        '''
+        Split each surface into several pieces in the nn direction.
+        
+        Parameters
+        -----------
+        index_splitting_point : list of int
+            index of the split points on each section curves
+        '''
+        nn = self.surfaces[0][0].shape[1]  # i.e., self.nn
+        index_splitting_point.sort()
+        index_splitting_point = [1] + index_splitting_point + [nn]
+        
+        surfaces = copy.deepcopy(self.surfaces)
+        self.surfaces = []
+
+        for i in range(len(index_splitting_point)-1):
+
+            for surf in surfaces:
+
+                surf_x = surf[0]
+                surf_y = surf[1]
+                surf_z = surf[2]
+                
+                self.surfaces.append([
+                    surf_x[:,index_splitting_point[i]-1:index_splitting_point[i+1]],
+                    surf_y[:,index_splitting_point[i]-1:index_splitting_point[i+1]],
+                    surf_z[:,index_splitting_point[i]-1:index_splitting_point[i+1]]])
 
     #* Output
     def output_tecplot(self, fname=None, one_piece=False) -> None:
@@ -621,22 +664,46 @@ class BasicSurface():
             
         return ax
 
+    #* Obsolete functions
+    def add_sec(self, *args, **kwargs) -> None:
+        '''
+        Obsolete function.
+        '''
+        print('>>> [Error] The `add_sec` method is not implemented.')
+        raise NotImplementedError
+    
+    def smooth(self, *args, **kwargs) -> None:
+        '''
+        Obsolete function.
+        '''
+        print('>>> [Warning] The `smooth` method is obsolete.')
+        print('    Please use `smooth_surface` and `smooth_sections` in the constructor.')
+        print('    Or provide a user-defined guide curve `guide` in the `prepare()` method.')
+        
+    def bend(self, *args, **kwargs) -> None:
+        '''
+        Obsolete function.
+        '''
+        print('>>> [Warning] The `bend` method is obsolete.')
+        print('    Please use `rotate_x_section` and `rotation_sections` in the constructor.')
+        print('    Or provide a user-defined guide curve `guide` in the `prepare()` method.')
+
 
 class OpenSurface(BasicSurface):
     '''
     Open surface defined by multiple OpenSection objects.
     '''
-    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
         
-        super().__init__(n_section=n_section, name=name, nn=nn, ns=ns, 
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, 
                             smooth_surface=smooth_surface, smooth_sections=smooth_sections,
                             rotate_x_section=rotate_x_section, rotation_sections=rotation_sections,
                             is_guide_curve_at_LE=is_guide_curve_at_LE)
 
-        self.sections = [ OpenSection() for _ in range(max(1, n_section)) ]
+        self.sections = [ OpenSection() for _ in range(max(1, n_sec)) ]
 
     def read_setting(self, fname) -> None:
         '''
@@ -750,21 +817,22 @@ class OpenSurface(BasicSurface):
         for i in range(self.n_section):
             self.sections[i].section(nn=self.nn, projection=False)
 
+
 class Surface(BasicSurface):
     '''
     Surface defined by multiple Section objects, i.e., foils
     '''
-    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
         
-        super().__init__(n_section=n_section, name=name, nn=nn, ns=ns, 
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, 
                             smooth_surface=smooth_surface, smooth_sections=smooth_sections,
                             rotate_x_section=rotate_x_section, rotation_sections=rotation_sections,
                             is_guide_curve_at_LE=is_guide_curve_at_LE)
         
-        self.sections = [ Section() for _ in range(max(1, n_section)) ]
+        self.sections = [ Section() for _ in range(max(1, n_sec)) ]
 
     def read_setting(self, fname, tail=0.0) -> None:
         '''

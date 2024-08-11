@@ -34,7 +34,7 @@ if __name__ == "__main__":
     The surface between section 2&4 has a piecewise linear distribution.
     '''
 
-    wing = Surface(n_section=9, name='Wing-CRM', nn=201, ns=21, 
+    wing = Surface(n_sec=9, name='Wing-CRM', nn=201, ns=21, 
                     smooth_surface=True, smooth_sections=[(0, 2), (4, 8)])
 
     wing.read_setting(os.path.join(path, 'Wing.txt'))

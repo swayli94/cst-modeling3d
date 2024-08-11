@@ -15,9 +15,8 @@ if __name__ == "__main__":
     #  Each section's upper/lower surface are constructed by CST method
     #  The chord-wise has nn points in the upper/lower surface
     #  The span-wise has ns points in each surface between two adjacent sections
-    wing = Surface(n_section=3, name='Wing-basic', nn=101, ns=52,
+    wing = Surface(n_sec=3, name='Wing-basic', nn=101, ns=51,
                     smooth_surface=False, smooth_sections=None)
-
 
     #* Read settings from file 'Wing.txt'
     #  The settings of [wing] object is under its name 'Wing'

@@ -22,7 +22,7 @@ if __name__ == "__main__":
     #  The settings of [wing] object is under its name 'Wing'
     #  First part is the parameters for the layout
     #  Second part is the CST parameters of upper/lower surface of each section
-    wing.read_setting('Wing.txt')
+    wing.read_setting(os.path.join(path, 'Wing.txt'))
 
 
     #* Add auxiliary section
@@ -48,6 +48,5 @@ if __name__ == "__main__":
     #* Plot the wing surface on screen
     #  This is flipping the surface, it can do turing 90deg or mirror
     wing.flip(axis='+X +Z')
-
     wing.plot()
 

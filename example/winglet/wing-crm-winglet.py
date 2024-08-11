@@ -21,7 +21,7 @@ if __name__ == "__main__":
     The rotation sections can be just winglet sections, because usually we do not want to rotate the wing sections.
     '''
     
-    wing = Surface(n_section=10, name='Wing-CRM-winglet', nn=201, ns=51, 
+    wing = Surface(n_sec=10, name='Wing-CRM-winglet', nn=201, ns=51, 
                     smooth_surface=True, smooth_sections=[(0, 2), (4, 7), (8, 9)],
                     rotate_x_section=True, rotation_sections=[(8, 9)])
 

@@ -158,7 +158,7 @@ def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
 
     return R, np.array([x0, y0])
 
-def angle_between_vectors(a: np.ndarray, b: np.ndarray, in_degree=True) -> float:
+def angle_between_vectors(a: np.ndarray, b: np.ndarray, n=None, in_degree=True) -> float:
     '''
     Calculate the angle between two vectors.
     
@@ -167,13 +167,17 @@ def angle_between_vectors(a: np.ndarray, b: np.ndarray, in_degree=True) -> float
     a, b : ndarray [3]
         vectors
         
+    n : ndarray [3]
+        positive normal vector, by default None. 
+        If None, the angle is in [0, 180] or [0, pi].
+        
     in_degree : bool
         if True, return the angle in degree.
         
     Returns
     ---------
     angle : float
-        angle between two vectors, in [0, 180] or [0, pi].
+        angle between two vectors, in [-180, 180] or [-pi, pi].
     '''
     # Calculate the dot product of vectors a and b
     dot_product = np.dot(a, b)
@@ -189,9 +193,40 @@ def angle_between_vectors(a: np.ndarray, b: np.ndarray, in_degree=True) -> float
     angle_radians = np.arccos(np.clip(cos_theta, -1.0, 1.0))  # Clip to avoid numerical issues
     
     if in_degree:
-        angle_degrees = np.rad2deg(angle_radians)
+        angle = np.rad2deg(angle_radians)
+    else:
+        angle = angle_radians
     
-    return angle_degrees
+    # Calculate the cross product
+    cross = np.cross(a, b)
+    
+    # Determine the direction of the angle using the sign of the z-component of the cross product
+    if n is not None:
+        if np.dot(cross, n) < 0:
+            angle = - angle
+            
+    return angle
+
+def project_vector_to_plane(v: np.ndarray, n: np.ndarray) -> np.ndarray:
+    '''
+    Project a vector `v` to a plane with normal vector `n`.
+    
+    Parameters
+    ------------
+    v : ndarray [3]
+        vector to be projected.
+        
+    n : ndarray [3]
+        normal vector of the plane.
+    
+    Returns
+    ---------
+    vp : ndarray [3]
+        projected vector.
+    '''
+    n = n/np.linalg.norm(n)
+    vp = v - np.dot(v, n)*n
+    return vp
 
 
 #* ===========================================
@@ -270,7 +305,8 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
 def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
                     scale=1.0, x0=None, y0=None, 
-                    rot_z=None, rot_x=None, rot_y=None, xr=None, yr=None, zr=None
+                    rot_z=None, rot_x=None, rot_y=None, rot_axis=None,
+                    xr=None, yr=None, zr=None
                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Transform a 2D (unit) curve to a 3D curve by translation, scaling and rotation.
@@ -288,6 +324,7 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
         - Rotate about the z axis by `rot_z` degree.
         - Rotate about the x axis by `rot_x` degree.
         - Rotate about the y axis by `rot_y` degree.
+        - Rotate about the main axis of the curve by `rot_axis` degree.
         - Rotate center: (xr, yr, zr), the scale center by default.
 
     Parameters
@@ -306,6 +343,10 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
         
     rot_x, rot_y, rot_z : float
         rotate angle (degree) about the x, y, z axis.
+        
+    rot_axis : float
+        rotate angle (degree) about the main axis of the curve,
+        e.g., the chord line of an airfoil.
 
     xr, yr, zr : float
         the rotation center for the 2D curve
@@ -334,15 +375,26 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
     zr = zr if zr is not None else dz
     
     #* Rotation
+    xv = [1.0]; yv = [0.0]; zv = [0.0]
+    
     if abs(rot_z) > 1.0E-12:
-        x, y, z = rotate(x, y, z, angle=rot_z, origin=[xr, yr, zr], axis='Z')
+        x,  y,  z  = rotate(x,  y,  z,  angle=rot_z, origin=[xr, yr, zr], axis='Z')
+        xv, yv, zv = rotate(xv, yv, zv, angle=rot_z, axis='Z')
 
     if abs(rot_x) > 1.0E-12:
-        x, y, z = rotate(x, y, z, angle=rot_x, origin=[xr, yr, zr], axis='X')
+        x,  y,  z  = rotate(x,  y,  z,  angle=rot_x, origin=[xr, yr, zr], axis='X')
+        xv, yv, zv = rotate(xv, yv, zv, angle=rot_z, axis='X')
 
     if abs(rot_y) > 1.0E-12:
-        x, y, z = rotate(x, y, z, angle=rot_y, origin=[xr, yr, zr], axis='Y')
-
+        x,  y,  z  = rotate(x,  y,  z,  angle=rot_y, origin=[xr, yr, zr], axis='Y')
+        xv, yv, zv = rotate(xv, yv, zv, angle=rot_z, axis='Y')
+        
+    if abs(rot_axis) > 1.0E-12:
+        points = rotate_vector(x, y, z, angle=rot_axis, origin=[xr, yr, zr], axis_vector=[xv[0], yv[0], zv[0]])
+        x = points[:,0]
+        y = points[:,1]
+        z = points[:,2]
+        
     return x, y, z
 
 def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,

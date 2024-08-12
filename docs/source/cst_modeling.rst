@@ -25,6 +25,14 @@ cst\_modeling.surface
    :undoc-members:
    :show-inheritance:
 
+cst\_modeling.surface2
+----------------------------
+
+.. automodule:: cst_modeling.surface2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 cst\_modeling.foil
 ----------------------------
 
@@ -49,6 +57,14 @@ cst\_modeling.io
    :undoc-members:
    :show-inheritance:
 
+cst\_modeling.operation
+----------------------------
+
+.. automodule:: cst_modeling.operation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 cst\_modeling.tools
 =====================
@@ -61,4 +77,18 @@ tools.naca
    :undoc-members:
    :show-inheritance:
 
+tools.xfoil
+--------------------------
 
+.. automodule:: cst_modeling.tools.xfoil
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+tools.blwf
+--------------------------
+
+.. automodule:: cst_modeling.tools.blwf
+   :members:
+   :undoc-members:
+   :show-inheritance:

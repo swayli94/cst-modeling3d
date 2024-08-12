@@ -30,7 +30,11 @@ The following is an overview of the project's structure:
     │   ├── basic.py
     │   ├── section.py
     │   ├── surface.py
+    │   ├── surface2.py
     │   ├── foil.py
+    │   ├── math.py
+    │   ├── io.py
+    │   ├── operation.py
     │   └── tools/
     │       ├── __init__.py
     │       ├── naca.py
@@ -56,7 +60,11 @@ Directories and Files
   - **basic.py**: Basic classes for sections and surfaces, and fundamental functions.
   - **section.py**: Classes and functions for construction two-dimensional sections.
   - **surface.py**: Classes and functions for construction three-dimensional surfaces.
+  - **surface2.py**: Classes and functions for construction three-dimensional surfaces with lofting method.
   - **foil.py**: Classes and functions for airfoil geometric feature extraction and modification.
+  - **math.py**: Mathematical functions.
+  - **io.py**: Input/output functions.
+  - **operation.py**: Operations on surfaces, e.g., guide curve, lofting.
   - **tools/**: Contains auxiliary tools.
   
     - **__init__.py**: Initialization file for the tools package.
@@ -91,4 +99,45 @@ To install the package, run the following command:
     pip install -e .
 
 Please note that the package in the PyPI repository may not be the latest version.
+
+
+Development 
+---------------------------
+
+Upload the package to PyPI:
+
+.. code-block:: bash
+
+    # Install twine
+    pip install twine
+
+    # Build the package
+    python setup.py sdist bdist_wheel
+
+    # Upload the package
+    twine upload dist/*
+
+Start sphinx documentation:
+
+.. code-block:: bash
+
+    # Install sphinx
+    pip install sphinx
+
+    # Start the documentation
+    cd docs
+    make html
+
+    # Clean the documentation
+    make clean
+
+    # Clean the documentation and remove the build directory
+    make cleanall
+
+    # Start the documentation with auto-reload
+    cd source
+    sphinx-autobuild . _build/html
+
+    # Open the documentation
+    open _build/html/index.html
 

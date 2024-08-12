@@ -1,7 +1,7 @@
 cst_modeling/__pycache__/
 cst_modeling3d.egg-info/
 dist/
-build/
+_build/
 .vscode/
 
 temp*

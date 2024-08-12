@@ -5,8 +5,9 @@ Examples
     :maxdepth: 2
 
     airfoil
-    swept-wing
+    wing
     delta-wing
+    propeller
     inlet-nozzle
     fuselage
     fan

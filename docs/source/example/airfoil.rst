@@ -7,7 +7,7 @@ Build an airfoil
 :download:`airfoil.py <../../../example/airfoil-basic/airfoil.py>`
 
 This example demonstrates how to build an airfoil with CST parameters,
-using the :func:`cst_modeling.section.cst_foil` function.
+using the :func:`cst_foil <cst_modeling.section.cst_foil>` function.
 It takes the CST parameters of the upper surface and lower surface as input.
 You need to specify the number of points on the airfoil with `n`.
 You can provide a reference x-coordinate distribution with `x`.
@@ -51,7 +51,7 @@ Fit airfoil raw data points
 
 Sometimes, you may have raw data points of an airfoil and want to get the CST parameters.
 This example demonstrates how to fit the CST parameters from raw data points,
-using the :func:`cst_modeling.section.cst_foil_fit` function.
+using the :func:`cst_foil_fit <cst_modeling.section.cst_foil_fit>` function.
 You need to provide the raw data points of the upper surface and lower surface,
 i.e., `xu0, yu0, xl0, yl0`. You can also specify the number of CST parameters with `n_cst`.
 
@@ -74,9 +74,9 @@ Airfoil data output
 --------------------
 
 When you need to output the airfoil data to a file, you can use the following code.
-The :func:`cst_modeling.basic.output_foil` function outputs the 2D airfoil data in the Tecplot format.
-The :func:`cst_modeling.basic.output_plot3d` function outputs the 2D airfoil data in the Plot3D format.
-The :func:`cst_modeling.basic.output_curves_igs` function outputs the 2D airfoil data in the IGES format.
+The :func:`output_foil <cst_modeling.basic.output_foil>` function outputs the 2D airfoil data in the Tecplot format.
+The :func:`output_plot3d <cst_modeling.basic.output_plot3d>` function outputs the 2D airfoil data in the Plot3D format.
+The :func:`output_curves_igs <cst_modeling.basic.output_curves_igs>` function outputs the 2D airfoil data in the IGES format.
 
 .. code-block:: python
     :linenos:
@@ -107,8 +107,10 @@ Build a 3D airfoil
 :download:`airfoil.py <../../../example/airfoil-basic/airfoil.py>`
 
 Sometimes, you may need to build a 3D airfoil from the 2D airfoil data.
-Then, you need the :class:`cst_modeling.basic.BasicSection` and :class:`cst_modeling.basic.BasicSurface` classes.
-You can specify how the surface is output, such as whether the upper and lower surfaces are output separately or together, or whether combine the span-wise sections into one piece. Please refer to the function document for details.
+Then, you need the :class:`BasicSection <cst_modeling.basic.BasicSection>`
+and :class:`BasicSurface <cst_modeling.surface2.BasicSurface>` (or an old version :class:`BasicSurface <cst_modeling.basic.BasicSurface>`) classes.
+You can specify how the surface is output, such as whether the upper and lower surfaces are output separately or together, 
+or whether combine the span-wise sections into one piece. Please refer to the function document for details.
 
 
 .. code-block:: python
@@ -155,7 +157,7 @@ Extract geometric features
 :download:`airfoil-geometric-features.py <../../../example/airfoil-features/airfoil-geometric-features.py>`
 
 This example demonstrates how to extract geometric features from the airfoil data,
-using the :class:`cst_modeling.foil.FoilGeoFeatures` class.
+using the :class:`FoilGeoFeatures <cst_modeling.foil.FoilGeoFeatures>` class.
 
 Geometric features:
 
@@ -194,7 +196,7 @@ Modify airfoil geometry
 :download:`airfoil-modification.py <../../../example/airfoil-modification/airfoil-modification.py>`
 
 This example demonstrates how to modify the airfoil geometry,
-using the :class:`cst_modeling.foil.FoilModification` class.
+using the :class:`FoilModification <cst_modeling.foil.FoilModification>` class.
 You can modify the geometry by adding bumps and incremental curves,
 the modified geometry will be reconstructed by the CST method with the specified number of CST parameters.
 
@@ -258,7 +260,7 @@ Or set leading edge radius, trailing edge wedge angle and slope angle.
     Reduce airfoil trailing edge slope angle
 
 You can also directly add bumps to the airfoil surface. 
-In :ref:`airfoil_modify_9`, a bump centered at :math:`x=0.30` are added to the airfoil upper surface,
+In :numref:`airfoil_modify_9`, a bump centered at :math:`x=0.30` are added to the airfoil upper surface,
 and a bump centered at :math:`x=0.85` are added to the airfoil lower surface.
 When the airfoil maximum thickness is kept the same, the lower surface is affected by adding the bump to the upper surface.
 

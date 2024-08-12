@@ -77,18 +77,10 @@ tools.naca
    :undoc-members:
    :show-inheritance:
 
-tools.xfoil
+tools.auxiliary
 --------------------------
 
-.. automodule:: cst_modeling.tools.xfoil
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-tools.blwf
---------------------------
-
-.. automodule:: cst_modeling.tools.blwf
+.. automodule:: cst_modeling.tools.auxiliary
    :members:
    :undoc-members:
    :show-inheritance:

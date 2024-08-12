@@ -270,12 +270,16 @@ class BasicSurface():
     ----------
     n_sec : int
         number of control sections.
+        
     name : str
         name of the object, by default 'Surf'.
+        
     nn : int
         number of points in the unit 2D curve's `xx`, by default 1001.
+        
     ns : int
         number of points in the sweep direction between sections, by default 101.
+        
     projection : bool
         whether keeps the projection length the same when rotating the section, by default True.
 
@@ -296,15 +300,19 @@ class BasicSurface():
     l2d : bool
         whether this is a 3D surface for a 2D curve (unit span). 
         It is `True` when `n_sec` is 0 or 1.
+        
     secs : list of BasicSection
         section objects.
+        
     surfs : list of list of ndarray
         surface coordinates. List `surfs` contains `n_sec`-1 sub-lists.
         Each sub-list is the coordinates of the 3D surface, which contains 3 `ndarray`.
         The 3 arrays are the X, Y, Z coordinates of the surface.   
         For example, surfs = [[x0, y0, z0], [x1, y1, z1]] when n_sec=3.
+        
     half_span : float
         half span for plotting.
+        
     center : ndarray
         surface center for plotting.
 

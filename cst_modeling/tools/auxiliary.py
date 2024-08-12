@@ -9,17 +9,25 @@ from ..basic import transform
 from ..section import Section
 from ..surface import Surface
 
-def section_flap(sec: Section, ratio, angle, dy_axis=None):
+
+def section_flap(sec: Section, ratio: float, angle: float, dy_axis=None) -> None:
     '''
     Deflect flap by angle (degree) of a section.
     Flap starts from chord-wise ratio = ratio.
-
-    ### Inputs:
-    ```text
-    ratio:      chord-wise ratio of the flap rotation axis
-    angle:      deflection angle (degree), +z direction for x-y plane
-    dy_axis:    scaled y location of the rotation axis
-    ```
+    
+    Parameters
+    ----------
+    sec: Section object
+        section to be deflected
+    
+    ratio: float
+        chord-wise ratio of the flap rotation axis
+        
+    angle: float
+        deflection angle (degree), +z direction for x-y plane
+        
+    dy_axis: float, optional
+        scaled y location of the rotation axis
     '''
     if angle == 0.0:
         return
@@ -61,35 +69,54 @@ class WingVariableCamber(Surface):
     '''
     Wing with variable camber, sub-class of surface class.
 
-    ### Inputs:
-    ```text
-    n_sec:   number of control sections (2D if set to 0 or 1)
-    tail:    tail thickness (m)
-    name:    name of the surface
-    fname:   name of control file
-    nn:      number of points of upper/lower section
-    ns:      number of spanwise
-    projection: True ~ projected chord length does not change when twisted
+    Parameters
+    ----------
+    n_sec: int
+        number of control sections (2D if set to 0 or 1)
+        
+    tail: float
+        tail thickness (m)
+        
+    name: str
+        name of the surface
+        
+    fname: str
+        name of control file
+        
+    nn : int
+        number of points in the unit 2D curve's `xx`, by default 1001.
+        
+    ns : int
+        number of points in the sweep direction between sections, by default 101.
+        
+    projection : bool
+        whether keeps the projection length the same when rotating the section, by default True.
+        
+    flap_loc : List[float] [2*n_flap]
+        z coordinates of the flap ends, i.e., [z_flap1_1, z_flap1_2, z_flap2_1, z_flap2_2, ...]
+    
+    flap_trans : float
+        transition length of the flap deflection
+    
+    flap_angle : List[float] [n_flap]
+        deflection angle of the flaps
 
-    flap_loc:   list [2*n_flap], z coordinates of the flap ends. 
-                [z_flap1_1, z_flap1_2, z_flap2_1, z_flap2_2, ...]
-    flap_trans: float, transition length of the flap deflection
-    flap_angle: list [n_flap], deflect angle of flaps
+    axis_xloc : List[float] [n_flap]
+        chord-wise ratio of the flap rotation axis
+        
+    axis_dy : List[float] [n_flap]
+        scaled y location of the rotation axis
 
-    axis_xloc:  list [n_flap], chord-wise ratio of the flap rotation axis
-    axis_dy:    empty list or list [n_flap], scaled y location of the rotation axis
-    ```
+    Notes
+    -------
+    - +x:     flow direction (m)
+    - +y:     upside (m)
+    - +z:     span-wise (m)
+    - twist:  +z direction (deg)
+    - chord:  chord length (m)
+    - thick:  relative maximum thickness
+    - tail:   absolute tail thickness (m)
 
-    ### Note:
-    ```text
-    +x:     flow direction (m)
-    +y:     upside (m)
-    +z:     spanwise (m)
-    twist:  +z direction (deg)
-    chord:  chord length (m)
-    thick:  relative maximum thickness
-    tail:   absolute tail thickness (m)
-    ```
     '''
     def __init__(self, n_sec=0, name='WingVC', fname='Wing.txt', **kwargs):
 
@@ -147,14 +174,19 @@ class WingVariableCamber(Surface):
         '''
         Build wing geometry.
 
-        ### Inputs:
-        ```text
-        split:      True ~ generate [surfs] as upper and lower separately
-        one_piece:  True ~ combine the spanwise sections into one piece (for tecplot format)
-
-        f_tecplot:  file name of tecplot format file. If None, do not output.
-        f_plot3d:   file name of tecplot format file. If None, do not output.
-        ```
+        Parameters
+        ----------
+        split: bool
+            generate [surfs] as upper and lower separately
+            
+        one_piece: bool
+            combine the spanwise sections into one piece (for tecplot format)
+            
+        f_tecplot: str
+            file name of tecplot format file. If None, do not output.
+            
+        f_plot3d: str
+            file name of tecplot format file. If None, do not output.
         '''
 
         z_secs = []
@@ -203,17 +235,26 @@ class DeflectSurf():
 
     Parameters
     ----------
-    z0, z1:     span-wise coordinates of the start and end sections
-    r0, r1:     chord-wise ratio defining the deflection axis
-    trans_len:  span-wise transition length (m)
+    z0, z1: float
+        span-wise coordinates of the start and end sections
+        
+    r0, r1: float
+        chord-wise ratio defining the deflection axis
+        
+    trans_len: float
+        span-wise transition length (m)
 
 
     Attributes
     ------------
-    LE0, LE1, TE0, TE1: ndarray, [x, y, z], LE & TE coordinates of the two end sections of the deflection region
-    AX0, AX1: ndarray, [x, y, z], axis ends coordinates. By default, AX = (1-r)*LE + r*TE
+    LE0, LE1, TE0, TE1: ndarray
+        [x, y, z], LE & TE coordinates of the two end sections of the deflection region
+        
+    AX0, AX1: ndarray
+        [x, y, z], axis ends coordinates. By default, AX = (1-r)*LE + r*TE
 
-    i_sec0, i_sec1: section index to locate z0 and z1
+    i_sec0, i_sec1: int
+        section index to locate z0 and z1
 
     '''
 
@@ -236,8 +277,8 @@ class DeflectSurf():
 
         If by default, (x, y) = (1-r)*LE + r*TE.
         '''
-        self.AX0 = np.array([self.x0, self.y0, self.z0])
-        self.AX1 = np.array([self.x1, self.y1, self.z1])
+        self.AX0 = np.array([x0, y0, self.z0])
+        self.AX1 = np.array([x1, y1, self.z1])
 
 
     def _locate_ends(self):

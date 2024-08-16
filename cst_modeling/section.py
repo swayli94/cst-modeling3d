@@ -7,7 +7,8 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .math import rotate, interp_from_curve, find_circle_3p
+from .math import (rotate, interp_from_curve, find_circle_3p,
+                    cst_foil, clustcos, dist_clustcos, cst_curve)
 from .basic import BasicSection
 
 
@@ -545,81 +546,6 @@ def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarra
 
     return xu_, yu_, xl_, yl_, twist, chord, tail
 
-
-#* ===========================================
-#* CST foils
-#* ===========================================
-
-def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
-    '''
-    Constructing upper and lower curves of an airfoil based on CST method
-
-    CST: class shape transformation method (Kulfan, 2008)
-    
-    Parameters
-    -----------
-    nn: int
-        total amount of points
-    cst_u, cst_l: list or ndarray
-        CST coefficients of the upper and lower surfaces
-    x: ndarray [nn]
-        x coordinates in [0,1] (optional)
-    t: float
-        specified relative maximum thickness (optional)
-    tail: float
-        relative tail thickness (optional)
-    xn1, xn12: float
-        CST parameters
-        
-    Returns
-    --------
-    x, yu, yl: ndarray
-        coordinates
-    t0: float
-        actual relative maximum thickness
-    R0: float
-        leading edge radius
-    
-    Examples
-    ---------
-    >>> x_, yu, yl, t0, R0 = cst_foil(nn, cst_u, cst_l, x, t, tail)
-
-    '''
-    cst_u = np.array(cst_u)
-    cst_l = np.array(cst_l)
-    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2)
-    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2)
-    
-    thick = yu-yl
-    it = np.argmax(thick)
-    t0 = thick[it]
-
-    # Apply thickness constraint
-    if t is not None:
-        r  = (t-tail*x_[it])/t0
-        t0 = t
-        yu = yu * r
-        yl = yl * r
-
-    # Add tail
-    for i in range(nn):
-        yu[i] += 0.5*tail*x_[i]
-        yl[i] -= 0.5*tail*x_[i]
-        
-    # Update t0 after adding tail
-    if t is None:
-        thick = yu-yl
-        it = np.argmax(thick)
-        t0 = thick[it]
-
-    # Calculate leading edge radius
-    x_RLE = 0.005
-    yu_RLE = interp_from_curve(x_RLE, x_, yu)
-    yl_RLE = interp_from_curve(x_RLE, x_, yl)
-    R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
-
-    return x_, yu, yl, t0, R0
-
 def scale_cst(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, cst_u, cst_l, t: float, tail=0.0):
     '''
     Scale CST coefficients, so that the airfoil has the maximum thickness of t. 
@@ -650,118 +576,6 @@ def scale_cst(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, cst_u, cst_l, t: fl
     cst_l_new = np.array(cst_l) * r
 
     return cst_u_new, cst_l_new
-
-def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
-    '''
-    Point distribution on x-axis [0, 1]. (More points at both ends)
-    
-    Parameters
-    ----------
-    i: int
-        index of current point (start from 0)
-    nn: int
-        total amount of points
-    a0: float
-        parameter for distributing points near x=0
-    a1: float
-        parameter for distributing points near x=1
-    beta: float
-        parameter for distribution points 
-
-    Returns
-    ---------
-    float
-
-    Examples
-    ---------
-    >>> c = clustcos(i, n, a0, a1, beta)
-
-    '''
-    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
-    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
-    yt = i/(nn-1.0)
-    a  = np.pi*(a0*(1-yt)+a1*yt)
-    c  = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
-
-    return c
-
-def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
-    '''
-    Point distribution on x-axis [0, 1]. (More points at both ends)
-
-    Parameters
-    ----------
-    nn: int
-        total amount of points
-    a0: float
-        parameter for distributing points near x=0
-    a1: float
-        parameter for distributing points near x=1
-    beta: float
-        parameter for distribution points 
-    
-    Examples
-    ---------
-    >>> xx = dist_clustcos(n, a0, a1, beta)
-
-    '''
-    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
-    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
-    yt = np.linspace(0.0, 1.0, num=nn)
-    a  = np.pi*(a0*(1-yt)+a1*yt)
-    xx = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
-
-    return xx
-
-def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.ndarray, np.ndarray]:
-    '''
-    Generating single curve based on CST method.
-
-    CST: class shape transformation method (Kulfan, 2008)
-
-    Parameters
-    ----------
-    nn: int
-        total amount of points
-    coef: ndarray
-        CST coefficients
-    x: ndarray [nn]
-        coordinates of x distribution in [0,1] (optional)
-    xn1, xn12: float
-        CST parameters
-    
-    Returns
-    --------
-    x, y: ndarray
-        coordinates
-    
-    Examples
-    ---------
-    >>> x, y = cst_curve(nn, coef, x, xn1, xn2)
-
-    '''
-    if x is None:
-        x = np.zeros(nn)
-        for i in range(nn):
-            x[i] = clustcos(i, nn)
-    elif x.shape[0] != nn:
-        raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
-    
-    n_cst = coef.shape[0]
-    y = np.zeros(nn)
-    for ip in range(nn):
-        s_psi = 0.0
-        for i in range(n_cst):
-            xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
-            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i)
-
-        C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
-        y[ip] = C_n1n2*s_psi
-
-    y[0] = 0.0
-    y[-1] = 0.0
-
-    return x, y
 
 
 #* ===========================================

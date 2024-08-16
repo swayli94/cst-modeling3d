@@ -1,12 +1,13 @@
 '''
 Math functions for the CST modeling package.
 '''
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import copy
 import numpy as np
 
 from scipy import spatial
+from scipy.special import factorial
 from scipy.interpolate import interp1d
 from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
@@ -230,6 +231,204 @@ def project_vector_to_plane(v: np.ndarray, n: np.ndarray) -> np.ndarray:
 
 
 #* ===========================================
+#* CST foils
+#* ===========================================
+
+def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
+    '''
+    Constructing upper and lower curves of an airfoil based on CST method
+
+    CST: class shape transformation method (Kulfan, 2008)
+    
+    Parameters
+    -----------
+    nn: int
+        total amount of points
+    cst_u, cst_l: list or ndarray
+        CST coefficients of the upper and lower surfaces
+    x: ndarray [nn]
+        x coordinates in [0,1] (optional)
+    t: float
+        specified relative maximum thickness (optional)
+    tail: float
+        relative tail thickness (optional)
+    xn1, xn12: float
+        CST parameters
+        
+    Returns
+    --------
+    x, yu, yl: ndarray
+        coordinates
+    t0: float
+        actual relative maximum thickness
+    R0: float
+        leading edge radius
+    
+    Examples
+    ---------
+    >>> x_, yu, yl, t0, R0 = cst_foil(nn, cst_u, cst_l, x, t, tail)
+
+    '''
+    cst_u = np.array(cst_u)
+    cst_l = np.array(cst_l)
+    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2)
+    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2)
+    
+    thick = yu-yl
+    it = np.argmax(thick)
+    t0 = thick[it]
+
+    # Apply thickness constraint
+    if t is not None:
+        r  = (t-tail*x_[it])/t0
+        t0 = t
+        yu = yu * r
+        yl = yl * r
+
+    # Add tail
+    for i in range(nn):
+        yu[i] += 0.5*tail*x_[i]
+        yl[i] -= 0.5*tail*x_[i]
+        
+    # Update t0 after adding tail
+    if t is None:
+        thick = yu-yl
+        it = np.argmax(thick)
+        t0 = thick[it]
+
+    # Calculate leading edge radius
+    x_RLE = 0.005
+    yu_RLE = interp_from_curve(x_RLE, x_, yu)
+    yl_RLE = interp_from_curve(x_RLE, x_, yl)
+    R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
+
+    return x_, yu, yl, t0, R0
+
+def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
+    '''
+    Point distribution on x-axis [0, 1]. (More points at both ends)
+    
+    Parameters
+    ----------
+    i: int
+        index of current point (start from 0)
+        
+    nn: int
+        total amount of points
+        
+    a0: float
+        Parameter for distributing points near x=0.
+        Smaller a0, more points near x=0.
+        
+    a1: float
+        Parameter for distributing points near x=1.
+        Larger a1, more points near x=1.
+        
+    beta: float
+        Parameter for distribution points.
+
+    Returns
+    ---------
+    float
+
+    Examples
+    ---------
+    >>> c = clustcos(i, n, a0, a1, beta)
+
+    '''
+    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
+    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
+    yt = i/(nn-1.0)
+    a  = np.pi*(a0*(1-yt)+a1*yt)
+    c  = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
+
+    return c
+
+def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
+    '''
+    Point distribution on x-axis [0, 1]. (More points at both ends)
+
+    Parameters
+    ----------
+    nn: int
+        total amount of points
+        
+    a0: float
+        Parameter for distributing points near x=0.
+        Smaller a0, more points near x=0.
+        
+    a1: float
+        Parameter for distributing points near x=1.
+        Larger a1, more points near x=1.
+        
+    beta: float
+        Parameter for distribution points.
+    
+    Examples
+    ---------
+    >>> xx = dist_clustcos(n, a0, a1, beta)
+
+    '''
+    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
+    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
+    yt = np.linspace(0.0, 1.0, num=nn)
+    a  = np.pi*(a0*(1-yt)+a1*yt)
+    xx = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
+
+    return xx
+
+def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.ndarray, np.ndarray]:
+    '''
+    Generating single curve based on CST method.
+
+    CST: class shape transformation method (Kulfan, 2008)
+
+    Parameters
+    ----------
+    nn: int
+        total amount of points
+    coef: ndarray
+        CST coefficients
+    x: ndarray [nn]
+        coordinates of x distribution in [0,1] (optional)
+    xn1, xn12: float
+        CST parameters
+    
+    Returns
+    --------
+    x, y: ndarray
+        coordinates
+    
+    Examples
+    ---------
+    >>> x, y = cst_curve(nn, coef, x, xn1, xn2)
+
+    '''
+    if x is None:
+        x = np.zeros(nn)
+        for i in range(nn):
+            x[i] = clustcos(i, nn)
+    elif x.shape[0] != nn:
+        raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
+    
+    n_cst = coef.shape[0]
+    y = np.zeros(nn)
+    for ip in range(nn):
+        s_psi = 0.0
+        for i in range(n_cst):
+            xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
+            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i)
+
+        C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
+        y[ip] = C_n1n2*s_psi
+
+    y[0] = 0.0
+    y[-1] = 0.0
+
+    return x, y
+
+
+#* ===========================================
 #* Transformation
 #* ===========================================
 
@@ -305,7 +504,7 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
 def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
                     scale=1.0, x0=None, y0=None, 
-                    rot_z=None, rot_x=None, rot_y=None, rot_axis=None,
+                    rot_z=0.0, rot_x=0.0, rot_y=0.0, rot_axis=0.0,
                     xr=None, yr=None, zr=None
                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
@@ -446,10 +645,13 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     ----------
     x, y, z : float or ndarray [:]
         coordinates of the points.
+        
     angle : float
         rotation angle (deg) about the axis (right-hand rule).
+        
     origin : ndarray [3]
         origin of the rotation axis.
+        
     axis_vector : ndarray [3]
         indicating the direction of an axis of rotation.
         The input `axis_vector` will be normalized to a unit vector `e`.
@@ -644,27 +846,33 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
 #* Interpolation
 #* ===========================================
 
-def interp_from_curve(x0, x: np.ndarray, y: np.ndarray):
+def interp_from_curve(x0: Union[float, np.ndarray], x: np.ndarray, y: np.ndarray, 
+                        extrapolate=False) -> Union[float, np.ndarray]:
     '''
     Interpolate points from curve represented points [x, y].
     
     Parameters
     ----------
-    x0 : float or ndarray
+    x0 : Union[float, np.ndarray]
         ndarray/value of x locations to be interpolated.
+        
     x, y : ndarray
         coordinates of the curve.
 
     Returns
     ----------
-    y0 : float or ndarray
+    y0 : Union[float, np.ndarray]
         interpolated coordinates
 
     Examples
     ---------
     >>> y0 = interp_from_curve(x0, x, y)
     '''
-    f  = interp1d(x, y, kind='cubic')
+    if extrapolate:
+        f  = interp1d(x, y, kind='cubic', fill_value='extrapolate')
+    else:
+        f  = interp1d(x, y, kind='cubic')
+        
     y0 = f(x0)
 
     return y0

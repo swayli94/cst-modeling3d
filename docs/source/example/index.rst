@@ -8,6 +8,7 @@ Examples
     wing
     delta-wing
     propeller
+    nacelle
     inlet-nozzle
     fuselage
     fan

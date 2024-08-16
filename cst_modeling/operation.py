@@ -4,7 +4,7 @@ Classes and functions for the operation of surfaces.
 import copy
 import numpy as np
 
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Union
 
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.transform import Rotation
@@ -35,6 +35,22 @@ class GuideCurve():
         
     global_guide_curve : Dict[str, np.ndarray] [n_total]
         The global guide curve to sweep the sections.
+        
+    Notes
+    -----
+    The guide curve is defined by the parametric coordinates of the sections along the curve.
+    The guide curve contains the following attributes:
+    
+        - 's' : The parametric coordinates of the guide curve, range in [0, 1].
+        - 'x' : The x-coordinates of the guide curve.
+        - 'y' : The y-coordinates of the guide curve.
+        - 'z' : The z-coordinates of the guide curve.
+        - 'scale' : The scaling factor of the profile at `s`.
+        - 'rot_x' : The rotation angle (degree) about the x-axis of the profile at `s`.
+        - 'rot_y' : The rotation angle (degree) about the y-axis of the profile at `s`.
+        - 'rot_z' : The rotation angle (degree) about the z-axis of the profile at `s`.
+        - 'rot_axis' : The rotation angle (degree) about the main axis of the profile at `s`.
+    
     '''
     def __init__(self, n_section=2, n_spanwise=101, section_s_loc=[0.0, 1.0]) -> None:
         
@@ -73,7 +89,11 @@ class GuideCurve():
                 
                 self.global_guide_curve['s'][ii] = s0 + (s1 - s0) * i / (self.n_spanwise-1.0)
         
-        self.global_guide_curve['z'] = self.global_guide_curve['s']
+        self.global_guide_curve['z'] = copy.deepcopy(self.global_guide_curve['s'])
+
+
+    def __call__(self, key: str) -> np.ndarray:
+        return self.global_guide_curve[key]
 
     def get_local_parametric_coordinate(self, i_sec0: int) -> Tuple[np.ndarray, int, int]:
         '''
@@ -135,7 +155,20 @@ class GuideCurve():
                 
         return guide_curve
         
+    
+    def generate_with_value(self, **kwargs) -> None:
+        '''
+        Generate the global guide curve for a new key,
+        or update the value of an existed key.
         
+        Parameters
+        ----------
+        kwargs : Dict[str, np.ndarray]
+            The keyword arguments to update the guide curve.
+        '''
+        for key, value in kwargs.items():
+            self.global_guide_curve[key] = value
+    
     def generate_by_spline(self, global_control_s: np.ndarray, global_values: np.ndarray, 
                                 slope_s0=None, slope_s1=None, key='x', periodic=False) -> None:
         '''
@@ -461,22 +494,18 @@ class GuideCurve():
         '''
         with open(fname, 'w') as f:
             
-            f.write('Variables= "s", "x", "y", "z", "scale", "rot_x", "rot_y", "rot_z", "rot_axis" \n')
+            f.write('Variables= ')
+            for key in self.global_guide_curve.keys():
+                f.write(' "%s"'%(key))
+            f.write('\n')
+            
             f.write('zone T="guide-curve"  i= %d \n' % self.n_total)
             
             for i in range(self.n_total):
                 
-                f.write('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f \n' % (
-                    self.global_guide_curve['s'][i], 
-                    self.global_guide_curve['x'][i], 
-                    self.global_guide_curve['y'][i], 
-                    self.global_guide_curve['z'][i], 
-                    self.global_guide_curve['scale'][i], 
-                    self.global_guide_curve['rot_x'][i], 
-                    self.global_guide_curve['rot_y'][i], 
-                    self.global_guide_curve['rot_z'][i],
-                    self.global_guide_curve['rot_axis'][i],
-                    ))
+                for key in self.global_guide_curve.keys():
+                    f.write('%.6f '%self.global_guide_curve[key][i])
+                f.write('\n')
 
         
 class Lofting_2Profile():
@@ -779,4 +808,240 @@ class Lofting():
         return self.surfs
 
 
+class Lofting_Revolution():
+    '''
+    Create a surface of revolution by sweeping and blending multiple 2D profiles (unit curve),
+    using a guide curve that runs through the reference point of each profile. 
+    The default rotation axis is the x-axis.    
+    
+    Parameters
+    ----------
+    profiles : List[List[np.ndarray]] [n_profile][2][n_point]
+        The 2D profiles.
+        
+    n_spanwise : int
+        The number of circumferential (spanwise) points for the surface between the two sections.
+        
+    section_s_loc : List[float] [n_profile]
+        The parametric coordinates of the sections along the guide curve, range in [0, 1].
+        
+    section_radius : Union[float, List[float]]
+        The radius of the sections. If float, the radius is constant for all sections.
+        
+    section_x : Union[float, List[float]]
+        The x-coordinate of the leading edge of the sections. If float, the x-coordinate is constant for all sections.
+        
+    section_scale : Union[float, List[float]]
+        The scaling factor of the sections. If float, the scaling factor is constant for all sections.
+    
+    
+    Attributes
+    ----------
+    n_profile : int
+        The number of profiles to loft.
+    
+    n_section : int
+        The number of sections in the surface, i.e., n_profile + 1.
+    
+    n_point : int
+        The number of points in the 2D profiles.
+    
+    n_total : int
+        The total number of points for the guide curve.
+    
+    guide_curve : GuideCurve
+        The global guide curve to sweep the profiles.
+
+    surfs : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
+        The 3D coordinates of the surfaces.
+
+    '''
+
+    def __init__(self, profiles: List[List[np.ndarray]],
+                    n_spanwise=101, 
+                    section_s_loc=[0.00, 0.25, 0.50, 0.75],
+                    section_x : Union[float, List[float]] = 0.0,
+                    section_radius : Union[float, List[float]] = 0.0,
+                    section_scale : Union[float, List[float]] = 1.0,
+                    ) -> None:
+
+        self.profiles = profiles
+        self.n_spanwise = n_spanwise
+        self.n_profile = len(profiles)
+        self.n_section = self.n_profile + 1
+                
+        self.n_point = profiles[0][0].shape[0]
+        self.n_total = self.n_profile * (n_spanwise-1) + 1
+        
+        self.section_radius = section_radius
+        self.section_x = section_x
+        self.section_scale = section_scale
+        
+        self.surfs : List[List[np.ndarray]] = []
+        
+        if len(section_s_loc) != self.n_profile:
+            raise ValueError('The number of profiles must be consistent with the number of section locations.')
+
+        self.check_profiles()
+
+        self.init_default_guide_curve(section_s_loc+[1.0])
+
+    @property
+    def section_s_loc(self) -> List[float]:
+        '''
+        The parametric coordinates of the sections along the guide curve, range in [0, 1].
+        
+        length: n_section
+        '''
+        return self.guide_curve.section_s_loc
+
+    def check_profiles(self) -> None:
+        '''
+        Check the two profiles.
+        '''
+        for i_prf in range(self.n_profile):
+            if (self.profiles[i_prf][0].shape[0] != self.n_point) or (self.profiles[i_prf][1].shape[0] != self.n_point):
+                raise ValueError('The 2D profile must have the same number of points.')
+
+    def init_default_guide_curve(self, section_s_loc: List[float]) -> None:
+        '''
+        Initialize the default guide curve object.
+        It has a piecewise linear distribution along the span, defined by the section parameters.
+        
+        Parameters
+        ----------
+        section_s_loc : List[float] [n_section]
+            The parametric coordinates of the sections along the guide curve, range in [0, 1].
+        '''
+
+        self.guide_curve = GuideCurve(self.n_section, n_spanwise=self.n_spanwise, section_s_loc=section_s_loc)
+
+
+        #* Interpolate the radius, reference x of the sections
+        
+        if isinstance(self.section_radius, float):
+            self.guide_curve.generate_with_value(radius=np.ones(self.n_total) * self.section_radius)
+        else:
+            self.guide_curve.generate_by_spline(self.section_s_loc, self.section_radius + [self.section_radius[0]], 
+                                                    key='radius', periodic=True)
+        
+        if isinstance(self.section_x, float):
+            self.guide_curve.generate_with_value(x=np.ones(self.n_total) * self.section_x)
+        else:
+            self.guide_curve.generate_by_spline(self.section_s_loc, self.section_x + [self.section_x[0]], 
+                                                    key='x', periodic=True)
+            
+        if isinstance(self.section_scale, float):
+            self.guide_curve.generate_with_value(scale=np.ones(self.n_total) * self.section_scale)
+        else:
+            self.guide_curve.generate_by_spline(self.section_s_loc, self.section_scale + [self.section_scale[0]],
+                                                    key='scale', periodic=True)
+
+        #* Calculate the reference point of the sections
+        
+        for i in range(self.n_total):
+            
+            angle = 2 * np.pi * self.guide_curve.global_guide_curve['s'][i]
+
+            radius = self.guide_curve.global_guide_curve['radius'][i]
+            
+            self.guide_curve.global_guide_curve['y'][i] = radius * np.cos(angle)
+            self.guide_curve.global_guide_curve['z'][i] = radius * np.sin(angle)
+            self.guide_curve.global_guide_curve['rot_x'][i] = np.rad2deg(angle)
+            
+    def create_circumferential_profiles(self, kind='linear') -> List[List[np.ndarray]]:
+        '''
+        Create the circumferential profiles for the surface.
+        
+        Parameters
+        ----------
+        kind : str
+            The kind of interpolation for the circumferential profiles. See scipy.interpolate.interp1d.
+            Another option is 'periodic'.
+        
+        Returns
+        -------
+        spanwise_profiles : List[List[np.ndarray, np.ndarray]] [n_total][2][n_point]
+            The profiles for transformation along the circumferential direction,
+            i.e., [profile_x, profile_y].
+        '''
+        ss = self.guide_curve.global_guide_curve['s']
+        
+        spanwise_profiles : List[List[np.ndarray]] = [[np.zeros(self.n_point), np.zeros(self.n_point)] for _ in range(self.n_total)]
+    
+        for i_point in range(self.n_point):
+            
+            control_point_s = self.guide_curve.section_s_loc
+            
+            control_point_x = [self.profiles[i_prf][0][i_point] for i_prf in range(self.n_profile)] + [self.profiles[0][0][i_point]]
+            control_point_y = [self.profiles[i_prf][1][i_point] for i_prf in range(self.n_profile)] + [self.profiles[0][1][i_point]]
+            
+            if kind == 'periodic':
+                
+                func_x = CubicSpline(control_point_s, control_point_x, bc_type='periodic')
+                func_y = CubicSpline(control_point_s, control_point_y, bc_type='periodic')
+            
+            else:
+            
+                func_x = interp1d(control_point_s, control_point_x, kind=kind, fill_value='extrapolate')
+                func_y = interp1d(control_point_s, control_point_y, kind=kind, fill_value='extrapolate')
+            
+            xx = func_x(ss)
+            yy = func_y(ss)
+            
+            for i_span in range(self.n_total):
+                
+                spanwise_profiles[i_span][0][i_point] = xx[i_span]
+                spanwise_profiles[i_span][1][i_point] = yy[i_span]
+                
+        return spanwise_profiles
+        
+    def sweep(self, interp_profile_kind='linear') -> List[List[np.ndarray]]:
+        '''
+        Sweep the profiles along the guide curve.
+        
+        Parameters
+        ----------
+        interp_profile_kind : str
+            The kind of interpolation for the circumferential profiles. See scipy.interpolate.interp1d.
+        
+        Returns
+        -------
+        surfs : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
+            The 3D coordinates of the surfaces.
+        '''
+        spanwise_profiles = self.create_circumferential_profiles(kind=interp_profile_kind)
+        
+        self.surfs = []
+        
+        for i_surf in range(self.n_profile):
+            
+            #* Initialize the 3D surface.
+            
+            surf_x = np.zeros((self.n_spanwise, self.n_point))
+            surf_y = np.zeros((self.n_spanwise, self.n_point))
+            surf_z = np.zeros((self.n_spanwise, self.n_point))
+        
+            #* Transform the 2D curve to a 3D curve.
+            
+            for i_local in range(self.n_spanwise):
+            
+                i_total = i_surf * (self.n_spanwise-1) + i_local
+                
+                profile_x = spanwise_profiles[i_total][0]
+                profile_y = spanwise_profiles[i_total][1]
+            
+                x0 = self.guide_curve('x')[i_total]
+                y0 = self.guide_curve('y')[i_total]
+                z0 = self.guide_curve('z')[i_total]
+            
+                surf_x[i_local], surf_y[i_local], surf_z[i_local] = transform_curve(
+                        profile_x, profile_y, 
+                        dx=x0, dy=y0, dz=z0,
+                        scale=self.guide_curve('scale')[i_total], 
+                        rot_x=self.guide_curve('rot_x')[i_total])
+                    
+            self.surfs.append([surf_x, surf_y, surf_z])
+            
+        return self.surfs
 

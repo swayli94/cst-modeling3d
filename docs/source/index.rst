@@ -38,6 +38,7 @@ The following is an overview of the project's structure:
     │   └── tools/
     │       ├── __init__.py
     │       ├── naca.py
+    │       ├── nacelle.py
     │       ├── xfoil.py
     │       ├── blwf.py
     │       └── auxiliary.py
@@ -69,6 +70,7 @@ Directories and Files
   
     - **__init__.py**: Initialization file for the tools package.
     - **naca.py**: Functions for NACA airfoil generation.
+    - **nacelle.py**: Functions for Nacelle profile generation.
     - **xfoil.py**: Functions for interfacing with XFOIL.
     - **blwf.py**: Functions for interfacing with BLWF.
     - **auxiliary.py**: Auxiliary functions.

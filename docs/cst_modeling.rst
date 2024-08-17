@@ -84,3 +84,11 @@ tools.auxiliary
    :members:
    :undoc-members:
    :show-inheritance:
+
+tools.nacelle
+--------------------------
+
+.. automodule:: cst_modeling.tools.nacelle
+   :members:
+   :undoc-members:
+   :show-inheritance:

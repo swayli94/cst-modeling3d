@@ -11,6 +11,7 @@ if __name__ == "__main__":
     
     np.set_printoptions(formatter={'float': '{: 0.6f}'.format}, linewidth=200)
     
+    work_dir = '.'
     
     #* Build an airfoil
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
@@ -18,17 +19,18 @@ if __name__ == "__main__":
 
     x, yu, yl, t0, R0 = cst_foil(201, cst_u, cst_l, x=None, t=0.10, tail=0.0)
     
-    foil_for_XFoil(x, yu, yl, fname='airfoil.dat')
-    output_foil(x, yu, yl, fname='foil.dat')
+    foil_for_XFoil(x, yu, yl, fname=os.path.join(work_dir,'airfoil.dat'))
+    output_foil(x, yu, yl, fname=os.path.join(work_dir,'foil.dat'))
     
     #* Run XFoil
     run_xfoil(AoAs=[-2.0, 5.0, 1.0], Cls=None,
-    Minf=0.1, Re=1e6, nNodes=161, iterVis=10, 
-    fname_airfoil='airfoil.dat', delete_temp=True,
-    fname_cp=None, fname_raw='raw-aoas.bin', fname_polar='polar-aoas.dat')
+            Minf=0.1, Re=1e6, nNodes=161, iterVis=10, 
+            fname_airfoil='airfoil.dat', delete_temp=True,
+            fname_cp=None, fname_raw='raw-aoas.bin', fname_polar='polar-aoas.dat',
+            work_dir=work_dir)
 
-    result1 = read_xfoil_dump('raw-aoas.bin')
-    result2 = read_xfoil_polar('polar-aoas.dat')
+    result1 = read_xfoil_dump(os.path.join(work_dir,'raw-aoas.bin'))
+    result2 = read_xfoil_polar(os.path.join(work_dir,'polar-aoas.dat'))
 
     numCase = result1['numCase']
     AoAs= result1['AoAs']
@@ -57,8 +59,8 @@ if __name__ == "__main__":
             
             f.write('\n')
     
-    os.remove('airfoil.dat')
-    os.remove('raw-aoas.bin')
+    os.remove(os.path.join(work_dir,'airfoil.dat'))
+    os.remove(os.path.join(work_dir,'raw-aoas.bin'))
 
     plt.figure(figsize=(12,8))
     plt.subplot(2,2,1)

@@ -55,17 +55,16 @@ def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.da
     if ID == 0:
         # Write header
         with open(fname, 'w') as f:
-            line = 'Variables= X  Y  \n '
-            f.write(line)
+            f.write('Variables= X  Y  \n ')
 
     with open(fname, 'a') as f:
         f.write('zone T="Upp-%d" i= %d \n'%(ID, nn))
         for i in range(nn):
-            line = '   %20.9f  %20.9f \n'%(x[i], yu[i])
+            f.write('   %20.9f  %20.9f \n'%(x[i], yu[i]))
             
         f.write('zone T="Low-%d" i= %d \n'%(ID, nn))
         for i in range(nn):
-            line = '   %20.9f  %20.9f \n'%(x[i], yl[i])
+            f.write('   %20.9f  %20.9f \n'%(x[i], yl[i]))
 
 def output_surface(surf: List[np.ndarray], fname: str, ID=0, zone_name=None) -> None:
     '''

@@ -59,7 +59,48 @@ if __name__ == '__main__':
 
             plt.savefig(os.path.join(path, 'airfoil-modify-rLE-%.3f.png'%(rLE_new)), dpi=300)
             
+        
+    #* Leading edge slope angle modification
+    if True:
+
+        for slope_angle, width_bump in [(3.0, 0.6), (6.0, 1.0)]:
+
+            x, yu, yl, t0, rLE_old = cst_foil(1001, cst_u, cst_l, x=None, t=0.11, tail=0.0)
             
+            geo_old = FoilGeoFeatures(x, yu, yl)
+            slope_angle_old = geo_old.get_leading_edge_slope_angle()
+
+            modify = FoilModification(x, yu, yl)
+            
+            modify.set_leading_edge_slope_angle(slope_angle_new=slope_angle, width_bump=width_bump)
+            
+            geo_new = FoilGeoFeatures(modify.x, modify.yu, modify.yl)
+            slope_angle_new = geo_new.get_leading_edge_slope_angle()
+
+            plt.figure(figsize=(16,8))
+            
+            plt.plot(x, yu, 'k')
+            plt.plot(x, yl, 'k', label='_nolegend_')
+            
+            plt.plot(x, geo_old.get_feature('thickness'), 'k--', lw=0.5)
+            plt.plot(x, geo_old.get_feature('camber'), 'b--', lw=0.5)
+            
+            plt.plot(modify.x, modify.yu, 'r', lw=1.0)
+            plt.plot(modify.x, modify.yl, 'r', lw=1.0, label='_nolegend_')
+            
+            plt.plot(modify.x, geo_new.get_feature('camber'), 'r--', lw=0.5)
+
+            
+            plt.xlim((-0.2, 1.2))
+            plt.ylim((-0.2, 0.2))
+            plt.axis('equal')
+            plt.legend(['Airfoil (old)', 'Thickness (old)', 'Camber (old)', 'Airfoil (new)', 'Camber (new)'])
+            
+            plt.title('Leading edge slope angle: %.1f -> %.1f'%(slope_angle_old, slope_angle_new))
+
+            plt.savefig(os.path.join(path, 'airfoil-modify-LE-slope-angle-%.1f.png'%(slope_angle_new)), dpi=300)
+            
+        
     #* Trailing edge wedge angle modification
     if False:
 
@@ -266,7 +307,7 @@ if __name__ == '__main__':
     
     
     #* Change airfoil camber at front and rear part
-    if True:
+    if False:
         
         for side, c_new in [('front', 0.004), ('rear', 0.005)]:
 

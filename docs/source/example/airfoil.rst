@@ -167,9 +167,12 @@ Geometric features:
 - Camber line
 - Curvature
 - Maximum thickness
+- Thickness at 20% chord and 70% chord
 - Maximum camber
 - Average camber
 - Weighted average camber
+- Average camber of front 60% and rear 40%
+- Leading edge slope angle
 - Trailing edge wedge angle
 - Trailing edge slope angle
 - Upper crest point

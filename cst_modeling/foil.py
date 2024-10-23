@@ -6,11 +6,11 @@ from typing import Tuple, List
 import numpy as np
 from scipy.interpolate import interp1d
 
-from .math import curve_curvature, find_circle_3p
+from .math import curve_curvature, find_circle_3p, CoordinateTransformation
 from .section import cst_foil, cst_foil_fit, bump_function, foil_increment
 
 
-def check_validity(x: np.ndarray, yu: np.ndarray, yl: np.ndarray) -> bool:
+def check_validity(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, eps=1e-6) -> bool:
     '''
     Check if the airfoil is valid
     
@@ -24,17 +24,21 @@ def check_validity(x: np.ndarray, yu: np.ndarray, yl: np.ndarray) -> bool:
         print('    Airfoil x, yu, and yl have different lengths.')
         return False
     
-    if x[0] != 0.0 or x[-1] != 1.0:
+    if abs(x[0]) > eps or abs(x[-1]-1.0) > eps:
         print('>>> Error [check_validity]')
         print('    Airfoil x coordinates are not normalized.')
+        print('    x[0] = ', x[0], ', x[-1] = ', x[-1])
         return False
+    else:
+        x[0] = 0.0
+        x[-1] = 1.0
     
-    if abs(yu[-1] - abs(yl[-1])) > 1e-6:
+    if abs(yu[-1] + yl[-1]) > eps:
         print('>>> Error [check_validity]')
         print('    Airfoil trailing edge is not symmetrical about the x-axis.')
-        return False
+        return False        
     
-    if abs(yu[0] - yl[0]) > 1e-6:
+    if abs(yu[0] - yl[0]) > eps:
         print('>>> Error [check_validity]')
         print('    Airfoil leading edge is not connected.')
         return False
@@ -83,6 +87,7 @@ class FoilGeoFeatures():
         
         #* Constants
         self.X_RLE = 0.005
+        self.X_LE = 0.02
         self.X_TE = 0.98
             
     @property
@@ -91,7 +96,8 @@ class FoilGeoFeatures():
                 't_max', 'x_t', 'i_t', 'c_max', 'x_c', 'i_c', 
                 'x_uc', 'y_uc', 'i_uc', 'x_lc', 'y_lc', 'i_lc',
                 'volume', 'c_mean', 'c_weight_mean', 'x_c_weight_mean',
-                'r_le', 'wedge_angle', 'slope_angle'
+                't_20', 't_70', 'c_f60', 'c_r40',
+                'r_le', 'wedge_angle', 'slope_angle_le', 'slope_angle_te'
                 )
     
     def get_feature(self, feature_name: str):
@@ -168,6 +174,32 @@ class FoilGeoFeatures():
         
         return self.thickness[i_t], x_t, i_t
 
+    def get_thickness_at(self, x0: float) -> float:
+        '''
+        Get airfoil thickness at a specific location
+        
+        Parameters
+        ----------
+        x0 : float
+            X-coordinate location
+        
+        Returns
+        -------
+        t0 : float
+            Airfoil thickness at x0
+        '''
+        yu0 = self.interp_y(x0, side='upper')
+        yl0 = self.interp_y(x0, side='lower')
+        
+        t0 = yu0 - yl0
+        
+        name = 't_%d'%int(x0*100)
+        
+        if name in self.feature_names:
+            self.features[name] = t0
+        
+        return t0
+
     def get_maximum_camber(self) -> Tuple[float, float, int]:
         '''
         Get airfoil maximum camber
@@ -210,17 +242,16 @@ class FoilGeoFeatures():
 
     def get_average_camber(self) -> float:
         '''
-        Get airfoil average camber, i.e.,
-        the equivalent maximum camber when the airfoil has a diamond shape.
+        Get airfoil average camber, i.e., the area of camber line.
         
-        c_mean = (the area of the camber line) / (the chord length) * 2
+        c_mean = (the area of camber line) / (the chord length)
         
         Returns
         -------
         c_mean : float
             Average camber
         '''
-        c_mean = np.trapz(self.camber, self.x) * 2.0
+        c_mean = np.trapz(self.camber, self.x)
         
         self.features['c_mean'] = c_mean
         
@@ -266,6 +297,54 @@ class FoilGeoFeatures():
         
         return c_weight_mean, x_c_weight_mean
 
+    def get_average_camber_front_60p(self) -> float:
+        '''
+        Get airfoil average camber in the front 60% of the chord length,
+        i.e., the area of camber line in the front 60% of the chord length.
+        
+        Returns
+        -------
+        c_f60 : float
+            Average camber in the front 60% of the chord length
+        '''
+        c_f60 = 0.0
+
+        for i in range(self.nn-1):
+                
+            mc = (self.camber[i] + self.camber[i+1])*0.5
+            dx = self.x[i+1] - self.x[i]
+            
+            if self.x[i] < 0.6:
+                c_f60 += mc * dx
+        
+        self.features['c_f60'] = c_f60
+        
+        return c_f60
+    
+    def get_average_camber_rear_40p(self) -> float:
+        '''
+        Get airfoil average camber in the rear 40% of the chord length,
+        i.e., the area of camber line in the rear 40% of the chord length.
+        
+        Returns
+        -------
+        c_r40 : float
+            Average camber in the rear 40% of the chord length
+        '''
+        c_r40 = 0.0
+
+        for i in range(self.nn-1):
+                
+            mc = (self.camber[i] + self.camber[i+1])*0.5
+            dx = self.x[i+1] - self.x[i]
+            
+            if self.x[i] > 0.6:
+                c_r40 += mc * dx
+        
+        self.features['c_r40'] = c_r40
+        
+        return c_r40
+
     def get_curvature(self) -> Tuple[np.ndarray, np.ndarray]:
         '''
         Get airfoil curvature.
@@ -301,6 +380,25 @@ class FoilGeoFeatures():
         
         return r_le
 
+    def get_leading_edge_slope_angle(self) -> float:
+        '''
+        Get airfoil leading edge slope angle.
+        
+        Returns
+        -------
+        slope_angle : float
+            Leading edge slope angle (degree)
+        '''
+        yu_LE = self.interp_y(self.X_LE, side='upper')
+        yl_LE = self.interp_y(self.X_LE, side='lower')
+        
+        slope_angle = np.arctan(0.5*(yu_LE+yl_LE)/self.X_LE)
+        slope_angle = np.rad2deg(slope_angle)
+        
+        self.features['slope_angle_le'] = slope_angle
+        
+        return slope_angle
+
     def get_trailing_edge_wedge_angle(self) -> float:
         '''
         Get airfoil trailing edge wedge angle.
@@ -332,10 +430,10 @@ class FoilGeoFeatures():
         yu_TE = self.interp_y(self.X_TE, side='upper')
         yl_TE = self.interp_y(self.X_TE, side='lower')
         
-        slope_angle = np.arctan(0.5*(yu_TE+yl_TE)/(1.0-self.X_TE))
+        slope_angle = np.arctan(-0.5*(yu_TE+yl_TE)/(1.0-self.X_TE))
         slope_angle = np.rad2deg(slope_angle)
         
-        self.features['slope_angle'] = slope_angle
+        self.features['slope_angle_te'] = slope_angle
         
         return slope_angle
 
@@ -448,6 +546,96 @@ class FoilModification():
         self.yu = self.yu * t_new / t_old
         self.yl = self.yl * t_new / t_old
 
+    def set_thickness_at(self, x0: float, t_new: float, width_bump=0.4
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        '''
+        Change the airfoil thickness at location `x0` to a new value `t_new`.
+        '''
+        geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+        t_old = geo.get_thickness_at(x0)
+        
+        n_try = 0
+        
+        while abs(t_new-t_old) > 1E-4 and n_try < self.MAX_TRY:
+        
+            cst_u, cst_l, _, _ = self.add_bump_to_thickness(
+                x0, t_new-t_old, width_bump, kind='H', keep_tmax=True)
+            
+            geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+            t_old = geo.get_thickness_at(x0)
+
+            n_try += 1
+            
+        return cst_u, cst_l, t_old, t_new
+
+    def set_maximum_thickness_location(self, x_t_new: float, slope0=1.0, slope1=1.0) -> None:
+        '''
+        Change airfoil maximum thickness location
+        '''
+        _, x_t, _ = FoilGeoFeatures(self.x, self.yu, self.yl).get_maximum_thickness()
+        
+        xShift = CoordinateTransformation()
+        xShift.set_function_by_interpolation(x=[x_t], xp=[x_t_new], slope0=slope0, slope1=slope1)
+        
+        xx = self.x.copy()
+        
+        self.x = xShift.transform(self.x)
+        
+        # import matplotlib.pyplot as plt
+        # plt.plot(xx, self.x, 'k')
+        # plt.xlabel('x')
+        # plt.ylabel('x\'')
+        # plt.axis('equal')
+        # plt.show()
+
+    def set_camber_front(self, c_new: float, width_bump=0.9
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        '''
+        Change the airfoil average camber of the front 60% part.
+        '''
+        geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+        cf_old = geo.get_average_camber_front_60p()
+        
+        x0 = 0.3
+        
+        n_try = 0
+        
+        while abs(c_new-cf_old) > 1E-4 and n_try < self.MAX_TRY:
+        
+            cst_u, cst_l, _, _ = self.add_bump_to_camber(
+                x0, 2*(c_new-cf_old), width_bump, kind='H', keep_tmax=True)
+            
+            geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+            cf_old = geo.get_average_camber_front_60p()
+
+            n_try += 1
+            
+        return cst_u, cst_l, cf_old, c_new
+
+    def set_camber_rear(self, c_new: float, width_bump=0.6
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        '''
+        Change the airfoil average camber of the rear 40% part.
+        '''
+        geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+        cf_old = geo.get_average_camber_rear_40p()
+        
+        x0 = 0.8
+        
+        n_try = 0
+        
+        while abs(c_new-cf_old) > 1E-4 and n_try < self.MAX_TRY:
+        
+            cst_u, cst_l, _, _ = self.add_bump_to_camber(
+                x0, 2*(c_new-cf_old), width_bump, kind='H', keep_tmax=True)
+            
+            geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+            cf_old = geo.get_average_camber_rear_40p()
+
+            n_try += 1
+            
+        return cst_u, cst_l, cf_old, c_new
+
     def add_bump(self, bumps: List[Tuple[float, float, float, str, str]],
                     keep_tmax=False) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
@@ -533,12 +721,17 @@ class FoilModification():
         rLE : float
             Leading edge radius
         '''
+        thickness = self.yu - self.yl
+        
         if keep_tmax:
-            tmax = np.max(self.yu - self.yl)
+            tmax = np.max(thickness)
         else:
             tmax = None
         
         dy = bump_function(self.x, xc, h, w, kind)
+        
+        new_thickness = np.clip(thickness + dy, 0.0, None)
+        dy = new_thickness - thickness
         
         self.yu = self.yu + 0.5*dy
         self.yl = self.yl - 0.5*dy
@@ -599,7 +792,7 @@ class FoilModification():
         return cst_u, cst_l, tmax, rLE
 
     def add_cst_incremental_curves(self, increment_cst_u=None, increment_cst_l=None, 
-                        keep_tmax=False) -> Tuple[np.ndarray, np.ndarray, float, float]:
+                keep_tmax=False) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Add incremental CST curves to the airfoil.
         
@@ -624,7 +817,8 @@ class FoilModification():
 
         return cst_u, cst_l, tmax, rLE
         
-    def set_leading_edge_radius(self, rLE_new: float, width_bump=0.8) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    def set_leading_edge_radius(self, rLE_new: float, width_bump=0.8
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Change airfoil leading edge radius to a new value (the maximum thickness is kept).
         
@@ -661,7 +855,51 @@ class FoilModification():
             
         return cst_u, cst_l, tmax, rLE
 
-    def set_trailing_edge_wedge_angle(self, wedge_angle_new: float, width_bump=0.2) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    def set_leading_edge_slope_angle(self, slope_angle_new: float, width_bump=0.2
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        '''
+        Change airfoil leading edge slope angle to a new value.
+        
+        Parameters
+        ----------
+        slope_angle_new : float
+            New leading edge slope angle
+            
+        width_bump : float
+            Width of the bump added to the airfoil thickness
+            
+        Returns
+        -------
+        cst_u, cst_l : np.ndarray
+            CST coefficients of the upper and lower surfaces
+            
+        tmax : float
+            Maximum thickness of the airfoil
+            
+        slope_angle_new : float
+            Leading edge slope angle (degree)
+        '''
+        geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+        slope_angle = geo.get_leading_edge_slope_angle()
+        
+        n_try = 0
+        
+        while abs(slope_angle-slope_angle_new) > 1E-1 and n_try < self.MAX_TRY:
+        
+            dt = 0.5*np.deg2rad(slope_angle_new-slope_angle) * self.X_LE
+        
+            cst_u, cst_l, tmax, _ = self.add_bump_to_camber(
+                self.X_LE, dt, width_bump, kind='G', keep_tmax=True)
+            
+            geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+            slope_angle = geo.get_leading_edge_slope_angle()
+
+            n_try += 1
+            
+        return cst_u, cst_l, tmax, slope_angle_new
+
+    def set_trailing_edge_wedge_angle(self, wedge_angle_new: float, width_bump=0.2
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Change airfoil trailing edge wedge angle to a new value.
         
@@ -703,7 +941,8 @@ class FoilModification():
             
         return cst_u, cst_l, tmax, wedge_angle_new
 
-    def set_trailing_edge_slope_angle(self, slope_angle_new: float, width_bump=0.2) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    def set_trailing_edge_slope_angle(self, slope_angle_new: float, width_bump=0.2
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Change airfoil trailing edge slope angle to a new value.
         

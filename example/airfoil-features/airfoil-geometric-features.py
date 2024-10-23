@@ -28,11 +28,15 @@ if __name__ == '__main__':
         
         geo.get_maximum_thickness()
         geo.get_maximum_camber()
+        geo.get_thickness_at(0.2)
+        geo.get_thickness_at(0.7)
         geo.get_volume()
         geo.get_average_camber()
-        geo.get_weighted_average_camber()
+        geo.get_average_camber_front_60p()
+        geo.get_average_camber_rear_40p()
         geo.get_curvature()
         geo.get_leading_edge_radius()
+        geo.get_leading_edge_slope_angle()
         geo.get_trailing_edge_wedge_angle()
         geo.get_trailing_edge_slope_angle()
         geo.get_upper_crest_point()
@@ -58,8 +62,15 @@ if __name__ == '__main__':
         add_label(  x=geo.get_feature('x_t'), y=0.0, 
                     label=r'$t_{max}$: '+'%.3f'%geo.get_feature('t_max'))
         
+        add_label(  x=0.2, y=0.0, 
+                    label=r'$t_{0.2}$: '+'%.3f'%geo.get_feature('t_20'))
+        
+        add_label(  x=0.7, y=0.0, 
+                    label=r'$t_{0.7}$: '+'%.3f'%geo.get_feature('t_70'))
+        
         add_label(  x=geo.get_feature('x_c'), y=0.0, 
-                    label=r'$c_{max}$: '+'%.3f'%geo.get_feature('c_max'), dy=0)
+                    label=r'$c_{max}$: '+'%.3f'%geo.get_feature('c_max'),
+                    dx=-0.02, dy=-0.04, color='r')
         
         add_label(  x=geo.get_feature('x_uc'), y=geo.get_feature('y_uc'), 
                     label=r'$y_{uc}$: '+'%.3f'%geo.get_feature('y_uc'))
@@ -73,18 +84,25 @@ if __name__ == '__main__':
         add_label(  x=0.8, y=0.18, 
                     label=r'Mean curvature: '+'%.3f'%geo.get_feature('c_mean'), dy=0)
         
-        add_label(  x=geo.get_feature('x_c_weight_mean'), y=geo.get_feature('c_weight_mean'), 
-                    label=r'$c_{w-mean}$: '+'%.3f'%geo.get_feature('c_weight_mean'),
-                    dx=-0.02, dy=0.01, color='r')
+        add_label(  x=0.3, y=0.0, 
+                    label=r'$c_{front 0.6}$: '+'%.3f'%geo.get_feature('c_f60'),
+                    dx=-0.02, dy=-0.02, color='r')
+        
+        add_label(  x=0.8, y=0.0, 
+                    label=r'$c_{rear 0.4}$: '+'%.3f'%geo.get_feature('c_r40'),
+                    dx=-0.02, dy=-0.02, color='r')
         
         add_label(  x=0.8, y=0.14, 
                     label=r'Leading edge radius: '+'%.3f'%geo.get_feature('r_le'), dy=0)
         
         add_label(  x=0.8, y=0.12, 
-                    label=r'Trailing edge wedge angle: '+'%.3f'%geo.get_feature('wedge_angle'), dy=0)
+                    label=r'Leading edge slope angle: '+'%.3f'%geo.get_feature('slope_angle_le'), dy=0)
         
         add_label(  x=0.8, y=0.10, 
-                    label=r'Trailing edge slope angle: '+'%.3f'%geo.get_feature('slope_angle'), dy=0)
+                    label=r'Trailing edge wedge angle: '+'%.3f'%geo.get_feature('wedge_angle'), dy=0)
+        
+        add_label(  x=0.8, y=0.08, 
+                    label=r'Trailing edge slope angle: '+'%.3f'%geo.get_feature('slope_angle_te'), dy=0)
         
 
         plt.savefig(os.path.join(path, 'airfoil-geometric-features-tail-%.3f.png'%(tail)), dpi=300)

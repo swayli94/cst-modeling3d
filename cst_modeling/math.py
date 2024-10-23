@@ -1,14 +1,14 @@
 '''
 Math functions for the CST modeling package.
 '''
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Callable
 
 import copy
 import numpy as np
 
 from scipy import spatial
 from scipy.special import factorial
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, CubicSpline
 from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
@@ -1646,6 +1646,77 @@ def scaled_sigmoid(x: np.ndarray, b=1) -> np.ndarray:
     return (y-np.min(y))/(np.max(y)-np.min(y))
 
 
+class CoordinateTransformation():
+    '''
+    Transform (x) coordinates to another (x') coordinates, i.e.,    
+    `x' = f(x)`, `x` in `[0,1]`, `x'` in `[0,1]`.
+    
+    '''
+    
+    def __init__(self):
+        
+        self.func : Callable[[np.ndarray], np.ndarray] = None
+
+    def set_function(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
+        '''
+        Set the transformation function.
+        
+        Parameters
+        ----------
+        func : Callable[[np.ndarray], np.ndarray]
+            transformation function.
+        '''
+        self.func = func
+    
+    def transform(self, x: np.ndarray) -> np.ndarray:
+        '''
+        Transform x to x'.
+        
+        Parameters
+        ----------
+        x : ndarray
+            input values.
+        
+        Returns
+        ---------
+        x' : ndarray
+            transformed values.
+        '''
+        if self.func is None:
+            raise Exception('Transformation function is not set.')
+        else:
+            return self.func(x)
+        
+    def set_function_by_interpolation(self, x: List[float], xp: List[float],
+            slope0=None, slope1=None) -> None:
+        '''
+        Set the transformation function by interpolation.
+        
+        Parameters
+        ----------
+        x, xp : list of float
+            coordinates of the points to be interpolated.
+            
+        slope0, slope1 : float or None
+            slope at the two ends, i.e., d(x')/dx at x=0 and x=1.
+        '''
+
+        if isinstance(slope0, float):
+            bc0 = (1, slope0)
+        else:
+            bc0 = (2, 0.0)
+            
+        if isinstance(slope1, float):
+            bc1 = (1, slope1)
+        else:
+            bc1 = (2, 0.0)
+
+        x0 = [0.0] + x + [1.0]
+        x1 = [0.0] + xp + [1.0]
+        
+        self.func = CubicSpline(x0, x1, bc_type=(bc0, bc1))
+
+
 if __name__ == '__main__':
 
     import matplotlib.pyplot as plt
@@ -1686,3 +1757,16 @@ if __name__ == '__main__':
     plt.legend()
     
     plt.show()
+    
+    
+    xShift = CoordinateTransformation()
+    xShift.set_function_by_interpolation(x=[0.6], xp=[0.4], slope0=1.0, slope1=None)
+    
+    xp = xShift.transform(xx)
+    plt.plot(xx, xp, 'k')
+    plt.xlabel('x')
+    plt.ylabel('x\'')
+    plt.axis('equal')
+    plt.show()
+    
+    

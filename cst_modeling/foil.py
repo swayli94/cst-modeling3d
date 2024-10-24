@@ -533,7 +533,7 @@ class FoilModification():
         '''
         Get CST coefficients for the current airfoil
         '''
-        cst_u, cst_l = cst_foil_fit(self.x, self.yu, self.yl, n_cst=self.n_cst)
+        cst_u, cst_l = cst_foil_fit(self.x, self.yu, self.x, self.yl, n_cst=self.n_cst)
         
         return cst_u, cst_l
     
@@ -577,7 +577,7 @@ class FoilModification():
         xShift = CoordinateTransformation()
         xShift.set_function_by_interpolation(x=[x_t], xp=[x_t_new], slope0=slope0, slope1=slope1)
         
-        xx = self.x.copy()
+        # xx = self.x.copy()
         
         self.x = xShift.transform(self.x)
         
@@ -587,6 +587,35 @@ class FoilModification():
         # plt.ylabel('x\'')
         # plt.axis('equal')
         # plt.show()
+
+    def set_camber(self, c_new: float
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        '''
+        Change the airfoil average camber.
+        '''
+        geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+        c_old = geo.get_average_camber()
+        
+        _, x0, _ = geo.get_maximum_thickness()
+        
+        n_try = 0
+        
+        if abs(c_new-c_old) <= 1E-4:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            c_new = c_old
+        
+        while abs(c_new-c_old) > 1E-4 and n_try < self.MAX_TRY:
+        
+            cst_u, cst_l, _, _ = self.add_bump_to_camber(
+                x0, 2*(c_new-c_old), w=1.0, kind='H')
+            
+            geo = FoilGeoFeatures(self.x, self.yu, self.yl)
+            c_old = geo.get_average_camber()
+
+            n_try += 1
+            
+        return cst_u, cst_l, c_old, c_new
 
     def set_camber_front(self, c_new: float, width_bump=0.9
                 ) -> Tuple[np.ndarray, np.ndarray, float, float]:
@@ -600,10 +629,15 @@ class FoilModification():
         
         n_try = 0
         
+        if abs(c_new-cf_old) <= 1E-4:
+                
+            cst_u, cst_l = self.get_cst_coefficients()
+            c_new = cf_old
+        
         while abs(c_new-cf_old) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, _, _ = self.add_bump_to_camber(
-                x0, 2*(c_new-cf_old), width_bump, kind='H', keep_tmax=True)
+                x0, 2*(c_new-cf_old), width_bump, kind='H')
             
             geo = FoilGeoFeatures(self.x, self.yu, self.yl)
             cf_old = geo.get_average_camber_front_60p()
@@ -618,23 +652,28 @@ class FoilModification():
         Change the airfoil average camber of the rear 40% part.
         '''
         geo = FoilGeoFeatures(self.x, self.yu, self.yl)
-        cf_old = geo.get_average_camber_rear_40p()
+        cr_old = geo.get_average_camber_rear_40p()
         
         x0 = 0.8
         
         n_try = 0
         
-        while abs(c_new-cf_old) > 1E-4 and n_try < self.MAX_TRY:
+        if abs(c_new-cr_old) <= 1E-4:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            c_new = cr_old
+        
+        while abs(c_new-cr_old) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, _, _ = self.add_bump_to_camber(
-                x0, 2*(c_new-cf_old), width_bump, kind='H', keep_tmax=True)
+                x0, 2*(c_new-cr_old), width_bump, kind='H')
             
             geo = FoilGeoFeatures(self.x, self.yu, self.yl)
-            cf_old = geo.get_average_camber_rear_40p()
+            cr_old = geo.get_average_camber_rear_40p()
 
             n_try += 1
             
-        return cst_u, cst_l, cf_old, c_new
+        return cst_u, cst_l, cr_old, c_new
 
     def add_bump(self, bumps: List[Tuple[float, float, float, str, str]],
                     keep_tmax=False) -> Tuple[np.ndarray, np.ndarray, float, float]:
@@ -743,7 +782,7 @@ class FoilModification():
         return cst_u, cst_l, tmax, rLE
 
     def add_bump_to_camber(self, xc: float, h: float, w: float, kind='H',
-                            keep_tmax=False) -> Tuple[np.ndarray, np.ndarray, float, float]:
+                ) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Add a bump to the airfoil camber.
         
@@ -761,9 +800,6 @@ class FoilModification():
         kind : str
             Bump function type, i.e., 'G', 'H'.
             
-        keep_tmax : bool
-            Keep the maximum thickness of the airfoil
-            
         Returns
         -------
         cst_u, cst_l : np.ndarray
@@ -775,11 +811,8 @@ class FoilModification():
         rLE : float
             Leading edge radius
         '''
-        if keep_tmax:
-            tmax = np.max(self.yu - self.yl)
-        else:
-            tmax = None
-            
+        tmax = np.max(self.yu - self.yl)
+
         dy = bump_function(self.x, xc, h, w, kind)
         
         self.yu = self.yu + dy
@@ -846,6 +879,11 @@ class FoilModification():
         
         n_try = 0
         
+        if abs(rLE-rLE_new) <= 1E-4:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            tmax = np.max(self.yu - self.yl)
+        
         while abs(rLE-rLE_new) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, tmax, rLE = self.add_bump_to_thickness(
@@ -884,12 +922,18 @@ class FoilModification():
         
         n_try = 0
         
+        if abs(slope_angle-slope_angle_new) <= 1E-1:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            tmax = np.max(self.yu - self.yl)
+            slope_angle_new = slope_angle
+        
         while abs(slope_angle-slope_angle_new) > 1E-1 and n_try < self.MAX_TRY:
         
             dt = 0.5*np.deg2rad(slope_angle_new-slope_angle) * self.X_LE
         
             cst_u, cst_l, tmax, _ = self.add_bump_to_camber(
-                self.X_LE, dt, width_bump, kind='G', keep_tmax=True)
+                self.X_LE, dt, width_bump, kind='G')
             
             geo = FoilGeoFeatures(self.x, self.yu, self.yl)
             slope_angle = geo.get_leading_edge_slope_angle()
@@ -926,6 +970,12 @@ class FoilModification():
         wedge_angle = geo.get_trailing_edge_wedge_angle()
         
         n_try = 0
+        
+        if abs(wedge_angle-wedge_angle_new) <= 1E-1:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            tmax = np.max(self.yu - self.yl)
+            wedge_angle_new = wedge_angle
         
         while abs(wedge_angle-wedge_angle_new) > 1E-1 and n_try < self.MAX_TRY:
         
@@ -970,12 +1020,18 @@ class FoilModification():
         
         n_try = 0
         
+        if abs(slope_angle-slope_angle_new) <= 1E-1:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            tmax = np.max(self.yu - self.yl)
+            slope_angle_new = slope_angle
+        
         while abs(slope_angle-slope_angle_new) > 1E-1 and n_try < self.MAX_TRY:
         
             dt = 0.5*np.deg2rad(slope_angle_new-slope_angle) * (1-self.X_TE)
         
             cst_u, cst_l, tmax, _ = self.add_bump_to_camber(
-                self.X_TE, dt, width_bump, kind='G', keep_tmax=True)
+                self.X_TE, dt, width_bump, kind='G')
             
             geo = FoilGeoFeatures(self.x, self.yu, self.yl)
             slope_angle = geo.get_trailing_edge_slope_angle()

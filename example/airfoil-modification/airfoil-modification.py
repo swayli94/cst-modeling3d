@@ -280,7 +280,7 @@ if __name__ == '__main__':
 
             modify = FoilModification(x, yu, yl)
             
-            modify.add_bump_to_camber(xc, h, w, kind='H', keep_tmax=True)
+            modify.add_bump_to_camber(xc, h, w, kind='H')
             
             geo_new = FoilGeoFeatures(modify.x, modify.yu, modify.yl)
             

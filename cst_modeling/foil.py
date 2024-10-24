@@ -556,6 +556,11 @@ class FoilModification():
         
         n_try = 0
         
+        if abs(t_new-t_old) <= 1E-4:
+            
+            cst_u, cst_l = self.get_cst_coefficients()
+            t_new = t_old
+        
         while abs(t_new-t_old) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, _, _ = self.add_bump_to_thickness(

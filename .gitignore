@@ -11,5 +11,6 @@ dump
 *.ini
 *.pyc
 *.dat
+*.grd
 
 blwf58.exe

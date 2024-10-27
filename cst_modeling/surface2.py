@@ -568,6 +568,7 @@ class BasicSurface():
             else:
                 
                 n_point = n_sec*(self.ns-1) + 1
+                nt = self.surfaces[0][0].shape[1]
                 
                 f.write('zone T="sec" i= %d j= %d \n'%(nt, n_point))
 

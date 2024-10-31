@@ -12,6 +12,7 @@ Examples
     inlet-nozzle
     fuselage
     fan
+    aircraft
 
 
 

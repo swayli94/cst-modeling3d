@@ -63,7 +63,7 @@ if __name__ == "__main__":
     y = [yu[None,:], yl[None,:]]
     z = [np.zeros_like(x[0]), np.zeros_like(x[0])]
 
-    output_plot3d(x, y, z, fname=os.path.join(path, 'airfoil-2d.grd'))
+    output_plot3d(x, y, z, fname=os.path.join(path, 'airfoil-2d.xyz'))
     
     x = np.concatenate(x, axis=0)*1000
     y = np.concatenate(y, axis=0)*1000

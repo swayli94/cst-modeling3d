@@ -34,7 +34,7 @@ class BasicSurface():
         number of points in the unit 2D curve's `xx`, by default 1001.
         
     ns : int
-        number of points in the sweep direction between sections, by default 101.
+        number of points in the span-wise direction between sections, by default 101.
             
     smooth_surface : bool
         whether to smooth the surface, by default False.
@@ -120,7 +120,21 @@ class BasicSurface():
         Number of sections
         '''
         return len(self.sections)
-        
+    
+    @property
+    def n_surface(self) -> int:
+        '''
+        Number of span-wise surfaces
+        '''
+        return len(self.surfaces)
+    
+    @property
+    def n_piece(self) -> int:
+        '''
+        Number of span-wise surface sections
+        '''
+        return 1 if self.is_2d else len(self.sections)-1
+    
     @property
     def spanwise_locations(self) -> np.ndarray:
         '''
@@ -218,10 +232,36 @@ class BasicSurface():
         self.center[1] = 0.5*(y_range[1]+y_range[0])
         self.center[2] = 0.5*(z_range[1]+z_range[0])
         
-    def get_default_guide_curve(self) -> GuideCurve:
+    def get_surface_coordinates(self, i_surface: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        '''
+        Get the surface coordinates for the surface.
+        
+        Parameters
+        -----------
+        i_surface : int
+            index of the surface.
+        
+        Returns
+        --------
+        surf_x, surf_y, surf_z : np.ndarray
+            3D surface coordinates.
+        '''
+        return self.surfaces[i_surface][0], self.surfaces[i_surface][1], self.surfaces[i_surface][2]
+        
+    def get_default_guide_curve(self, 
+            custom_control_points=None,
+            smooth_keys=['x', 'y', 'scale', 'rot_z']) -> GuideCurve:
         '''
         Initialize the default guide curve object.
         It has a piecewise linear distribution along the span, defined by the section parameters.
+        
+        Parameters
+        -----------
+        custom_control_points : dict
+            user-defined control points for the guide curve, by default None.
+            
+        smooth_keys : list of str
+            keys for smoothing the guide curve, by default ['x', 'y', 'scale', 'rot_z'].
         
         Returns
         --------
@@ -247,16 +287,22 @@ class BasicSurface():
         
         #* Setup the control points
         
-        control_points = {
-            'x':        [sec.xLE    for sec in self.sections],
-            'y':        [sec.yLE    for sec in self.sections],
-            'z':        [sec.zLE    for sec in self.sections],
-            'scale':    [sec.chord  for sec in self.sections],
-            'rot_x':    [0.0        for _   in self.sections],
-            'rot_y':    [0.0        for _   in self.sections],
-            'rot_z':    [sec.twist  for sec in self.sections],
-            'rot_axis': [0.0        for _   in self.sections],
-        }
+        if isinstance(custom_control_points, dict):
+            
+            control_points = custom_control_points
+            
+        else:
+        
+            control_points = {
+                'x':        [sec.xLE    for sec in self.sections],
+                'y':        [sec.yLE    for sec in self.sections],
+                'z':        [sec.zLE    for sec in self.sections],
+                'scale':    [sec.chord  for sec in self.sections],
+                'rot_x':    [0.0        for _   in self.sections],
+                'rot_y':    [0.0        for _   in self.sections],
+                'rot_z':    [sec.twist  for sec in self.sections],
+                'rot_axis': [0.0        for _   in self.sections],
+            }
                    
 
         #* Generate the default (piecewise linear) guide curve
@@ -273,7 +319,7 @@ class BasicSurface():
                             
             if self.smooth_sections is None:
                 
-                for key in ['x', 'y', 'scale', 'rot_z']:
+                for key in smooth_keys:
                 
                     guide.generate_by_spline(section_s_loc, control_points[key], key=key, slope_s0=None, slope_s1=None, periodic=False)
                 
@@ -283,7 +329,7 @@ class BasicSurface():
                     
                     control_s = section_s_loc[start:end+1]
 
-                    for key in ['x', 'y', 'scale', 'rot_z']:
+                    for key in smooth_keys:
                         
                         control_v = control_points[key][start:end+1]
                     
@@ -330,7 +376,8 @@ class BasicSurface():
         '''
         raise NotImplementedError('This method should be implemented in the subclass.')
 
-    def prepare(self, guide: GuideCurve = None, update_section_profile = True) -> None:
+    def prepare(self, guide: GuideCurve=None, update_section_profile=True,
+                smooth_keys=['x', 'y', 'scale', 'rot_z']) -> None:
         '''
         Prepare the profiles, guide curve and lofting object for surface generation.
         
@@ -342,6 +389,9 @@ class BasicSurface():
         update_section_profile : bool
             whether to update the section profile curves, by default True.
             
+        smooth_keys : list of str
+            keys for smoothing the guide curve, by default ['x', 'y', 'scale', 'rot_z'].
+            
         Notes
         -------
         In the `BasicSurface` class, the `update_section` method is not implemented.
@@ -351,7 +401,7 @@ class BasicSurface():
             self.update_section()
         
         if guide is None:
-            guide = self.get_default_guide_curve()
+            guide = self.get_default_guide_curve(smooth_keys=smooth_keys)
             
         profiles = self.get_profiles()
         
@@ -534,7 +584,7 @@ class BasicSurface():
             name of the output file.
             
         one_piece : bool
-            if True, combine the span-wise sections into one piece.
+            if True, combine the span-wise surfaces into one piece.
         '''
         # surf_x[ns,nt], ns => spanwise
 
@@ -589,9 +639,9 @@ class BasicSurface():
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j], surf_y[i,j], surf_z[i,j]))
 
-    def output_plot3d(self, fname=None, scale=1.0) -> None:
+    def output_plot3d(self, fname=None, scale=1.0, one_piece=False) -> None:
         '''
-        Output the surface to `*.grd` in plot3d format.
+        Output the surface to `*.xyz` in plot3d format.
 
         Parameters
         ------------
@@ -600,13 +650,26 @@ class BasicSurface():
             
         scale : float
             scaling factor for the coordinates
+            
+        one_piece : bool
+            if True, combine the span-wise surfaces into one piece.
         '''
-        Xs = [self.surfaces[i][0] for i in range(len(self.surfaces))]
-        Ys = [self.surfaces[i][1] for i in range(len(self.surfaces))]
-        Zs = [self.surfaces[i][2] for i in range(len(self.surfaces))]
+        if one_piece:
+            
+            surf_x, surf_y, surf_z = self.assemble_to_one_piece()
+            
+            Xs = [surf_x]
+            Ys = [surf_y]
+            Zs = [surf_z]
+            
+        else:
+        
+            Xs = [self.surfaces[i][0] for i in range(len(self.surfaces))]
+            Ys = [self.surfaces[i][1] for i in range(len(self.surfaces))]
+            Zs = [self.surfaces[i][2] for i in range(len(self.surfaces))]
         
         if fname is None:
-            fname = self.name + '.grd'
+            fname = self.name + '.xyz'
         
         output_plot3d(Xs, Ys, Zs, fname=fname, scale=scale)
 
@@ -664,6 +727,44 @@ class BasicSurface():
             plt.show()
             
         return ax
+
+    def assemble_to_one_piece(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        '''
+        Assemble the span-wise surfaces into one surface.
+        
+        Returns
+        --------
+        surf_x, surf_y, surf_z : np.ndarray
+            3D surface coordinates.
+        '''
+        n_sec   = 1 if self.is_2d else self.n_section-1
+        n_piece = len(self.surfaces)
+        
+        ns_total = n_sec*(self.ns-1) + 1
+        nt = self.surfaces[0][0].shape[1]
+        
+        surf_x = np.zeros((ns_total, nt))
+        surf_y = np.zeros((ns_total, nt))
+        surf_z = np.zeros((ns_total, nt))
+        
+        i_s = 0
+        
+        for i_sec in range(n_piece):
+            
+            if i_sec>=n_piece-1:
+                i_add = 0
+            else:
+                i_add = 1
+
+            for i in range(self.ns-i_add):
+                
+                surf_x[i_s,:] = self.surfaces[i_sec][0][i,:]
+                surf_y[i_s,:] = self.surfaces[i_sec][1][i,:]
+                surf_z[i_s,:] = self.surfaces[i_sec][2][i,:]
+                
+                i_s += 1
+                
+        return surf_x, surf_y, surf_z
 
     #* Obsolete functions
     def add_sec(self, *args, **kwargs) -> None:
@@ -1013,8 +1114,10 @@ class Surface(BasicSurface):
         ------------
         fname : str
             name of the output file.
+            
         one_piece : bool
-            if True, combine the span-wise sections into one piece.
+            if True, combine the span-wise surfaces into one piece.
+            
         split : bool
             if True, split to upper and lower surfaces.
         '''
@@ -1093,91 +1196,95 @@ class Surface(BasicSurface):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
 
-    def output_plot3d(self, fname=None, split=False) -> None:
+    def output_plot3d(self, fname=None, scale=1.0, one_piece=False, split=False) -> None:
         '''
-        Output the surface to `*.grd` in plot3d format.
+        Output the surface to `*.xyz` in plot3d format.
 
         Parameters
         ------------
         fname : str
             name of the output file.
+            
+        scale : float
+            scaling factor for the coordinates
+        
+        one_piece : bool
+            if True, combine the span-wise surfaces into one piece.
+        
         split : bool
             if True, split to upper and lower surfaces.
         '''
         if not split:
-            super().output_plot3d(fname=fname)
+            super().output_plot3d(fname, scale, one_piece)
             return
 
-        if fname is None:
-            fname = self.name + '.grd'
+        if one_piece:
+            
+            surf_x, surf_y, surf_z = self.assemble_to_one_piece()
+            
+            surf_x_u, surf_y_u, surf_z_u, surf_x_l, surf_y_l, surf_z_l = self.split_surface(surf_x, surf_y, surf_z)
+            
+            Xs = [surf_x_u, surf_x_l]
+            Ys = [surf_y_u, surf_y_l]
+            Zs = [surf_z_u, surf_z_l]
+            
+            output_plot3d(Xs, Ys, Zs, fname=fname, scale=scale)
+            
+        else:
+        
+            Xs = []
+            Ys = []
+            Zs = []
+            
+            for i_surf in range(self.n_surface):
+                
+                surf_x = self.surfaces[i_surf][0]
+                surf_y = self.surfaces[i_surf][1]
+                surf_z = self.surfaces[i_surf][2]
+                
+                surf_x_u, surf_y_u, surf_z_u, surf_x_l, surf_y_l, surf_z_l = self.split_surface(surf_x, surf_y, surf_z)
+                
+                Xs.append(surf_x_u)
+                Ys.append(surf_y_u)
+                Zs.append(surf_z_u)
+                
+                Xs.append(surf_x_l)
+                Ys.append(surf_y_l)
+                Zs.append(surf_z_l)
+        
+            output_plot3d(Xs, Ys, Zs, fname=fname, scale=scale)
 
-        n_piece = len(self.surfaces)
+    @staticmethod
+    def split_surface(surf_x: np.ndarray, surf_y: np.ndarray, surf_z: np.ndarray) \
+                -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        '''
+        Split the surface into upper and lower surfaces.
+        
+        Parameters
+        -----------
+        surf_x, surf_y, surf_z : np.ndarray
+            3D surface coordinates.
+            
+        Returns
+        --------
+        surf_x_u, surf_y_u, surf_z_u : np.ndarray
+            upper surface coordinates.
+            
+        surf_x_l, surf_y_l, surf_z_l : np.ndarray
+            lower surface coordinates.
+        '''
+        if surf_x.shape[1]%2 == 0:
+            raise Exception('The number of points in the spanwise direction should be odd.')
+        
+        nt = int((surf_x.shape[1]+1)/2)
 
-        # surf_x[ns,nt], ns => spanwise
-        ns = self.ns
+        surf_x_u = surf_x[:,:nt]
+        surf_y_u = surf_y[:,:nt]
+        surf_z_u = surf_z[:,:nt]
+        
+        surf_x_l = surf_x[:,nt-1::-1]
+        surf_y_l = surf_y[:,nt-1::-1]
+        surf_z_l = surf_z[:,nt-1::-1]
 
-        with open(fname, 'w') as f:
-
-            f.write('%d \n '%(n_piece*2))   # Number of surfaces
-            for i_sec in range(n_piece):
-                nt = int((self.surfaces[i_sec][0].shape[1]+1)/2)
-                f.write('%d %d 1\n '%(nt, ns))
-                f.write('%d %d 1\n '%(nt, ns))
-
-            for i_sec in range(n_piece):
-
-                X = self.surfaces[i_sec][0]
-                Y = self.surfaces[i_sec][1]
-                Z = self.surfaces[i_sec][2]
-                nt = int((X.shape[1]+1)/2)
-
-                #* Upper surface
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(X[i,j+nt-1]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
-
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(Y[i,j+nt-1]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
-
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(Z[i,j+nt-1]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
-
-                #* Lower surface
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(X[i,nt-1-j]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
-
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(Y[i,nt-1-j]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
-
-                ii = 0
-                for i in range(ns):
-                    for j in range(nt):
-                        f.write(' %.9f '%(Z[i,nt-1-j]))
-                        ii += 1
-                        if ii%3==0 or (i==ns-1 and j==nt-1):
-                            f.write(' \n ')
+        return surf_x_u, surf_y_u, surf_z_u, surf_x_l, surf_y_l, surf_z_l
 

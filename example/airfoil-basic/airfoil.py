@@ -77,7 +77,7 @@ if __name__ == "__main__":
     
     geo3d.output_tecplot(fname=os.path.join(path, 'wing.dat'))
     
-    geo3d.output_plot3d(fname=os.path.join(path, 'wing.grd'))
+    geo3d.output_plot3d(fname=os.path.join(path, 'wing.xyz'))
     
     #* Format transformation
     plot3d_to_igs(fname=os.path.join(path, 'wing'))

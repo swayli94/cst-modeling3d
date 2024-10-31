@@ -1528,7 +1528,7 @@ class BasicSurface():
 
     def output_plot3d(self, fname=None) -> None:
         '''
-        Output the surface to `*.grd` in plot3d format.
+        Output the surface to `*.xyz` in plot3d format.
 
         Parameters
         ------------
@@ -1539,7 +1539,7 @@ class BasicSurface():
         # Note: X[ns][nn], ns => spanwise
         
         if fname is None:
-            fname = self.name + '.grd'
+            fname = self.name + '.xyz'
 
         n_piece = len(self.surfs)
 

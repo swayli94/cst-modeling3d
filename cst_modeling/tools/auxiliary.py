@@ -170,7 +170,7 @@ class WingVariableCamber(Surface):
         if len(self.axis_xloc) != self.n_flap:
             raise Exception('Size of axis_xloc %d does not match flap_angle %d'%(len(self.axis_xloc), self.n_flap))
 
-    def build(self, split=True, one_piece=False, f_tecplot='Wing.dat', f_plot3d='Wing.grd'):
+    def build(self, split=True, one_piece=False, f_tecplot='Wing.dat', f_plot3d='Wing.xyz'):
         '''
         Build wing geometry.
 

@@ -12,5 +12,7 @@ dump
 *.pyc
 *.dat
 *.grd
+*.xyz
+*.igs
 
 blwf58.exe

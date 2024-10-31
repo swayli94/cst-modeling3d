@@ -92,7 +92,7 @@ The :func:`output_curves_igs <cst_modeling.basic.output_curves_igs>` function ou
     y = [yu[None,:], yl[None,:]]
     z = [np.zeros_like(x[0]), np.zeros_like(x[0])]
 
-    output_plot3d(x, y, z, fname='airfoil-2d.grd')
+    output_plot3d(x, y, z, fname='airfoil-2d.xyz')
     
     x = np.concatenate(x, axis=0)*1000
     y = np.concatenate(y, axis=0)*1000
@@ -138,9 +138,9 @@ or whether combine the span-wise sections into one piece. Please refer to the fu
     # Output Tecplot format and Plot3D format data
     geo3d.output_tecplot(fname='wing.dat')
     
-    geo3d.output_plot3d(fname='wing.grd')
+    geo3d.output_plot3d(fname='wing.xyz')
     
-    #* Format transformation: wing.grd to wing.igs
+    #* Format transformation: wing.xyz to wing.igs
     plot3d_to_igs(fname='wing')
 
 .. _airfoil_3d:

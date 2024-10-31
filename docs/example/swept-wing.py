@@ -9,7 +9,7 @@ def airfoil3d():
     '''
     3D surface for airfoil meshing in ICEM CFD
     '''
-    from cst_modeling.basic import plot3d_to_igs
+    from cst_modeling.io import plot3d_to_igs
     from cst_modeling.surface import Surface
     
     wing = Surface(n_sec=0, name='airfoil3d', nn=501, ns=11, projection=True)
@@ -17,7 +17,7 @@ def airfoil3d():
     wing.geo()
     
     wing.output_tecplot(fname=file_dump+'airfoil3d.dat', split=False)
-    wing.output_plot3d(fname=file_dump+'airfoil3d.grd', split=False)
+    wing.output_plot3d(fname=file_dump+'airfoil3d.xyz', split=False)
     plot3d_to_igs(fname=file_dump+'airfoil3d')
     
     ax = wing.plot(type='surface', show=False)
@@ -56,7 +56,7 @@ def transonic_wing():
     # one_piece is an option for combining all surfaces in different sections into one piece
     # split is an option for splitting the upper/lower surfaces
     wing.output_tecplot(fname=file_dump+'transonic_wing.dat', one_piece=False, split=True)
-    wing.output_plot3d(fname=file_dump+'transonic_wing.grd', split=True)
+    wing.output_plot3d(fname=file_dump+'transonic_wing.xyz', split=True)
 
     #* Output control sections
     #  3D curves by default, 2D curves when `TwoD=True`.

@@ -114,7 +114,7 @@ It is a 3D surface of a 2D airfoil, which can be used for meshing in ICEM CFD.
     wing = Surface(n_sec=0, name='Airfoil3D', nn=1001, ns=101, projection=True)
     wing.read_setting('Settings.txt', tail=0.1)
     wing.geo()
-    wing.output_plot3d(fname='Airfoil3D-basic.grd', split=True)
+    wing.output_plot3d(fname='Airfoil3D-basic.xyz', split=True)
     plot3d_to_igs(fname='Airfoil3D')
 
 .. code-block:: text

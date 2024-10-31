@@ -302,6 +302,6 @@ if __name__ == '__main__':
     diamond.output_tecplot(fname='Wing.dat', one_piece=False)
 
     diamond.scale(scale=1000)
-    diamond.output_plot3d(fname='Wing.grd')
+    diamond.output_plot3d(fname='Wing.xyz')
     plot3d_to_igs(fname='Wing')
 

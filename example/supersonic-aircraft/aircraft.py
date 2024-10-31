@@ -11,12 +11,20 @@ import os
 import sys
 sys.path.append('.')
 
+import copy
 import numpy as np
-from cst_modeling.operation import Lofting, GuideCurve
+from cst_modeling.operation import GuideCurve
 from cst_modeling.surface2 import Surface, BasicSurface
+from cst_modeling.io import plot3d_to_igs, output_plot3d_for_parts
 
 
 class Fuselage(BasicSurface):
+    '''
+    The major difference between Fuselage and Surface is that
+    the 'span-wise' direction changes from the 'z' direction to the 'x' direction.
+    
+    In consequence, the 3D section profile is in y-z plane.
+    '''
     
     def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101,
             smooth_surface=False, smooth_sections = None,
@@ -54,7 +62,7 @@ class Fuselage(BasicSurface):
 
     def read_setting(self, fname) -> None:
         '''
-        Read in Surface layout and CST parameters from file
+        Read in Surface layout from file
 
         Parameters
         ----------
@@ -114,7 +122,7 @@ class Fuselage(BasicSurface):
         # Locate layout center for plot
         self.update_layout_center()
 
-    def get_default_guide_curve(self) -> GuideCurve:
+    def get_default_guide_curve(self, **kwargs) -> GuideCurve:
         '''
         Initialize the default guide curve object.
         It has a piecewise linear distribution along the span, defined by the section parameters.
@@ -124,26 +132,7 @@ class Fuselage(BasicSurface):
         guide: GuideCurve
             default guide curve object.
         '''
-        #* Calculate parametric coordinates for the sections
-        
-        section_s_loc = [0.0]
-        
-        for i in range(self.n_section-1):
-            
-            section_s_loc.append(section_s_loc[i] + np.sqrt((self.sections[i+1].xLE-self.sections[i].xLE)**2 + 
-                                                            (self.sections[i+1].yLE-self.sections[i].yLE)**2 + 
-                                                            (self.sections[i+1].zLE-self.sections[i].zLE)**2) )
-
-        ds = section_s_loc[-1]
-        
-        for i in range(self.n_section):
-            section_s_loc[i] = (section_s_loc[i])/ds
-            
-        self.section_s_loc = section_s_loc
-        
-        #* Setup the control points
-        
-        control_points = {
+        custom_control_points = {
             'x':        [sec.xLE    for sec in self.sections],
             'y':        [sec.yLE    for sec in self.sections],
             'z':        [sec.zLE    for sec in self.sections],
@@ -154,35 +143,9 @@ class Fuselage(BasicSurface):
             'rot_axis': [0.0        for _   in self.sections],
         }
                    
-
-        #* Generate the default (piecewise linear) guide curve
-        
-        guide = GuideCurve(self.n_section, n_spanwise=self.ns, section_s_loc=section_s_loc)
-
-        for key, value in control_points.items():
-            guide.generate_by_interp1d(section_s_loc, value, key=key, kind='linear')
+        guide = super().get_default_guide_curve(custom_control_points, smooth_keys=['x', 'y', 'z', 'scale'])
         
         return guide
-
-
-
-    def prepare(self):
-        
-        #* Update section profile
-        for i in range(self.n_section):
-            
-            theta = np.linspace(0, 2*np.pi, self.nn, endpoint=True)
-            
-            self.sections[i].xx = np.cos(theta)
-            self.sections[i].yy = np.sin(theta)
-        
-        #* Define guide curve
-        guide = self.get_default_guide_curve()
-
-        profiles = self.get_profiles()
-        
-        self.lofting = Lofting(profiles, global_guide_curve=guide, 
-                                is_guide_curve_at_LE=self.is_guide_curve_at_LE)
 
 
 if __name__ == "__main__":
@@ -190,47 +153,65 @@ if __name__ == "__main__":
     path = os.path.dirname(sys.argv[0])
 
 
-    #* Delta wing
+    #* Geometry
     if True:
         
-        wing = Surface(n_sec=4, name='wing', nn=201, ns=21)
-
-        wing.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
-        wing.prepare()
-        wing.geo()
-
-        wing.output_tecplot(fname=os.path.join(path, 'wing-1.dat'), one_piece=True, split=False)
-        wing.output_plot3d(fname=os.path.join(path, 'wing-1.grd'), split=False)
+        #* Delta wing
+        wing1 = Surface(n_sec=4, name='wing', nn=201, ns=101, smooth_surface=True)
+        wing1.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
+        wing1.prepare(smooth_keys=['x', 'y', 'z', 'scale', 'rot_z'])
+        wing1.geo()
         
-        wing.flip(plane='XY')
-        wing.output_tecplot(fname=os.path.join(path, 'wing-2.dat'), one_piece=True, split=False)
-        wing.output_plot3d(fname=os.path.join(path, 'wing-2.grd'), split=False)
-
-    #* V-tail
-    if True:
+        wing2 = copy.deepcopy(wing1)
+        wing2.flip(plane='XY')
         
-        vTail = Surface(n_sec=2, name='vTail', nn=201, ns=21)
 
-        vTail.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
-        vTail.prepare()
-        vTail.geo()
+        #* V-tail
+        vTail1 = Surface(n_sec=2, name='vTail', nn=201, ns=21)
+        vTail1.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
+        vTail1.prepare()
+        vTail1.geo()
 
-        vTail.output_tecplot(fname=os.path.join(path, 'vTail-1.dat'), one_piece=True, split=False)
-        vTail.output_plot3d(fname=os.path.join(path, 'vTail-1.grd'), split=False)
-        
-        vTail.flip(plane='XY')
-        vTail.output_tecplot(fname=os.path.join(path, 'vTail-2.dat'), one_piece=True, split=False)
-        vTail.output_plot3d(fname=os.path.join(path, 'vTail-2.grd'), split=False)
+        vTail2 = copy.deepcopy(vTail1)
+        vTail2.flip(plane='XY')
 
-    #* Fuselage
-    if True:
 
-        fuselage = Fuselage(n_sec=4, name='fuselage', nn=201, ns=21)
-        
+        #* Fuselage
+        fuselage = Fuselage(n_sec=6, name='fuselage', nn=201, ns=21, smooth_surface=True,
+                    smooth_sections=[(0,2), (3,5)])
         fuselage.read_setting(fname=os.path.join(path, 'aircraft.txt'))
         fuselage.prepare()
         fuselage.geo()
 
-        fuselage.output_tecplot(fname=os.path.join(path, 'fuselage.dat'), one_piece=True)
-        fuselage.output_plot3d(fname=os.path.join(path, 'fuselage.grd'))
-
+        
+    #* Output each part
+    if False:
+        
+        wing1.output_plot3d(fname=os.path.join(path, 'wing-1.xyz'), one_piece=True, split=False)
+        wing2.output_plot3d(fname=os.path.join(path, 'wing-2.xyz'), one_piece=True, split=False)
+        
+        vTail1.output_plot3d(fname=os.path.join(path, 'vTail-1.xyz'), one_piece=True, split=False)
+        vTail2.output_plot3d(fname=os.path.join(path, 'vTail-2.xyz'), one_piece=True, split=False)
+        
+        fuselage.output_plot3d(fname=os.path.join(path, 'fuselage.xyz'), one_piece=True)
+        
+        plot3d_to_igs(fname=os.path.join(path, 'wing-1'))
+        plot3d_to_igs(fname=os.path.join(path, 'wing-2'))
+        plot3d_to_igs(fname=os.path.join(path, 'vTail-1'))
+        plot3d_to_igs(fname=os.path.join(path, 'vTail-2'))
+        plot3d_to_igs(fname=os.path.join(path, 'fuselage'))
+        
+        
+    #* Output parts in one file
+    if True:
+        
+        fname = os.path.join(path, 'aircraft')
+        
+        output_plot3d_for_parts(fname+'.xyz', 
+                wing1.surfaces, wing2.surfaces, vTail1.surfaces, vTail2.surfaces, fuselage.surfaces)
+        
+        plot3d_to_igs(fname)
+        
+        
+        
+        

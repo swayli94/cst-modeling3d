@@ -3,7 +3,7 @@ import math
 import os
 import scipy.interpolate as spi
 from scipy.integrate import odeint
-from cst_modeling.basic import plot3d_to_igs
+from cst_modeling.io import plot3d_to_igs
 deg = math.pi/180
 
 def Conical_flow(M1:float, shockangle: float, n_out=200, T1=216.65, P1=1200):  
@@ -346,7 +346,7 @@ if __name__ == "__main__":
         ratio=(Lower_surface[index][-1][2]*scaley-700)/(Lower_surface[index][-1][2]-Lower_surface[index-1][-1][2])/scaley
         translationz=-(Lower_surface[index][-1][1]*(1-ratio)+Lower_surface[index-1][-1][1]*ratio)*scaley
         
-        with open('./dump/lower_surface.grd','w+') as f1:
+        with open('./dump/lower_surface.xyz','w+') as f1:
             f1.write('1\n')
             f1.write(str(n_x) +'  '+ str(nu) + '  1\n')
             for i in [0,2,1]:
@@ -373,7 +373,7 @@ if __name__ == "__main__":
                     else:
                         f1.write('  ')
                                                 
-        with open('./dump/upper_surface.grd','w+') as f1:
+        with open('./dump/upper_surface.xyz','w+') as f1:
             f1.write('1\n')
             f1.write(str(n_x) +'  '+ str(nu) + '  1\n')
             for i in [0,2,1]:

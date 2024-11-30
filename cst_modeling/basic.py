@@ -1842,9 +1842,11 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
 
     return x_, y_, z_
 
-# The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
+
 def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
     '''
+    The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
+
     ### Description
     This function rotate a set of points based on the origin and the axis given by the inputs
 
@@ -2356,7 +2358,7 @@ def intersect_surface_plane(surface: np.ndarray, P0: np.ndarray, P1: np.ndarray,
                     
                     xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i+1,j,:], P0, P1, P3)
                     
-                    if rv<=0.0 or rv>=1.0:
+                    if rv<0.0 or rv>1.0:
                         raise Exception('norm product should guarantee rv in (0,1)')
                     elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>1.0):
                         continue
@@ -2367,21 +2369,21 @@ def intersect_surface_plane(surface: np.ndarray, P0: np.ndarray, P1: np.ndarray,
                         yt_curve.append(t3)
                         continue
 
-            if j<nj-1:
-                if norm_dis[i,j]*norm_dis[i,j+1]<0 or norm_dis[i,j]==0:
+            # if j<nj-1:
+            #     if norm_dis[i,j]*norm_dis[i,j+1]<0 or norm_dis[i,j]==0:
                     
-                    xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i,j+1,:], P0, P1, P3)
+            #         xi, t1, t3, rv = intersect_vec_plane(surface[i,j,:], surface[i,j+1,:], P0, P1, P3)
                     
-                    if rv<=0.0 or rv>=1.0:
-                        raise Exception('norm product should guarantee rv in (0,1)')
-                    elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>1.0):
-                        continue
-                    else:
-                        ij_curve.append([i,j])
-                        curve.append(xi.copy())
-                        xi_curve.append(t1)
-                        yt_curve.append(t3)
-                        continue
+            #         if rv<=0.0 or rv>=1.0:
+            #             raise Exception('norm product should guarantee rv in (0,1)')
+            #         elif within_bounds and (t1<0.0 or t1>1.0 or t3<0.0 or t3>1.0):
+            #             continue
+            #         else:
+            #             ij_curve.append([i,j])
+            #             curve.append(xi.copy())
+            #             xi_curve.append(t1)
+            #             yt_curve.append(t3)
+            #             continue
 
     #* Rearrange points in correct order
     xi_curve = np.array(xi_curve)

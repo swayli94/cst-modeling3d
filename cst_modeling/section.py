@@ -1170,7 +1170,7 @@ def fit_curve_partial(x: np.ndarray, y: np.ndarray, n_cst=7, ip0=0, ip1=0,
 #* ===========================================
 
 def foil_bump_modify(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
-            xc: float, h: float, s: float, side=1, n_cst=0,
+            xc: float, h: float, s: float, side=1, n_cst=0, kind=None,
             return_cst=False, keep_tmax=True):
     '''
     Add bumps on the airfoil
@@ -1213,10 +1213,11 @@ def foil_bump_modify(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
     yl_new = yl.copy()
     t0 = np.max(yu_new-yl_new)
 
-    if xc<0.1 or xc>0.9:
-        kind = 'H'
-    else:
-        kind = 'G'
+    if kind is None:
+        if xc<0.1 or xc>0.9:
+            kind = 'H'
+        else:
+            kind = 'G'
 
     if side > 0:
         yu_new = add_bump(x, yu_new, xc, h*t0, s, kind=kind)
@@ -1391,16 +1392,15 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
         return y_new
 
     if 'G' in kind:
+        
+        sigma = np.ones_like(x) * (s / 6.)
+        if xc - s < 0.:
+            sigma = np.where(x < xc, xc / 3.5, sigma)
+        if xc + s > 1.:
+            sigma = np.where(x > xc, (1.0 - xc) / 3.5, sigma)
 
-        for i in range(x.shape[0]):
-            if xc-s<0.0 and x[i]<xc:
-                sigma = xc/3.5
-            elif  xc+s>1.0 and x[i]>xc:
-                sigma = (1.0-xc)/3.5
-            else:
-                sigma = s/6.0
-            aa = -np.power(x[i]-xc,2)/2.0/sigma**2
-            y_new[i] += h*np.exp(aa)
+        aa = -np.power(x - xc, 2) / 2.0 / sigma**2
+        y_new += h * np.exp(aa)
 
     else:
         
@@ -1409,27 +1409,17 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
         Pow = 1
         span = 1.0
         hm = np.abs(h)
-        while Pow<100 and span>s:
-            x1  = -1.0
-            x2  = -1.0
-            for i in range(0, 201):
-                xx = i*0.005
-                rr = np.pi*np.power(xx,s0)
-                yy = hm * np.power(np.sin(rr),Pow)
-                if yy > 0.01*hm and x1<0.0 and xx<xc:
-                    x1 = xx
-                if yy < 0.01*hm and x2<0.0 and xx>xc:
-                    x2 = xx
-            if x2 < 0.0:
-                x2 = 1.0
+        while Pow < 100 and span > s:
             
-            span = x2 - x1
+            xx = np.linspace(0, 1, 201)
+            rr = np.pi * np.power(xx, s0)
+            yy = hm * np.power(np.sin(rr), Pow)
+            bump_range = xx[yy > 0.01 * hm]
+            span = bump_range[-1] - bump_range[0]
             Pow = Pow + 1
 
-        for i in range(len(x)):
-            rr = np.pi*np.power(x[i],s0)
-            dy = h*np.power(np.sin(rr),Pow)
-            y_new[i] += dy
+        rr = np.pi * np.power(x, s0)
+        y_new += h * np.power(np.sin(rr), Pow)
 
     return y_new
 

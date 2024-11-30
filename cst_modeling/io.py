@@ -212,7 +212,35 @@ def read_tecplot(fname='tecplot.dat'):
 
     return data, name_var, titles
 
-
+def read_plot3d(fname: str) -> List[np.ndarray]:
+    '''
+    Read a ASCII plot3d file.
+    
+    '''
+    blocks_data = []
+    
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+        
+    nblock = int(lines[0].split()[0])
+    print(f'Total block amount:  {nblock:d}')
+    
+    block_sizes = []
+    for ib in range(nblock):
+        block_sizes.append([int(v) for v in lines[1+ib].split()])
+    
+    iline = nblock + 1
+    print(f'-------------------------------------')
+    print(f'| block No. | Line No.  |  shape')
+    print(f'-------------------------------------')
+    
+    for ib in range(nblock):
+        block_data, iline = read_block_plot3d(lines, iline, *block_sizes[ib])
+        print(f'| {ib+1:3d}       |  {iline:7d}  | {block_data.shape}')
+        blocks_data.append(block_data)
+            
+    return blocks_data
+    
 def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tuple[np.ndarray, int]:
     '''
     Read block data from lines.
@@ -266,7 +294,71 @@ def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tu
 
     return xyz, iLine0_new
 
-def output_plot3d(Xs: List[np.ndarray], Ys: List[np.ndarray], Zs: List[np.ndarray], fname='plot3d.xyz', scale=1.0) -> None:
+def output_plot3d_concat(XYZ: List[np.ndarray], fname: str, scale=1.0, order='ji') -> None:
+      
+    X = [ib[:, :, 0, 0] for ib in XYZ]
+    Y = [ib[:, :, 0, 1] for ib in XYZ]
+    Z = [ib[:, :, 0, 2] for ib in XYZ]
+    
+    if order == 'ij':
+        X = [bk.transpose(1, 0) for bk in X]
+        Y = [bk.transpose(1, 0) for bk in Y]
+        Z = [bk.transpose(1, 0) for bk in Z]
+    
+    output_plot3d(X, Y, Z, fname, scale)
+
+def output_plot3d(X: List[np.ndarray], Y: List[np.ndarray], Z: List[np.ndarray], fname: str, scale=1.0) -> None:
+    '''
+    Output surface to fname in plot3d format.
+    
+    Parameters
+    -------------
+    X, Y, Z: list of ndarray [ns,nn]
+        coordinates
+    fname: str
+        the name of the file (`*.grd`)
+
+    '''
+    # ns: number of spanwise points
+    # nn: number of curve points
+    
+    n0 = len(X)
+    
+    print(f'-------------------------------------')
+    print(f'Writing block to PLOT3D file:  {fname}')
+    print(f'Total block amount:  {n0:d}')
+    
+    
+    print(f'-------------------------------------')
+    print(f'| block No. | shape (i, j)')
+    print(f'-------------------------------------')
+
+    with open(fname, 'w') as f:
+        f.write('%d \n '%(n0))     # Number of surfaces
+        for i_sec in range(n0):
+            ns = X[i_sec].shape[0]
+            nn = X[i_sec].shape[1]
+            f.write('%d %d 1\n '%(nn, ns))
+
+            print(f'| {i_sec+1:3d}       |  ({nn:d}, {ns:d})')
+
+        for i_sec in range(n0):
+            
+            for block_one_dirc in [X[i_sec], Y[i_sec], Z[i_sec]]:
+                ii = 0
+                ns = block_one_dirc.shape[0]
+                nn = block_one_dirc.shape[1]
+                # CAUSION -> here the order is first i then j, where PLOT3D
+                # requires first j then i. Set `order` to `ij` if want the 
+                # correct order
+                for i in range(ns):
+                    for j in range(nn):
+                        f.write(' %.9f '%(block_one_dirc[i,j]*scale))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nn-1):
+                            f.write(' \n ')
+                            
+def output_plot3d0(Xs: List[np.ndarray], Ys: List[np.ndarray], Zs: List[np.ndarray], fname='plot3d.xyz', scale=1.0) -> None:
     '''
     Output surface to fname in plot3d format.
     

@@ -10,7 +10,7 @@ import numpy as np
 
 from scipy.interpolate import CubicSpline
 
-from .math import rotate, transform, stretch_fixed_point, toCylinder
+from .math import rotate, rotation_3d, transform, stretch_fixed_point, toCylinder
 
 
 class BasicSection():

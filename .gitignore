@@ -6,9 +6,11 @@ build/
 post/
 
 temp*
+dump
 
 *.lay
 *.grd
+*.igs
 *.ini
 *.pyc
 

@@ -148,7 +148,82 @@ def stretch_curve():
     plt.ylabel('Y')
     plt.savefig('figures/stretch_curve.jpg', dpi=300)
     plt.close()
+
+def cylinder_to_plane():
+    '''
+    Transform a curve on a cylinder to a curve on a plane
+    '''
+    from cst_modeling.basic import toCylinder, fromCylinder, rotate, rotate_vector
+    from cst_modeling.section import cst_foil
+
+    fig = plt.figure(figsize=(10,5))
+
+    def _figure(ax, zLE, thetaLE, radius, origin):
     
+        u = np.linspace(0, 2*np.pi, 101, endpoint=True)
+        h = np.linspace(0, radius, 20)
+        x_cylinder = np.outer(np.sin(u), np.ones_like(h)*radius)+origin[0]
+        y_cylinder = np.outer(np.cos(u), np.ones_like(h)*radius)+origin[1]
+        z_cylinder = np.outer(np.ones_like(u), h)
+        
+        
+        cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
+        cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
+
+        X, YU, YL, _, _ = cst_foil(1001, cst_u, cst_l)
+        
+        xu, yu, zu = toCylinder(X, YU, np.ones_like(X)*radius, flip=False, origin=origin)
+        xl, yl, zl = toCylinder(X, YL, np.ones_like(X)*radius, flip=False, origin=origin)
+        
+        xu, yu, zu = rotate(xu, yu, zu, thetaLE, origin=origin, axis='Z')
+        xl, yl, zl = rotate(xl, yl, zl, thetaLE, origin=origin, axis='Z')
+        
+        zu = zu + zLE
+        zl = zl + zLE
+        
+        XU_, YU_, ZU_ = fromCylinder(xu, yu, zu, flip=False, origin=origin)
+        XL_, YL_, ZL_ = fromCylinder(xl, yl, zl, flip=False, origin=origin)
+
+        ax.plot3D(xu, yu, zu, 'k')
+        ax.plot3D(XU_, YU_, ZU_, 'r')
+        ax.plot3D([origin[0]-0.2, origin[0]+0.2], [origin[1], origin[1]], [0, 0], 'k--')
+        ax.plot3D([-0.2, 0.2], [0, 0], [radius, radius], 'r--')
+        
+        ax.plot3D(xl, yl, zl, 'k')
+        ax.plot3D(XL_, YL_, ZL_, 'r')
+        ax.plot3D([origin[0], origin[0]], [origin[1]-0.2, origin[1]+0.2], [0, 0], 'k--')
+        ax.plot3D([0, 0], [-0.2, 0.2], [radius, radius], 'r--')
+        
+        ax.plot_surface(x_cylinder, y_cylinder, z_cylinder, 
+                        alpha=0.2, rstride=1, cstride=1, color='gray')
+        
+        plt.legend(['cylinder curve', 'plane curve', 'origin of cylinder', 'origin of plane'])
+        
+        plt.title('r0=%.1f, zLE=%.1f, thetaLE=%.1f'%(radius, zLE, thetaLE))
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim3d(origin[0]-radius*1.2, origin[0]+radius*1.2)
+        ax.set_ylim3d(origin[1]-radius*1.2, origin[1]+radius*1.2)
+        ax.set_zlim3d(0.0, 1.2*radius)
+        
+
+    ax = fig.add_subplot(1,2,1,projection='3d')
+    
+    _figure(ax, zLE=0.5, thetaLE=0.0, radius=1.0, origin=[0, 0, 0])
+    
+    ax.view_init(elev=32, azim=-130)
+    
+    
+    ax = fig.add_subplot(1,2,2,projection='3d')
+    
+    _figure(ax, zLE=0.5, thetaLE=30.0, radius=1.2, origin=[-1, 0, 0])
+    
+    ax.view_init(elev=32, azim=-130)
+    
+    plt.savefig('figures/cylinder_to_plane.jpg', dpi=300)
+    plt.close()
     
     
 if __name__ == '__main__':
@@ -159,4 +234,5 @@ if __name__ == '__main__':
 
     stretch_curve()
     
+    cylinder_to_plane()
     

@@ -10,18 +10,16 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.9"
-    # You can also specify other tool versions:
-    # nodejs: "19"
-    # rust: "1.64"
-    # golang: "1.19"
 
-# Build documentation in the docs/ directory with Sphinx
+
+# Sphinx setting
 sphinx:
-   configuration: docs/source/conf.py
+   configuration: docs/source/conf.py  # Build documentation in the docs/ directory with Sphinx
+   fail_on_warning: true               # ReadtheDocs returns `Failed` during building if warning occurs
 
 # If using Sphinx, optionally build your docs in additional formats such as PDF
-# formats:
-#    - pdf
+formats:
+   - pdf
 
 # Optionally declare the Python requirements required to build your docs
 python:

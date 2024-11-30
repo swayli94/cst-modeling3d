@@ -115,22 +115,14 @@ class OpenSection(BasicSection):
     
     Examples
     --------
-    >>> sec = OpenSection(thick=None, chord=1.0, twist=0.0, tail=0.0, lTwistAroundLE=True)
+    >>> sec = OpenSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
     
     Attributes
     ------------
-    tail : float
-        tail thickness (m)
-    RLE : float
-        relative leading edge radius
-    te_angle : float
-        trailing edge angle (degree)
-    te_slope : float
-        slope of the mean camber line at trailing edge (dy/dx)
     cst : ndarray
-        cst coefficients of the upper and lower surfaces
-    refine_u, refine_l : {None, ndarray}
-        cst coefficients of the refinement curve on upper and lower surfaces
+        cst coefficients of the curve
+    refine: {None, ndarray}
+        cst coefficients of the refinement curve 
     '''
     def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True):
 
@@ -141,9 +133,6 @@ class OpenSection(BasicSection):
 
         #* Refine airfoil
         self.refine = None
-
-        #* Round tail
-        self.cst_flip = None
 
     def section(self, cst=None, nn=1001, flip_x=False, projection=True):
         '''
@@ -175,11 +164,6 @@ class OpenSection(BasicSection):
         #* Refine the geometry with an incremental curve
         if isinstance(self.refine, np.ndarray):
             _, y_i = cst_curve(nn, self.refine, x=self.xx)
-            self.yy += y_i
-
-        #* Add round tail with an incremental curve
-        if isinstance(self.cst_flip, np.ndarray):
-            _, y_i = cst_curve(nn, self.cst_flip, x=1.0-self.xx)
             self.yy += y_i
 
         #* Apply thickness
@@ -224,7 +208,7 @@ class RoundTipSection(BasicSection):
         ratio of the trailing edge region
     aLE: float
         angle (deg) of the slope at leading  edge (a>0 => dy/dx>0)
-    a_TE: float
+    aTE: float
         angle (deg) of the slope at trailing edge (a<0 => dy/dx<0)
     i_split: {None, int}
         active when leading edge and trailing edge curves are intersected
@@ -304,7 +288,7 @@ class RoundTipSection(BasicSection):
         self.yu = self.base_yu + self.cst_yu
         self.yl = self.base_yl + self.cst_yl
         
-        # Calculate leading edge radius
+        #* Calculate leading edge radius
         x_RLE = 0.005
         yu_RLE = interp_from_curve(x_RLE, self.xx, self.yu)
         yl_RLE = interp_from_curve(x_RLE, self.xx, self.yl)
@@ -681,8 +665,8 @@ def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarra
     twist = np.arctan(yTE/xTE)*180/np.pi
     chord = np.sqrt(xTE**2+yTE**2)
 
-    xu_, yu_, _ = rotate(xu_, yu_, None, angle=-twist, axis='Z')
-    xl_, yl_, _ = rotate(xl_, yl_, None, angle=-twist, axis='Z')
+    xu_, yu_, _ = rotate(xu_, yu_, np.zeros_like(xu_), angle=-twist, axis='Z')
+    xl_, yl_, _ = rotate(xl_, yl_, np.zeros_like(xu_), angle=-twist, axis='Z')
 
     #* Scale
     yu_ = yu_ / xu_[-1]
@@ -994,7 +978,7 @@ def cst_foil_fit(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray,
         coordinates
     n_cst: int
         number of CST coefficients
-    xn1, xn12: float
+    xn1, xn2: float
         CST parameters
         
     Returns
@@ -1027,7 +1011,7 @@ def fit_curve(x: np.ndarray, y: np.ndarray, n_cst=7, xn1=0.5, xn2=1.0):
         coordinates
     n_cst: int
         number of CST coefficients
-    xn1, xn12: float
+    xn1, xn2: float
         CST parameters
         
     Returns
@@ -1078,7 +1062,7 @@ def fit_curve_with_twist(x: np.ndarray, y: np.ndarray, n_cst=7,
         coordinates
     n_cst: int
         number of CST coefficients
-    xn1, xn12: float
+    xn1, xn2: float
         CST parameters
 
     Returns
@@ -1102,7 +1086,7 @@ def fit_curve_with_twist(x: np.ndarray, y: np.ndarray, n_cst=7,
 
     x_ = (x - x[0])/chord
     y_ = (y - y[0])/chord
-    x_, y_, _ = rotate(x_, y_, None, angle=-twist, axis='Z')
+    x_, y_, _ = rotate(x_, y_, np.zeros_like(x_), angle=-twist, axis='Z')
     thick = np.max(y_, axis=0)
 
     coef = fit_curve(x_, y_, n_cst=n_cst, xn1=xn1, xn2=xn2)
@@ -1124,7 +1108,7 @@ def fit_curve_partial(x: np.ndarray, y: np.ndarray, n_cst=7, ip0=0, ip1=0,
         index of the partial curve x[ip0:ip1] 
     ic0, ic1: int
         index of the CST parameters cst[ic0:ic1] that are not 0
-    xn1, xn12: float
+    xn1, xn2: float
         CST parameters
         
     Returns
@@ -1220,9 +1204,9 @@ def foil_bump_modify(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
             kind = 'G'
 
     if side > 0:
-        yu_new = add_bump(x, yu_new, xc, h*t0, s, kind=kind)
+        yu_new = yu_new + bump_function(x, xc, h*t0, s, kind=kind)
     else:
-        yl_new = add_bump(x, yl_new, xc, h*t0, s, kind=kind)
+        yl_new = yl_new + bump_function(x, xc, h*t0, s, kind=kind)
 
     if keep_tmax:
 
@@ -1356,9 +1340,9 @@ def foil_increment_curve(x: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
     return yu_, yl_
 
-def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.ndarray:
+def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.ndarray:
     '''
-    Add a bump on current curve [x, y].
+    A bump distribution [x, y].
 
     Parameters
     -----------
@@ -1377,19 +1361,19 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
 
     Returns
     ---------
-    y_new : ndarray
+    y_bump : ndarray
         coordinates
 
     Examples
     ---------
-    >>> y_new = add_bump(x, y, xc, h, s, kind)
+    >>> y_bump = bump_function(x, xc, h, s, kind)
 
     '''
-    y_new = y.copy()
+    y_bump = np.zeros_like(x)
 
     if xc<=0 or xc>=1:
         print('Bump location not valid (0,1): xc = %.3f'%(xc))
-        return y_new
+        return y_bump
 
     if 'G' in kind:
         
@@ -1421,6 +1405,6 @@ def add_bump(x: np.ndarray, y: np.ndarray, xc: float, h: float, s: float, kind='
         rr = np.pi * np.power(x, s0)
         y_new += h * np.power(np.sin(rr), Pow)
 
-    return y_new
+    return y_bump
 
 

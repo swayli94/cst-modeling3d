@@ -4,15 +4,14 @@ Basic classes for sections and surfaces, and fundamental functions
 import copy
 import os
 import re
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.interpolate import CubicSpline
 from scipy import spatial
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline, interp1d
 from scipy.spatial.distance import cdist
-from typing import Tuple, List
+from scipy.spatial.transform import Rotation
 
 
 class BasicSection():
@@ -405,16 +404,19 @@ class BasicSurface():
         '''
         Locate layout center for plot
         '''
-        x_range = [self.secs[0].xLE, self.secs[0].xLE]
+        x_range = [self.secs[0].xLE, self.secs[0].xLE+self.secs[0].chord]
         y_range = [self.secs[0].yLE, self.secs[0].yLE]
-        z_range = [self.secs[0].zLE, self.secs[0].zLE]
-        for i in range(self.n_sec):
-            x_range[0] = min(x_range[0], self.secs[i].xLE)
-            x_range[1] = max(x_range[1], self.secs[i].xLE+self.secs[i].chord)
-            y_range[0] = min(y_range[0], self.secs[i].yLE)
-            y_range[1] = max(y_range[1], self.secs[i].yLE)
-            z_range[0] = min(z_range[0], self.secs[i].zLE)
-            z_range[1] = max(z_range[1], self.secs[i].zLE)
+        z_range = [self.secs[0].zLE, self.secs[0].zLE+self.l2d]
+        
+        if not self.l2d:
+            
+            for i in range(self.n_sec):
+                x_range[0] = min(x_range[0], self.secs[i].xLE)
+                x_range[1] = max(x_range[1], self.secs[i].xLE+self.secs[i].chord)
+                y_range[0] = min(y_range[0], self.secs[i].yLE)
+                y_range[1] = max(y_range[1], self.secs[i].yLE)
+                z_range[0] = min(z_range[0], self.secs[i].zLE)
+                z_range[1] = max(z_range[1], self.secs[i].zLE)
         
         span = np.array([x_range[1]-x_range[0], y_range[1]-y_range[0], z_range[1]-z_range[0]])
         self.half_span = span.max()/2.0
@@ -1413,6 +1415,8 @@ class BasicSurface():
             print('Must specify locations when adding sections')
             return
         
+        if self.secs[0].xx is None:
+            self.update_sections()
 
         #* Find new section's location
         for loc in location:
@@ -1496,7 +1500,7 @@ class BasicSurface():
                     
                     nt = surf_x.shape[1]
 
-                    if i_sec>=n_piece-2:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -1605,9 +1609,9 @@ class BasicSurface():
 
         f.close()
 
-    def plot(self, fig_id=1, type='wireframe') -> None:
+    def plot(self, fig_id=1, type='wireframe', show=True):
         '''
-        Plot surface
+        Plot surface (the figure is not closed).
 
         Parameters
         ------------
@@ -1615,9 +1619,18 @@ class BasicSurface():
             ID of the figure
         type : str
             'wireframe', or 'surface'
+        show : bool
+            whether plot on screen
+            
+        Return
+        ---------
+        ax
+            figure (subplot) handle
         '''
+        self.layout_center()
+        
         fig = plt.figure(fig_id)
-        ax = Axes3D(fig)
+        ax = fig.add_subplot(projection='3d')
 
         for surf in self.surfs:
             if type in 'wireframe':
@@ -1631,7 +1644,11 @@ class BasicSurface():
         ax.set_xlim3d(self.center[0]-self.half_span, self.center[0]+self.half_span)
         ax.set_ylim3d(self.center[1]-self.half_span, self.center[1]+self.half_span)
         ax.set_zlim3d(self.center[2]-self.half_span, self.center[2]+self.half_span)
-        plt.show()
+
+        if show:
+            plt.show()
+            
+        return ax
 
 
 #* ===========================================
@@ -1791,8 +1808,8 @@ def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray,
 
     #* Rotation
     if not rot is None:
-        xu_new, yu_new, _ = rotate(xu_new, yu_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
-        xl_new, yl_new, _ = rotate(xl_new, yl_new, None, angle=rot, origin=[xr, yr, 0.0], axis='Z')
+        xu_new, yu_new, _ = rotate(xu_new, yu_new, np.zeros_like(xu_new), angle=rot, origin=[xr, yr, 0.0], axis='Z')
+        xl_new, yl_new, _ = rotate(xl_new, yl_new, np.zeros_like(xu_new), angle=rot, origin=[xr, yr, 0.0], axis='Z')
 
     return xu_new, xl_new, yu_new, yl_new
 
@@ -1822,27 +1839,70 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     >>> x_, y_, z_ = rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X')
     
     '''
-    cc = np.cos( angle/180.0*np.pi )
-    ss = np.sin( angle/180.0*np.pi )
-    x_ = copy.deepcopy(x)
-    y_ = copy.deepcopy(y)
-    z_ = copy.deepcopy(z)
-
     if axis in 'X':
-        y_ = origin[1] + (y-origin[1])*cc - (z-origin[2])*ss
-        z_ = origin[2] + (y-origin[1])*ss + (z-origin[2])*cc
-
+        axis_vector=[1,0,0]
     if axis in 'Y':
-        z_ = origin[2] + (z-origin[2])*cc - (x-origin[0])*ss
-        x_ = origin[0] + (z-origin[2])*ss + (x-origin[0])*cc
-
+        axis_vector=[0,1,0]
     if axis in 'Z':
-        x_ = origin[0] + (x-origin[0])*cc - (y-origin[1])*ss
-        y_ = origin[1] + (x-origin[0])*ss + (y-origin[1])*cc
+        axis_vector=[0,0,1]
+
+    points = rotate_vector(x, y, z, angle=angle, origin=origin, axis_vector=axis_vector)
+    x_ = points[:,0]
+    y_ = points[:,1]
+    z_ = points[:,2]
 
     return x_, y_, z_
 
+def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np.ndarray:
+    '''
+    Rotate 3D points (vectors) by axis-angle representation.
 
+    Parameters
+    ----------
+    x, y, z : float or ndarray [:]
+        coordinates of the points.
+    angle : float
+        rotation angle (deg) about the axis (right-hand rule).
+    origin : ndarray [3]
+        origin of the rotation axis.
+    axis_vector : ndarray [3]
+        indicating the direction of an axis of rotation.
+        The input `axis_vector` will be normalized to a unit vector `e`.
+        The rotation vector, or Euler vector, is `angle*e`.
+
+    Returns
+    --------
+    points : ndarray [3] or [:,3]
+        coordinates of the rotated points
+        
+    Examples
+    --------
+    >>> points = rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1])
+    
+    References
+    ----------
+    
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+    
+    https://en.wikipedia.org/wiki/Axis%E2%80%93angle_representation
+    
+    https://en.wikipedia.org/wiki/Rotation_matrix
+    
+    '''
+    origin = np.array(origin)
+    vector = np.transpose(np.array([x, y, z]))  # [3] or [:,3]
+    vector = vector - origin
+    
+    rotation_vector = np.array(axis_vector)/np.linalg.norm(axis_vector)
+
+    rot = Rotation.from_rotvec(angle*rotation_vector/180.0*np.pi)
+    
+    # In terms of rotation matricies, this application is the same as rot.as_matrix().dot(vector).
+    points = rot.apply(vector) + origin
+    
+    return points
+
+# The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
 def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
     '''
     The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
@@ -1952,7 +2012,7 @@ def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0,
     return x_, y_
 
 def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
-                 flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                 flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the cylinder curve to a 2D plane curve.
 
@@ -1962,8 +2022,8 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
         coordinates of the curve on a cylinder. `x` and `y` must not be 0 at the same time.
     flip : bool
         if True, flip the X of the extracted plane curve.
-    origin: {None, list of float}
-        if provided a list [x0, y0], the cylinder origin is [x0, y0].
+    origin: array_like
+        the cylinder origin, [x0, y0] (or [x0, y0, 0]).
 
     Returns
     ---------
@@ -1989,9 +2049,8 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     '''
     coef = -1.0 if flip else 1.0
 
-    if origin is not None:
-        x = x - origin[0]
-        y = y - origin[1]
+    x = x - origin[0]
+    y = y - origin[1]
 
     rr = np.sqrt(x*x+y*y)
     tt = np.arctan2(y, x) * coef
@@ -2003,7 +2062,7 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     return X, Y, Z
 
 def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
-               flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+               flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the plane sections to curves on a cylinder.
 
@@ -2013,8 +2072,8 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
         coordinates of the curve on a plane. `Z` must not be 0.
     flip : bool
         if True, flip the X of the extracted plane curve.
-    origin: {None, list of float}
-        if provided a list [x0, y0], the cylinder origin is [x0, y0].
+    origin: array_like
+        the cylinder origin, [x0, y0] (or [x0, y0, 0]).
 
     Returns
     ---------
@@ -2051,9 +2110,8 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
         x[i] = r*np.cos(theta)
         y[i] = r*np.sin(theta)
 
-    if origin is not None:
-        x = x + origin[0]
-        y = y + origin[1]
+    x = x + origin[0]
+    y = y + origin[1]
 
     return x, y, z
 
@@ -2170,12 +2228,49 @@ def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -
         
     return y0
 
+def plane_3points(P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    '''
+    Calculate the plane function and the coordinates of given points (`xs`, `ys`).
+    
+    The plane function is `a*x+b*y+c*z+d=0`.
+    
+    Parameters
+    -------------
+    P0, P1, P3 : ndarray [3]
+        coordinates of three points of plane P0123.
+    xs, ys : ndarray [:] or [:,:]
+        X and Y coordinates of plane points.
+    
+    Returns
+    -------
+    zs : ndarray [:] or [:,:]
+    
+    Examples
+    ---------
+    >>> xs = plane_3points(P0, P1, P3, xs, ys)
+    '''
+    a1 = P1[0] - P0[0]
+    b1 = P1[1] - P0[1]
+    c1 = P1[2] - P0[2]
+    a2 = P3[0] - P0[0]
+    b2 = P3[1] - P0[1]
+    c2 = P3[2] - P0[2]
+    a = b1 * c2 - b2 * c1
+    b = a2 * c1 - a1 * c2
+    c = a1 * b2 - b1 * a2
+    d = (- a * P0[0] - b * P0[1] - c * P0[2])
+    
+    if c == 0:
+        return np.zeros_like(xs)
+    else:
+        return (a*xs+b*ys+d)/(-c)
+    
     
 #* ===========================================
 #* Intersection
 #* ===========================================
     
-def curve_intersect(x1, y1, x2, y2):
+def intersect_index(x1, y1, x2, y2):
     '''
     Find the intersect index between two curves.
     
@@ -2195,7 +2290,7 @@ def curve_intersect(x1, y1, x2, y2):
         
     Examples
     -----------
-    >>> i1, i2, points = curve_intersect(x1, y1, x2, y2)
+    >>> i1, i2, points = intersect_index(x1, y1, x2, y2)
 
     '''
 
@@ -2647,7 +2742,7 @@ def reconstruct_curve_by_length(curve: np.ndarray, n:int) -> np.ndarray:
     fx = interp1d(tt, curve[:,0], kind='cubic')
     fy = interp1d(tt, curve[:,1], kind='cubic')
     fz = interp1d(tt, curve[:,2], kind='cubic')
-    
+
     new_curve = np.zeros((n,3))
     
     for i in range(n):
@@ -3112,16 +3207,128 @@ def output_plot3d(X: list, Y: list, Z: list, fname: str, scale=1.0) -> None:
                     if ii%3==0 or (i==ns-1 and j==nn-1):
                         f.write(' \n ')
 
-def plot3d_to_igs(fname='igs', ratio=1.0):
+def output_curves_igs(x: np.ndarray, y: np.ndarray, z: np.ndarray, fname='curve.igs', n_degree=3, is_planar=True):
+    '''
+    Output curves in the Initial Graphics Exchange Specification (IGES) format.
+    
+    Parameters
+    ------------
+    x, y, z : ndarray
+        coordinates of the curve(s), [:] or [n_curve,:]
+    fname : str
+        file name. 
+    n_degree : int
+        degree of basis functions.
+        0=Determined by data; 1=Line; 2=Circular arc; 
+        3=Elliptical arc; 4=Parabolic arc; 5=Hyperbolic arc.
+    is_planar : bool
+        whether is planar curve in X-Y plane.
+        
+    References
+    ------------
+    https://wiki.eclipse.org/IGES_file_Specification
+    
+    https://filemonger.com/specs/igs/devdept.com/version6.pdf
+    '''
+    
+    #* Curve dimension
+    if len(x.shape) == 1:
+        n_curve = 1
+        n_point = x.shape[0]
+        x = x[None,:]
+        y = y[None,:]
+        z = z[None,:]
+    else:
+        n_curve = x.shape[0]
+        n_point = x.shape[1]
+    
+    #* Output IGES format file
+    f = open(fname, 'w')
+
+    #* Start section
+    f.write('This is igs file generated by LI Runze. All rights reserved.            S      1\n')
+    
+    #* Global section
+    f.write('1H,,1H;,3Higs,7Higs.igs,44HDASSAULT SYSTEMES CATIA V5 R20 - www.3ds.com,G      1\n')
+    f.write('27HCATIA Version 5 Release 20 ,32,75,6,75,15,3Higs,1.0,2,2HMM,1000,1.0, G      2\n')
+    f.write('15H20180311.223810,0.001,10000.0,5Hyancy,15HDESKTOP-BEPNROH,11,0,15H2018G      3\n')
+    f.write('0311.223810,;                                                           G      4\n')
+
+    #* Data entry section
+    iType = 126 # Rational B-Spline Curve
+    
+    iLineStart = 1
+    nLineCount = 3 + 3*n_point + n_degree
+    
+    for ic in range(n_curve):
+        
+        # iLineStart: is the line number inside the PD section that has the first line of this entity data.
+        # nLineCount: specifies the number of lines this entity takes up in the PD section.
+
+        f.write(' %7d %7d %7d %7d %7d %7d %7d %7d'%(iType, iLineStart, n_degree, 0, 0, 0, 0, 0))
+        f.write(' %1d %1d %1d %1dD %6d\n'%(0, 0, 0, 0, ic*2+1))
+        f.write(' %7d %7d %7d %7d %7d'%(iType, 0, 0, nLineCount, 0))
+        f.write('                BSp Curv{:<3d}'.format(ic*2+1) + '    0D %6d\n'%(ic*2+2))
+        
+        iLineStart += nLineCount
+    
+    #* Parameter data section
+    iLine = 0
+    for ic in range(n_curve):
+        
+        is_closed = False       # is the starting and ending point the same
+        is_polynomial = True    # if all weights are equal, otherwise, the curve is rational
+        is_periodic = False     # actually has no difference
+        
+        # Starting
+        iLine += 1
+        f.write(' %4d, %4d, %4d, %4d, %4d, %4d, %4d,'%(iType, n_point-1, n_degree, is_planar, is_closed, is_polynomial, is_periodic))
+        f.write('%30dP %6d\n'%(ic*2+1, iLine))
+
+        # Knot sequence (n_point + n_degree + 1)
+        xKnot = knotx(n_point, n_degree+1)
+        for ix in range(xKnot.shape[0]):
+            iLine += 1
+            f.write('%19.10e, %51dP %6d\n'%(xKnot[ix], ic*2+1, iLine))
+        ximin = xKnot[0]
+        ximax = xKnot[-1]
+        
+        # Weight sequence (n_point)
+        for _ in range(n_point):
+            iLine += 1
+            f.write('%19.10e, %51dP %6d\n'%(1.0, ic*2+1, iLine))
+        
+        # Node coordinates (3*n_point)
+        for i in range(n_point):
+            iLine += 1
+            f.write('%19.10e,%19.10e,%19.10e,%12dP %6d\n'%(
+                x[ic,i], y[ic,i], z[ic,i], ic*2+1, iLine))
+    
+        # Ending
+        # Start parameter value, End parameter value, Unit normal x, y, z (if planar)
+        # (note: '%**dP' must have at least '%9d')
+        iLine += 1
+        f.write('%10.3f,%10.3f,%12.5f,%12.5f,%12.5f;%11dP %6d\n'%(
+            ximin, ximax, 0, 0, 1, ic*2+1, iLine))
+    
+    
+    #* Ending section
+    f.write('S %6dG %6dD %6dP %6d %40s %6d\n'%(1, 4, 2*n_curve, iLine, 'T', 1))
+    f.close()
+
+
+def plot3d_to_igs(fname='igs'):
     '''
     Converts Plot3d surface grid file [fname.grd] to IGES file [fname.igs].
     
     Original Fortran version by Prof. Zhang Yufei: zhangyufei@tsinghua.edu.cn.
+    
+    Ref: https://wiki.eclipse.org/IGES_file_Specification
     '''
 
     #* Read plot3d format file
     if not os.path.exists(fname+'.grd'):
-        raise Exception(fname+' does not exist for format transfermation')
+        raise Exception(fname+' does not exist for format transformation')
     
     with open(fname+'.grd', 'r') as f:
         lines = f.readlines()
@@ -3151,15 +3358,17 @@ def plot3d_to_igs(fname='igs', ratio=1.0):
     #* Output IGES format file
     f = open(fname+'.igs', 'w')
 
-    #* Start section and global section
+    #* Start section
     f.write('This is igs file generated by ZHANG Yufei. All rights reserved.         S      1\n')
+    
+    #* Global section
     f.write('1H,,1H;,3Higs,7Higs.igs,44HDASSAULT SYSTEMES CATIA V5 R20 - www.3ds.com,G      1\n')
     f.write('27HCATIA Version 5 Release 20 ,32,75,6,75,15,3Higs,1.0,2,2HMM,1000,1.0, G      2\n')
     f.write('15H20180311.223810,0.001,10000.0,5Hyancy,15HDESKTOP-BEPNROH,11,0,15H2018G      3\n')
     f.write('0311.223810,;                                                           G      4\n')
 
-    #* Index section
-    iType = 128
+    #* Data entry section
+    iType = 128 # Rational B-Spline Surface
     for ib in range(num_block):
         iLineStart = nIJK[ib, 4]
         iLineEnd   = nIJK[ib, 3]
@@ -3167,12 +3376,9 @@ def plot3d_to_igs(fname='igs', ratio=1.0):
         f.write(' %7d %7d %7d %7d %7d %7d %7d %7d'%(iType, iLineStart, 0, 0, 0, 0, 0, 0))
         f.write(' %1d %1d %1d %1dD %6d\n'%(0, 0, 0, 0, ib*2+1))
         f.write(' %7d %7d %7d %7d %7d'%(iType, 0, 0, iLineEnd, 0))
-        if ib<9:
-            f.write('                BSp Surf%1d      0D %6d\n'%(ib+1, ib*2+2))
-        else:
-            f.write('                BSp Surf%2d     0D %6d\n'%(ib+1, ib*2+2))
+        f.write('                BSp Surf{:<3d}'.format(ib+1) + '    0D %6d\n'%(ib*2+2))
 
-    #* Data section
+    #* Parameter data section
     iLine = 0
     for ib in range(num_block):
         ni = nIJK[ib, 0]
@@ -3237,19 +3443,19 @@ def idataline(ni: int, nj: int):
 
     return i1+i2+i3+i4+i5
 
-def knotx(ni: int) -> np.ndarray:
+def knotx(ni: int, n_offset=4) -> np.ndarray:
     '''
     Function for `plot3d_to_igs`.
     
-    Returns [0, 0, 0, 0, ...(ni-3)..., 1.0, 1.0, 1.0, 1.0].
+    Returns [0, 0, 0, 0, ...(ni-n_offset)..., 1.0, 1.0, 1.0, 1.0].
     ''' 
 
-    xKnot = np.zeros(ni+4)
+    xKnot = np.zeros(ni+n_offset)
 
-    for i in range(ni-3):
-        xKnot[i+4] = (i+1.0)/(ni-3.0)
+    for i in range(ni-n_offset+1):
+        xKnot[i+n_offset] = (i+1.0)/(ni-n_offset+1)
 
-    for i in range(4):
+    for i in range(n_offset):
         xKnot[ni+i] = 1.0
 
     return xKnot

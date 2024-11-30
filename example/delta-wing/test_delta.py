@@ -5,7 +5,8 @@ Diamond wing
 import numpy as np
 from scipy.interpolate import interp1d
 
-from cst_modeling.basic import BasicSection, BasicSurface, plot3d_to_igs
+from cst_modeling.io import plot3d_to_igs
+from cst_modeling.basic import BasicSection, BasicSurface
 from cst_modeling.section import dist_clustcos, cst_foil
 
 
@@ -301,6 +302,6 @@ if __name__ == '__main__':
     diamond.output_tecplot(fname='Wing.dat', one_piece=False)
 
     diamond.scale(scale=1000)
-    diamond.output_plot3d(fname='Wing.grd')
+    diamond.output_plot3d(fname='Wing.xyz')
     plot3d_to_igs(fname='Wing')
 

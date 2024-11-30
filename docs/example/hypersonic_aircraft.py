@@ -4,7 +4,7 @@ from re import A
 from statistics import harmonic_mean
 from string import hexdigits
 from cst_modeling.surface import OpenSurface
-from cst_modeling.basic import plot3d_to_igs
+from cst_modeling.io import plot3d_to_igs
 from scipy.interpolate import CubicSpline
 import math
 import os
@@ -861,43 +861,43 @@ def output():
         print('************Start to Output************')
         # output the 'bottom' geometry 
         bottom.output_tecplot(fname='bottom.dat', one_piece=False)
-        bottom.output_plot3d(fname='bottom.grd')
+        bottom.output_plot3d(fname='bottom.xyz')
         plot3d_to_igs(fname='bottom')
         # Output the 'connect' geometry
         connect.output_tecplot(fname='connect.dat', one_piece=False)
-        connect.output_plot3d(fname='connect.grd')
+        connect.output_plot3d(fname='connect.xyz')
         plot3d_to_igs(fname='connect')
         # output the 'support' geometry
         support.output_tecplot(fname='support.dat')
-        support.output_plot3d(fname='support.grd')
+        support.output_plot3d(fname='support.xyz')
         plot3d_to_igs(fname='support')
         # output the 'forebody' geometry
         forebody.output_tecplot(fname='forebody.dat')
-        forebody.output_plot3d(fname='forebody.grd')
+        forebody.output_plot3d(fname='forebody.xyz')
         plot3d_to_igs(fname='forebody')
         # output the 'body1' geometry
         body1.output_tecplot(fname='body1.dat')
-        body1.output_plot3d(fname='body1.grd')
+        body1.output_plot3d(fname='body1.xyz')
         plot3d_to_igs(fname='body1')
         # output the 'uppersurf' geometry
         uppersurf.output_tecplot(fname='uppersurf.dat')
-        uppersurf.output_plot3d(fname='uppersurf.grd')
+        uppersurf.output_plot3d(fname='uppersurf.xyz')
         plot3d_to_igs(fname='uppersurf')
         # output the 'lowersurf' geometry
         lowersurf.output_tecplot(fname='lowersurf.dat')
-        lowersurf.output_plot3d(fname='lowersurf.grd')
+        lowersurf.output_plot3d(fname='lowersurf.xyz')
         plot3d_to_igs(fname='lowersurf')
         # output the 'ending_upper' geometry
         ending_upper.output_tecplot(fname='ending_upper.dat')
-        ending_upper.output_plot3d(fname='ending_upper.grd')
+        ending_upper.output_plot3d(fname='ending_upper.xyz')
         plot3d_to_igs(fname='ending_upper')
         # output the 'ending_lower' geometry
         ending_lower.output_tecplot(fname='ending_lower.dat')
-        ending_lower.output_plot3d(fname='ending_lower.grd')
+        ending_lower.output_plot3d(fname='ending_lower.xyz')
         plot3d_to_igs(fname='ending_lower')
         # output the 'side' geometry
         side.output_tecplot(fname='side.dat')
-        side.output_plot3d(fname='side.grd')
+        side.output_plot3d(fname='side.xyz')
         plot3d_to_igs(fname='side')
         print('Construct Completed')
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
 numpy
 matplotlib
 scipy
+sphinx
+sphinx_rtd_theme

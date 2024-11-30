@@ -30,6 +30,6 @@ Plot3D format to IGES format.
 .. code-block:: python
     :linenos:
     
-    output_plot3d(X, Y, Z, 'name.grd', scale=1.0)
+    output_plot3d(X, Y, Z, 'name.xyz', scale=1.0)
 
     plot3d_to_igs(fname='name')

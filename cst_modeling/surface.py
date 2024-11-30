@@ -6,7 +6,8 @@ from typing import List
 
 import numpy as np
 
-from .basic import BasicSurface, rotate
+from .math import rotate
+from .basic import BasicSurface
 from .section import OpenSection, Section
 
 #* ===========================================
@@ -80,7 +81,7 @@ class OpenSurface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick_set = float(line[5])
+                            self.secs[i].specified_thickness = float(line[5])
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -201,7 +202,7 @@ class Surface(BasicSurface):
                         self.secs[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.secs[i].thick_set = float(line[5])
+                            self.secs[i].specified_thickness = float(line[5])
 
                         if isinstance(tail, float):
                             self.secs[i].tail  = tail/self.secs[i].chord
@@ -210,8 +211,8 @@ class Surface(BasicSurface):
                         else:
                             raise Exception('tail must be a float or a list with length = section number')
                         
-                        if self.secs[i].thick_set <= 0.0:
-                            self.secs[i].thick_set = None
+                        if self.secs[i].specified_thickness <= 0.0:
+                            self.secs[i].specified_thickness = None
 
                         if self.l2d:
                             self.secs[i].zLE = 0.0
@@ -262,7 +263,6 @@ class Surface(BasicSurface):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
 
-                        self.secs[i].refine_fixed_t=True
                         self.secs[i].refine_u = cst_ur
                         self.secs[i].refine_l = cst_lr
 
@@ -298,9 +298,6 @@ class Surface(BasicSurface):
                             if i2<len(line2):
                                 cst_lr[j] = float(line2[i2])
                                 i2 += 1
-
-                        self.secs[i].cst_flip_u = cst_ur
-                        self.secs[i].cst_flip_l = cst_lr
 
                     found_key = 0
 
@@ -343,22 +340,22 @@ class Surface(BasicSurface):
 
             if not one_piece:
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
 
                     # surf_x[ns,nt], ns => spanwise
                     ns = self.ns
                     nt = int((surf_x.shape[1]+1)/2)
 
-                    f.write('zone T="sec-u %d" i= %d j= %d \n'%(isec, nt, ns))
+                    f.write('zone T="sec-u %d" i= %d j= %d \n'%(i_sec, nt, ns))
                     for i in range(ns):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j+nt-1], surf_y[i,j+nt-1], surf_z[i,j+nt-1]))
 
-                    f.write('zone T="sec-l %d" i= %d j= %d \n'%(isec, nt, ns))
+                    f.write('zone T="sec-l %d" i= %d j= %d \n'%(i_sec, nt, ns))
                     for i in range(ns):
                         for j in range(nt):
                             f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
@@ -371,13 +368,13 @@ class Surface(BasicSurface):
                 
                 f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
 
-                    if isec>=n_piece-1:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -388,13 +385,13 @@ class Surface(BasicSurface):
 
                 f.write('zone T="sec-l" i= %d j= %d \n'%(nt, npoint))
 
-                for isec in range(n_piece):
+                for i_sec in range(n_piece):
                     
-                    surf_x = self.surfs[isec][0]
-                    surf_y = self.surfs[isec][1]
-                    surf_z = self.surfs[isec][2]
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
                     
-                    if isec>=n_piece-1:
+                    if i_sec>=n_piece-1:
                         i_add = 0
                     else:
                         i_add = 1
@@ -405,7 +402,7 @@ class Surface(BasicSurface):
 
     def output_plot3d(self, fname=None, split=False) -> None:
         '''
-        Output the surface to `*.grd` in plot3d format.
+        Output the surface to `*.xyz` in plot3d format.
 
         Parameters
         ------------
@@ -419,7 +416,7 @@ class Surface(BasicSurface):
             return
 
         if fname is None:
-            fname = self.name + '.grd'
+            fname = self.name + '.xyz'
 
         n_piece = len(self.surfs)
 
@@ -429,16 +426,16 @@ class Surface(BasicSurface):
         with open(fname, 'w') as f:
 
             f.write('%d \n '%(n_piece*2))   # Number of surfaces
-            for isec in range(n_piece):
-                nt = int((self.surfs[isec][0].shape[1]+1)/2)
+            for i_sec in range(n_piece):
+                nt = int((self.surfs[i_sec][0].shape[1]+1)/2)
                 f.write('%d %d 1\n '%(nt, ns))
                 f.write('%d %d 1\n '%(nt, ns))
 
-            for isec in range(n_piece):
+            for i_sec in range(n_piece):
 
-                X = self.surfs[isec][0]
-                Y = self.surfs[isec][1]
-                Z = self.surfs[isec][2]
+                X = self.surfs[i_sec][0]
+                Y = self.surfs[i_sec][1]
+                Z = self.surfs[i_sec][2]
                 nt = int((X.shape[1]+1)/2)
 
                 #* Upper surface

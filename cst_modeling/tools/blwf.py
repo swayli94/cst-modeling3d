@@ -7,9 +7,10 @@ Building BLWF input file from wing geometry file and aircraft surface file.
 import os
 import copy
 import numpy as np
-from ..basic import (read_tecplot, intersect_surface_plane, interp_from_curve, extract_slice,
-                    rearrange_points, reconstruct_curve_by_length, BasicSurface)
-from ..section import find_circle_3p
+from ..basic import BasicSurface
+from ..math import (find_circle_3p, intersect_surface_plane, interp_from_curve, 
+                    extract_slice, rearrange_points, reconstruct_curve_by_length)
+from ..io import read_tecplot
 
 
 def output_curve(curve, fname='curves.dat', append=False, name_var=['X', 'Y', 'Z']):
@@ -1018,9 +1019,11 @@ class BLWF():
     def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
                       fname='surface-aircraft.dat', zone_id=[], index_xyz=[0,1,2], arrange_method='join'):
 
-        sections, name_var = extract_slice(locations, Pref, dir_norm, dir_ref=dir_ref,
-                      fname=fname, zone_id=zone_id, index_xyz=index_xyz, 
-                      arrange_method=arrange_method)
+        data, name_var, _ = read_tecplot(fname)
+
+
+        sections, name_var = extract_slice(data, locations, Pref, dir_norm, dir_ref=dir_ref,
+                        zone_id=zone_id, index_xyz=index_xyz, arrange_method=arrange_method)
 
         return sections, name_var
 

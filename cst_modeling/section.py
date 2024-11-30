@@ -7,7 +7,9 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .basic import BasicSection, rotate, interp_from_curve, curve_curvature
+from .math import (rotate, interp_from_curve, find_circle_3p,
+                    cst_foil, clustcos, dist_clustcos, cst_curve)
+from .basic import BasicSection
 
 
 #* ===========================================
@@ -58,7 +60,7 @@ class Section(BasicSection):
 
     def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True) -> None:
         '''
-        Generating the section (3D) by cst_foil. 
+        Generating the section (3D) by `cst_foil`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
 
         Parameters
@@ -83,7 +85,7 @@ class Section(BasicSection):
 
         #* Construct airfoil with CST parameters
         self.xx, self.yu, self.yl, self.thick, self.RLE = cst_foil(
-            nn, self.cst_u, self.cst_l, t=self.thick_set, tail=self.tail)
+            nn, self.cst_u, self.cst_l, t=self.specified_thickness, tail=self.tail)
         
         #* Trailing edge information
         a1 = [self.xx[-1]-self.xx[-5], self.yu[-1]-self.yu[-5]]
@@ -103,7 +105,7 @@ class Section(BasicSection):
             _, y_tmp = cst_curve(nn, self.refine_l, x=self.xx)
             yl_i += y_tmp
 
-        self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.thick_set)
+        self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.specified_thickness)
 
         #* Transform to 3D
         super().section(flip_x=flip_x, projection=projection)
@@ -136,7 +138,7 @@ class OpenSection(BasicSection):
 
     def section(self, cst=None, nn=1001, flip_x=False, projection=True):
         '''
-        Generating the section (3D) by cst_foil. 
+        Generating the section (3D) by `cst_curve`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
 
         Parameters
@@ -168,9 +170,9 @@ class OpenSection(BasicSection):
 
         #* Apply thickness
         self.thick = np.max(self.yy, axis=0)
-        if isinstance(self.thick_set, float):
-            self.yy = self.yy/self.thick*self.thick_set
-            self.thick = self.thick_set
+        if isinstance(self.specified_thickness, float):
+            self.yy = self.yy/self.thick*self.specified_thickness
+            self.thick = self.specified_thickness
 
         #* Transform to 3D
         super().section(flip_x=flip_x, projection=projection)
@@ -484,147 +486,6 @@ class RoundTipSection(BasicSection):
 #* Foil functions
 #* ===========================================
 
-def foil_tcc(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, info=True):
-    '''
-    Calculate thickness, curvature, camber distribution.
-    
-    Parameters
-    ----------
-    x, yu, yl: ndarray
-        coordinates of the airfoil
-    info: bool
-        whether print warning information
-    
-    Returns
-    --------
-    thickness: ndarray
-        thickness distribution
-    curv_u, curv_l: ndarray
-        curvature distribution
-    camber: ndarray
-        camber distribution
-
-    Examples
-    ----------
-    >>> thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=True)
-
-    '''
-    curv_u = curve_curvature(x, yu)
-    curv_l = curve_curvature(x, yl)
-
-    thickness = yu-yl
-    camber = 0.5*(yu+yl)
-    for i in range(x.shape[0]):
-        if info and thickness[i]<0:
-            print('Unreasonable Airfoil: negative thickness')
-
-    return thickness, curv_u, curv_l, camber
-
-def check_valid(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, RLE=0.0, neg_t_cri=0.0) -> list:
-    '''
-    Check if the airfoil is reasonable by rules
-    
-    Parameters
-    ----------
-    x, yu, yl: ndarray
-        coordinates of the airfoil
-    RLE: float 
-        the leading edge radius of this airfoil
-    neg_t_cri: float
-        critical value for checking negative thickness,
-        e.g., neg_t_cri = -0.01, then only invalid when the thickness is smaller than -0.01
-        
-    Returns
-    ---------
-    rule_invalid: list
-        0 means valid
-
-    Rules
-    ------------
-    - 1. negative thickness
-    - 2. maximum thickness point location
-    - 3. extreme points of thickness
-    - 4. maximum curvature
-    - 5. maximum camber within x [0.2,0.7]
-    - 6. RLE if provided
-    - 7. convex LE
-
-    Examples
-    ---------
-    >>> rule_invalid = check_valid(x, yu, yl, RLE=0.0)
-
-    '''
-    thickness, curv_u, curv_l, camber = foil_tcc(x, yu, yl, info=False)
-    nn = x.shape[0]
-
-    n_rule = 10
-    rule_invalid = [0 for _ in range(n_rule)]
-
-    #* Rule 1: negative thickness
-    if np.min(thickness) < neg_t_cri:
-        rule_invalid[0] = 1
-
-    #* Rule 2: maximum thickness point location
-    i_max = np.argmax(thickness)
-    t0    = thickness[i_max]
-    x_max = x[i_max]
-    if x_max<0.15 or x_max>0.75:
-        rule_invalid[1] = 1
-
-    #* Rule 3: extreme points of thickness
-    n_extreme = 0
-    for i in range(nn-2):
-        a1 = thickness[i+2]-thickness[i+1]
-        a2 = thickness[i]-thickness[i+1]
-        if a1*a2>=0.0:
-            n_extreme += 1
-    if n_extreme>2:
-        rule_invalid[2] = 1
-
-    #* Rule 4: maximum curvature
-    cur_max_u = 0.0
-    cur_max_l = 0.0
-    for i in range(nn):
-        if x[i]<0.1:
-            continue
-        cur_max_u = max(cur_max_u, abs(curv_u[i]))
-        cur_max_l = max(cur_max_l, abs(curv_l[i]))
-
-    if cur_max_u>5 or cur_max_l>5:
-        rule_invalid[3] = 1
-
-    #* Rule 5: Maximum camber within x [0.2,0.7]
-    cam_max = 0.0
-    for i in range(nn):
-        if x[i]<0.2 or x[i]>0.7:
-            continue
-        cam_max = max(cam_max, abs(camber[i]))
-
-    if cam_max>0.025:
-        rule_invalid[4] = 1
-    
-    #* Rule 6: RLE
-    if RLE>0.0 and RLE<0.005:
-        rule_invalid[5] = 1
-
-    if RLE>0.0 and RLE/t0<0.01:
-        rule_invalid[5] = 1
-
-    #* Rule 7: convex LE
-    ii = int(0.1*nn)+1
-    a0 = thickness[i_max]/x[i_max]
-    au = yu[ii]/x[ii]/a0
-    al = -yl[ii]/x[ii]/a0
-
-    if au<1.0 or al<1.0:
-        rule_invalid[6] = 1
-    
-    #if sum(rule_invalid)<=0:
-    #    np.set_printoptions(formatter={'float': '{: 0.6f}'.format}, linewidth=100)
-    #    print(np.array([x_max, n_extreme, cur_max_u, cur_max_l, cam_max, RLE/t0, au, al]))
-
-    return rule_invalid
-
 def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarray):
     '''
     Transform the airfoil to a unit airfoil.
@@ -685,140 +546,6 @@ def normalize_foil(xu: np.ndarray, yu: np.ndarray, xl: np.ndarray, yl: np.ndarra
 
     return xu_, yu_, xl_, yl_, twist, chord, tail
 
-def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
-    '''
-    Determine the radius and origin of a circle by 3 points (2D)
-    
-    Parameters
-    -----------
-    p1, p2, p3: list or ndarray [2]
-        coordinates of points, [x, y]
-        
-    Returns
-    ----------
-    R: float
-        radius
-    XC: ndarray [2]
-        circle center
-
-    Examples
-    ----------
-    >>> R, XC = find_circle_3p(p1, p2, p3)
-
-    '''
-
-    # http://ambrsoft.com/TrigoCalc/Circle3D.htm
-
-    A = p1[0]*(p2[1]-p3[1]) - p1[1]*(p2[0]-p3[0]) + p2[0]*p3[1] - p3[0]*p2[1]
-    if np.abs(A) <= 1E-20:
-        raise Exception('Finding circle: 3 points in one line')
-    
-    p1s = p1[0]**2 + p1[1]**2
-    p2s = p2[0]**2 + p2[1]**2
-    p3s = p3[0]**2 + p3[1]**2
-
-    B = p1s*(p3[1]-p2[1]) + p2s*(p1[1]-p3[1]) + p3s*(p2[1]-p1[1])
-    C = p1s*(p2[0]-p3[0]) + p2s*(p3[0]-p1[0]) + p3s*(p1[0]-p2[0])
-    D = p1s*(p3[0]*p2[1]-p2[0]*p3[1]) + p2s*(p1[0]*p3[1]-p3[0]*p1[1]) + p3s*(p2[0]*p1[1]-p1[0]*p2[1])
-
-    x0 = -B/2/A
-    y0 = -C/2/A
-    R  = np.sqrt(B**2+C**2-4*A*D)/2/np.abs(A)
-
-    '''
-    x21 = p2[0] - p1[0]
-    y21 = p2[1] - p1[1]
-    x32 = p3[0] - p2[0]
-    y32 = p3[1] - p2[1]
-
-    if x21 * y32 - x32 * y21 == 0:
-        raise Exception('Finding circle: 3 points in one line')
-
-    xy21 = p2[0]*p2[0] - p1[0]*p1[0] + p2[1]*p2[1] - p1[1]*p1[1]
-    xy32 = p3[0]*p3[0] - p2[0]*p2[0] + p3[1]*p3[1] - p2[1]*p2[1]
-    
-    y0 = (x32 * xy21 - x21 * xy32) / 2 * (y21 * x32 - y32 * x21)
-    x0 = (xy21 - 2 * y0 * y21) / (2.0 * x21)
-    R = np.sqrt(np.power(p1[0]-x0,2) + np.power(p1[1]-y0,2))
-    '''
-
-    return R, np.array([x0, y0])
-
-
-#* ===========================================
-#* CST foils
-#* ===========================================
-
-def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
-    '''
-    Constructing upper and lower curves of an airfoil based on CST method
-
-    CST: class shape transformation method (Kulfan, 2008)
-    
-    Parameters
-    -----------
-    nn: int
-        total amount of points
-    cst_u, cst_l: list or ndarray
-        CST coefficients of the upper and lower surfaces
-    x: ndarray [nn]
-        x coordinates in [0,1] (optional)
-    t: float
-        specified relative maximum thickness (optional)
-    tail: float
-        relative tail thickness (optional)
-    xn1, xn12: float
-        CST parameters
-        
-    Returns
-    --------
-    x, yu, yl: ndarray
-        coordinates
-    t0: float
-        actual relative maximum thickness
-    R0: float
-        leading edge radius
-    
-    Examples
-    ---------
-    >>> x_, yu, yl, t0, R0 = cst_foil(nn, cst_u, cst_l, x, t, tail)
-
-    '''
-    cst_u = np.array(cst_u)
-    cst_l = np.array(cst_l)
-    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2)
-    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2)
-    
-    thick = yu-yl
-    it = np.argmax(thick)
-    t0 = thick[it]
-
-    # Apply thickness constraint
-    if t is not None:
-        r  = (t-tail*x_[it])/t0
-        t0 = t
-        yu = yu * r
-        yl = yl * r
-
-    # Add tail
-    for i in range(nn):
-        yu[i] += 0.5*tail*x_[i]
-        yl[i] -= 0.5*tail*x_[i]
-        
-    # Update t0 after adding tail
-    if t is None:
-        thick = yu-yl
-        it = np.argmax(thick)
-        t0 = thick[it]
-
-    # Calculate leading edge radius
-    x_RLE = 0.005
-    yu_RLE = interp_from_curve(x_RLE, x_, yu)
-    yl_RLE = interp_from_curve(x_RLE, x_, yl)
-    R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
-
-    return x_, yu, yl, t0, R0
-
 def scale_cst(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, cst_u, cst_l, t: float, tail=0.0):
     '''
     Scale CST coefficients, so that the airfoil has the maximum thickness of t. 
@@ -849,118 +576,6 @@ def scale_cst(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, cst_u, cst_l, t: fl
     cst_l_new = np.array(cst_l) * r
 
     return cst_u_new, cst_l_new
-
-def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
-    '''
-    Point distribution on x-axis [0, 1]. (More points at both ends)
-    
-    Parameters
-    ----------
-    i: int
-        index of current point (start from 0)
-    nn: int
-        total amount of points
-    a0: float
-        parameter for distributing points near x=0
-    a1: float
-        parameter for distributing points near x=1
-    beta: float
-        parameter for distribution points 
-
-    Returns
-    ---------
-    float
-
-    Examples
-    ---------
-    >>> c = clustcos(i, n, a0, a1, beta)
-
-    '''
-    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
-    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
-    yt = i/(nn-1.0)
-    a  = np.pi*(a0*(1-yt)+a1*yt)
-    c  = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
-
-    return c
-
-def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
-    '''
-    Point distribution on x-axis [0, 1]. (More points at both ends)
-
-    Parameters
-    ----------
-    nn: int
-        total amount of points
-    a0: float
-        parameter for distributing points near x=0
-    a1: float
-        parameter for distributing points near x=1
-    beta: float
-        parameter for distribution points 
-    
-    Examples
-    ---------
-    >>> xx = dist_clustcos(n, a0, a1, beta)
-
-    '''
-    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
-    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
-    yt = np.linspace(0.0, 1.0, num=nn)
-    a  = np.pi*(a0*(1-yt)+a1*yt)
-    xx = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
-
-    return xx
-
-def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.ndarray, np.ndarray]:
-    '''
-    Generating single curve based on CST method.
-
-    CST: class shape transformation method (Kulfan, 2008)
-
-    Parameters
-    ----------
-    nn: int
-        total amount of points
-    coef: ndarray
-        CST coefficients
-    x: ndarray [nn]
-        coordinates of x distribution in [0,1] (optional)
-    xn1, xn12: float
-        CST parameters
-    
-    Returns
-    --------
-    x, y: ndarray
-        coordinates
-    
-    Examples
-    ---------
-    >>> x, y = cst_curve(nn, coef, x, xn1, xn2)
-
-    '''
-    if x is None:
-        x = np.zeros(nn)
-        for i in range(nn):
-            x[i] = clustcos(i, nn)
-    elif x.shape[0] != nn:
-        raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
-    
-    n_cst = coef.shape[0]
-    y = np.zeros(nn)
-    for ip in range(nn):
-        s_psi = 0.0
-        for i in range(n_cst):
-            xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
-            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i)
-
-        C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
-        y[ip] = C_n1n2*s_psi
-
-    y[0] = 0.0
-    y[-1] = 0.0
-
-    return x, y
 
 
 #* ===========================================
@@ -1244,17 +859,20 @@ def foil_increment(x, yu, yl, cst_u=None, cst_l=None, t=None) -> Tuple[np.ndarra
 
     Parameters
     ----------
-    x, yu, yl: ndarray
-        coordinates of the baseline airfoil
-    cst_u, cst_l: {None, ndarray} 
-        CST coefficients of incremental upper curve
-    t: {None, float}
-        relative maximum thickness
+    x, yu, yl : ndarray
+        coordinates of the baseline airfoil.
+        
+    cst_u, cst_l : ndarray or None
+        if not None, CST parameters of the incremental curves.
+        The number of CST parameters is arbitrary.
+        
+    t : float or None
+        relative maximum thickness.
 
     Returns
     -------
-    yu_new, yl_new: ndarray
-        coordinates
+    yu_new, yl_new : ndarray
+        coordinates of the new airfoil.
 
     Examples
     ---------

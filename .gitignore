@@ -1,7 +1,7 @@
 cst_modeling/__pycache__/
 cst_modeling3d.egg-info/
 dist/
-build/
+_build/
 .vscode/
 post/
 
@@ -9,11 +9,14 @@ temp*
 dump
 
 *.lay
-*.grd
-*.igs
 *.ini
 *.pyc
+*.dat
+*.grd
+*.xyz
+*.igs
 
+blwf58.exe
 
 *DS_Store
 !example/3BSN/show.lay

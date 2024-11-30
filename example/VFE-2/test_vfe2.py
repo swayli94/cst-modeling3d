@@ -1,6 +1,8 @@
 
 import numpy as np
-from cst_modeling.basic import output_plot3d, plot3d_to_igs, intersect_point
+
+from cst_modeling.math import intersect_point
+from cst_modeling.io import output_plot3d, plot3d_to_igs
 from cst_modeling.section import dist_clustcos
 from cst_modeling.surface import surf_axisymmetric
 
@@ -316,7 +318,7 @@ if __name__ == '__main__':
             [surf_x, surf_x, tip_x, tip_x, surf1[0], surf2[0], surf3[0]], 
             [surf_y,-surf_y, tip_y,-tip_y, surf1[1], surf2[1], surf3[1]], 
             [surf_z, surf_z, tip_z, tip_z, surf1[2], surf2[2], surf3[2]],
-            fname+'.grd', scale=1000.0)
+            fname+'.xyz', scale=1000.0)
         
         plot3d_to_igs(fname=fname)
         
@@ -339,7 +341,7 @@ if __name__ == '__main__':
         output_plot3d(
             [surf_x, surf_x, surf1[0], surf2[0], surf3[0]], 
             [surf_y,-surf_y, surf1[1], surf2[1], surf3[1]], 
-            [surf_z, surf_z, surf1[2], surf2[2], surf3[2]], 'model.grd')
+            [surf_z, surf_z, surf1[2], surf2[2], surf3[2]], 'model.xyz')
 
     
 

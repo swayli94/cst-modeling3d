@@ -15,41 +15,71 @@ def run_xfoil(AoAs=None, Cls=None,
     Minf=0.1, Re=1e5, nNodes=161, iterVis=10, MReDependence=1,
     fname_airfoil='airfoil.dat', fname_setting='xfoil-input.txt',
     fname_cp='cp.dat', fname_raw='dump.bin', fname_polar='polar.dat',
-    fname_log='_xfoil.log', delete_temp=False
+    fname_log='_xfoil.log', delete_temp=True, work_dir=None
     ):
     '''
+    Run XFoil executable file and save results
     
-    ### Inputs:
-    ```text
-    AoAs:       angle of attack (deg):  float, or list [start, end, division] 
-    Cls:        lift coefficient:       float, or list [start, end, division] 
+    Parameters
+    ----------
+    AoAs: float, or list [start, end, division]
+        angle of attack (deg)
+        
+    Cls: float, or list [start, end, division]
+        lift coefficient
+        
+    Minf: float
+        free stream Mach number
+        > 0: take in account compressibility effects through the Prandtl-Glauert correlation (Re must > 0)
+        = 0: no compressibility effects
     
-    Minf:       free stream Mach number
-                > 0: take in account compressibility effects through the Prandtl-Glauert correlation (Re must > 0)
-                = 0: no compressibility effects
-    Re:         Reynolds number (inviscid when Re<=0)
+    Re: float
+        Reynolds number (inviscid when Re<=0)
     
-    MReDependence:  Re, Mach dependence, (1,2,3)
-                    Type   parameters held constant       varying      fixed
-                    ----   ------------------------       -------   -----------
-                    1    M          , Re            ..   lift     chord, vel.
-                    2    M sqrt(CL) , Re sqrt(CL)   ..   vel.     chord, lift
-                    3    M          , Re CL         ..   chord    lift , vel.
+    nNodes: int
+        Number of panel nodes (upper+lower)
+        
+    iterVis: int
+        Viscous-solution iteration limit
     
-    nNodes:     Number of panel nodes (upper+lower)
-    iterVis:    Viscous-solution iteration limit
+    MReDependence: int
+        Re - Mach dependence, (1,2,3)
+        
+        Type   parameters held constant       varying      fixed
+        ----   ------------------------       -------   -----------
+        1    M          , Re            ..   lift     chord, vel.
+        2    M sqrt(CL) , Re sqrt(CL)   ..   vel.     chord, lift
+        3    M          , Re CL         ..   chord    lift , vel.
     
-    ```
+    work_dir: str
+        working directory of XFoil executable file.
+        If None, use the current directory.
+    
+
     '''
-    if os.path.exists(fname_polar):
-        os.remove(fname_polar)
+    
+    if not isinstance(work_dir, str):
+        work_dir = '.'
+    
+    _fname = os.path.join(work_dir, fname_polar)
+    if os.path.exists(_fname):
+        os.remove(_fname)
     
     if fname_raw is not None:
-        if os.path.exists(fname_raw):
-            os.remove(fname_raw)
+        _fname = os.path.join(work_dir, fname_raw)
+        if os.path.exists(_fname):
+            os.remove(_fname)
         
     #* Write input file
-    with open(fname_setting, 'w') as f:
+    with open(os.path.join(work_dir, fname_setting), 'w') as f:
+        
+        f.write('\n')                               # Load default parameters from file xfoil.def (if applicable)
+        f.write('\n')
+        
+        f.write('PLOP \n')                          #*  Start plotting menu
+        f.write('G \n')                             # > Disable graphics
+        f.write('\n')
+        f.write('\n')
         
         f.write('LOAD %s \n'%(fname_airfoil))       # Airfoil coordinates
         
@@ -105,16 +135,20 @@ def run_xfoil(AoAs=None, Cls=None,
 
     #* Run the XFoil calling command
     if platform.system() in 'Windows':
-        os.system('xfoil.exe < %s > %s'%(fname_setting, fname_log))
+        
+        os.system('cd %s && xfoil.exe < %s > %s'%(work_dir, fname_setting, fname_log))
+        
     else:
+        
         if os.path.exists('xfoil.x'):
-            os.system('xfoil.x < %s > %s'%(fname_setting, fname_log))
+            os.system('cd %s && xfoil.x < %s > %s'%(work_dir, fname_setting, fname_log))
+            
         else:
-            os.system('xfoil < %s > %s'%(fname_setting, fname_log))
+            os.system('cd %s && xfoil < %s > %s'%(work_dir, fname_setting, fname_log))
 
     if delete_temp:
-        os.remove(fname_setting)
-        os.remove(fname_log)
+        os.remove(os.path.join(work_dir, fname_setting))
+        os.remove(os.path.join(work_dir, fname_log))
 
 def read_xfoil_dump(fname: str, strip=True) -> dict:
     '''

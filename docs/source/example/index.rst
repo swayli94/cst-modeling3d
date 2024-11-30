@@ -4,11 +4,15 @@ Examples
 .. toctree::
     :maxdepth: 2
 
-    swept-wing
+    airfoil
+    wing
     delta-wing
+    propeller
+    nacelle
     inlet-nozzle
     fuselage
     fan
+    aircraft
 
 
 

@@ -11,7 +11,13 @@ The curves, e.g., foil's upper and lower surfaces, are constructed via CST metho
 ## Installation
 
 ``` bash
+# Install the package from PyPI
 pip install cst-modeling3d
+
+# Install the package from the source code
+git clone https://github.com/swayli94/cst-modeling3d
+cd cst-modeling3d
+pip install -e .
 ```
 
 ## Tutorial
@@ -24,33 +30,38 @@ https://cst-modeling3d.readthedocs.io/en/latest/
 
 ```python
 import numpy as np
-from cst_modeling.foil import cst_foil
+from cst_modeling.section import cst_foil
 
-cst_u = np.array([ 0.1185,  0.1189,  0.1557,  0.1367,  0.2092,  0.1483,  0.1935])
-cst_l = np.array([-0.1155, -0.1341, -0.1091, -0.2532, -0.0122, -0.1184,  0.0641])
-x, yu, yl, t0, R0 = cst_foil(1001, cst_u, cst_l, x=None, t=None, tail=0.0)
+cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
+cst_l = np.array([-0.115514, -0.134195, -0.109145, -0.253206, -0.012220, -0.118463,  0.064100])
+
+x1, yu1, yl1, tmax1, rLE1 = cst_foil(201, cst_u, cst_l, x=None, t=None, tail=0.0)
+x2, yu2, yl2, tmax2, rLE2 = cst_foil(201, cst_u, cst_l, x=None, t=None, tail=0.004)
+x3, yu3, yl3, tmax3, rLE3 = cst_foil(201, cst_u, cst_l, x=None, t=0.11, tail=0.004)
 ```
 
 <div align=center>
-	<img src="example\airfoil\airfoil.png" width="400"> <br>
-    Fig. A clean airfoil
+	<img src="example\airfoil-basic\cst-airfoil-add-tail.png" width="300">
+    <img src="example\airfoil-basic\cst-airfoil-add-tail-same-tmax.png" width="300"> <br>
 </div>
+
 
 ### (2) Wing
 
 ```python
-from cst_modeling.surface import Surface
-wing = Surface(n_sec=6, name='Wing-tip', nn=101, ns=101)
-wing.read_setting('Wing.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.05, 0.01])
-wing.geo(split=False, showfoil=False)
-wing.bend(4, 5, leader=[[21.0, 2.1, 30.0, 1.6]], kx=[0.6983, 4.0], ky=[0.1043, 1.10], rot_x=True)
-wing.smooth(0,2)
-wing.smooth(2,4)
-wing.output_tecplot(fname='Wing-tip.dat', one_piece=False)
+from cst_modeling.surface2 import Surface
+
+wing = Surface(n_sec=10, name='Wing-CRM-winglet', nn=201, ns=51, 
+                smooth_surface=True, smooth_sections=[(0, 2), (4, 7), (8, 9)],
+                rotate_x_section=True, rotation_sections=[(8, 9)])
+
+wing.read_setting('Wing.txt')
+wing.prepare()
+wing.geo()
 ```
 
 <div align=center>
-	<img src="example\wing\wing-tip.jpg" width="500"> <br>
+	<img src="example\winglet\wing-crm-winglet-rotx.png" width="500"> <br>
 </div>
 
 
@@ -75,14 +86,14 @@ blade.output_tecplot(fname='Blade-simple.dat')
 ### (4) Nacelle
 
 <div align=center>
-    <img src="example\nacelle\nacelle.jpg" width="280">
-    <img src="example\nacelle\nacelle-frontview.jpg" width="280"> <br>
+    <img src="example\nacelle\nacelle-axisymmetric.png" width="500"> <br>
+    <img src="example\nacelle\nacelle-non-axisymmetric-2.png" width="500"> <br>
 </div>
 
 ### (5) Fuselage
 
 <div align=center>
-    <img src="example\fuselage\fuselage.jpg" width="500"><br>
+    <img src="example\fuselage\fuselage.jpg" width="400"><br>
 </div>
 
 ### (6) Fairing

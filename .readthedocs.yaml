@@ -14,8 +14,8 @@ build:
 
 # Sphinx setting
 sphinx:
-   configuration: docs/source/conf.py  # Build documentation in the docs/ directory with Sphinx
-   fail_on_warning: true               # ReadtheDocs returns `Failed` during building if warning occurs
+   configuration: docs/conf.py      # Build documentation in the docs/ directory with Sphinx
+   fail_on_warning: true            # ReadtheDocs returns `Failed` during building if warning occurs
 
 # If using Sphinx, optionally build your docs in additional formats such as PDF
 formats:

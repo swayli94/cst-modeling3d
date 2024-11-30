@@ -100,5 +100,5 @@ if __name__ == "__main__":
 
     fairing.output_tecplot(fname='fairing.dat')
 
-    fairing.output_plot3d(fname='fairing.grd')
+    fairing.output_plot3d(fname='fairing.xyz')
 

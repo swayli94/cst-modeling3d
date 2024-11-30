@@ -1002,7 +1002,7 @@ def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.
             sigma = np.where(x > xc, (1.0 - xc) / 3.5, sigma)
 
         aa = -np.power(x - xc, 2) / 2.0 / sigma**2
-        y_new += h * np.exp(aa)
+        y_bump += h * np.exp(aa)
 
     else:
         
@@ -1021,7 +1021,7 @@ def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.
             Pow = Pow + 1
 
         rr = np.pi * np.power(x, s0)
-        y_new += h * np.power(np.sin(rr), Pow)
+        y_bump += h * np.power(np.sin(rr), Pow)
 
     return y_bump
 

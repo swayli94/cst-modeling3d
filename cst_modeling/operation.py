@@ -155,6 +155,49 @@ class GuideCurve():
                 
         return guide_curve
         
+        
+    def get_value(self, key: str, i_span_point: int) -> float:
+        '''
+        Get the value of the guide curve at a specific point.
+        
+        Parameters
+        ----------
+        key : str
+            The key of the guide curve.
+            
+        i_span_point : int
+            The index of the spanwise point, in range [0, n_total-1].
+            
+        Returns
+        -------
+        value : float
+            The value of the guide curve at the specified point.
+        '''
+        if i_span_point < 0 or i_span_point >= self.n_total:
+            raise ValueError('Invalid index of the spanwise point.', i_span_point, self.n_total)
+        
+        return self.global_guide_curve[key][i_span_point]
+    
+    def set_value(self, key: str, i_span_point: int, value: float) -> None:
+        '''
+        Set the value of the guide curve at a specific point.
+        
+        Parameters
+        ----------
+        key : str
+            The key of the guide curve.
+            
+        i_span_point : int
+            The index of the spanwise point, in range [0, n_total-1].
+            
+        value : float
+            The value to set.
+        '''
+        if i_span_point < 0 or i_span_point >= self.n_total:
+            raise ValueError('Invalid index of the spanwise point.', i_span_point, self.n_total)
+        
+        self.global_guide_curve[key][i_span_point] = value
+    
     
     def generate_with_value(self, **kwargs) -> None:
         '''

@@ -574,7 +574,7 @@ class BasicSurface():
                     surf_z[:,index_splitting_point[i]-1:index_splitting_point[i+1]]])
 
     #* Output
-    def output_tecplot(self, fname=None, one_piece=False) -> None:
+    def output_tecplot(self, fname=None, one_piece=False, append=False) -> None:
         '''
         Output the surface to `*.dat` in Tecplot format.
         
@@ -585,6 +585,9 @@ class BasicSurface():
             
         one_piece : bool
             if True, combine the span-wise surfaces into one piece.
+            
+        append : bool
+            if True, append the data to the existing file
         '''
         # surf_x[ns,nt], ns => spanwise
 
@@ -594,9 +597,11 @@ class BasicSurface():
         n_sec   = 1 if self.is_2d else self.n_section-1
         n_piece = len(self.surfaces)
         
-        with open(fname, 'w') as f:
-            f.write('Variables= X  Y  Z \n ')
+        if not append or not os.path.exists(fname):
+            with open(fname, 'w') as f:
+                f.write('Variables= X  Y  Z \n ')
 
+        with open(fname, 'a') as f:
             ns = self.ns
 
             if not one_piece:
@@ -989,7 +994,8 @@ class Surface(BasicSurface):
                         self.sections[i].twist = float(line[4])
 
                         if len(line) >= 6:
-                            self.sections[i].specified_thickness = float(line[5])
+                            tt = float(line[5])
+                            self.sections[i].specified_thickness = tt if tt >=0.0 else None
 
                         if isinstance(tail, float):
                             self.sections[i].tail  = tail/self.sections[i].chord
@@ -997,9 +1003,6 @@ class Surface(BasicSurface):
                             self.sections[i].tail  = tail[i]/self.sections[i].chord
                         else:
                             raise Exception('tail must be a float or a list with length = section number')
-                        
-                        if self.sections[i].specified_thickness <= 0.0:
-                            self.sections[i].specified_thickness = None
 
                         if self.is_2d:
                             self.sections[i].zLE = 0.0
@@ -1106,7 +1109,7 @@ class Surface(BasicSurface):
         for i in range(self.n_section):
             self.sections[i].section(nn=self.nn, projection=False)
 
-    def output_tecplot(self, fname=None, one_piece=False, split=False) -> None:
+    def output_tecplot(self, fname=None, one_piece=False, split=False, append=False) -> None:
         '''
         Output the surface to `*.dat` in Tecplot format.
 
@@ -1120,6 +1123,9 @@ class Surface(BasicSurface):
             
         split : bool
             if True, split to upper and lower surfaces.
+            
+        append : bool
+            if True, append the data to the existing file
         '''
         if not split:
             super().output_tecplot(fname=fname, one_piece=one_piece)
@@ -1131,8 +1137,11 @@ class Surface(BasicSurface):
         n_sec   = 1 if self.is_2d else self.n_section-1
         n_piece = len(self.surfaces)
         
-        with open(fname, 'w') as f:
-            f.write('Variables= X  Y  Z \n ')
+        if not append or not os.path.exists(fname):
+            with open(fname, 'w') as f:
+                f.write('Variables= X  Y  Z \n ')
+
+        with open(fname, 'a') as f:
 
             if not one_piece:
 

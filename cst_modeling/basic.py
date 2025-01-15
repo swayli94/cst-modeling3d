@@ -158,6 +158,10 @@ class BasicSection():
         Scale factor, e.g., chord length (m).
         '''
         return self.chord
+    
+    @scale.setter
+    def scale(self, value: float) -> None:
+        self.chord = value
 
     @property
     def rot_z(self) -> float:

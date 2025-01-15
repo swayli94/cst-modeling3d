@@ -993,16 +993,15 @@ def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.
         return y_bump
 
     if 'G' in kind:
+        
+        sigma = np.ones_like(x) * (s / 6.)
+        if xc - s < 0.:
+            sigma = np.where(x < xc, xc / 3.5, sigma)
+        if xc + s > 1.:
+            sigma = np.where(x > xc, (1.0 - xc) / 3.5, sigma)
 
-        for i in range(x.shape[0]):
-            if xc-s<0.0 and x[i]<xc:
-                sigma = xc/3.5
-            elif  xc+s>1.0 and x[i]>xc:
-                sigma = (1.0-xc)/3.5
-            else:
-                sigma = s/6.0
-            aa = -np.power(x[i]-xc,2)/2.0/sigma**2
-            y_bump[i] += h*np.exp(aa)
+        aa = -np.power(x - xc, 2) / 2.0 / sigma**2
+        y_bump += h * np.exp(aa)
 
     else:
         
@@ -1011,27 +1010,17 @@ def bump_function(x: np.ndarray, xc: float, h: float, s: float, kind='G') -> np.
         Pow = 1
         span = 1.0
         hm = np.abs(h)
-        while Pow<100 and span>s:
-            x1  = -1.0
-            x2  = -1.0
-            for i in range(0, 201):
-                xx = i*0.005
-                rr = np.pi*np.power(xx,s0)
-                yy = hm * np.power(np.sin(rr),Pow)
-                if yy > 0.01*hm and x1<0.0 and xx<xc:
-                    x1 = xx
-                if yy < 0.01*hm and x2<0.0 and xx>xc:
-                    x2 = xx
-            if x2 < 0.0:
-                x2 = 1.0
+        while Pow < 100 and span > s:
             
-            span = x2 - x1
+            xx = np.linspace(0, 1, 201)
+            rr = np.pi * np.power(xx, s0)
+            yy = hm * np.power(np.sin(rr), Pow)
+            bump_range = xx[yy > 0.01 * hm]
+            span = bump_range[-1] - bump_range[0]
             Pow = Pow + 1
 
-        for i in range(len(x)):
-            rr = np.pi*np.power(x[i],s0)
-            dy = h*np.power(np.sin(rr),Pow)
-            y_bump[i] += dy
+        rr = np.pi * np.power(x, s0)
+        y_bump += h * np.power(np.sin(rr), Pow)
 
     return y_bump
 

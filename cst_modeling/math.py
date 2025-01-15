@@ -234,7 +234,7 @@ def project_vector_to_plane(v: np.ndarray, n: np.ndarray) -> np.ndarray:
 #* CST foils
 #* ===========================================
 
-def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
+def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0, a0=0.0079, a1=0.96):
     '''
     Constructing upper and lower curves of an airfoil based on CST method
 
@@ -271,8 +271,8 @@ def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0):
     '''
     cst_u = np.array(cst_u)
     cst_l = np.array(cst_l)
-    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2)
-    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2)
+    x_, yu = cst_curve(nn, cst_u, x=x, xn1=xn1, xn2=xn2, a0=a0, a1=a1)
+    x_, yl = cst_curve(nn, cst_l, x=x, xn1=xn1, xn2=xn2, a0=a0, a1=a1)
     
     thick = yu-yl
     it = np.argmax(thick)
@@ -377,7 +377,7 @@ def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
 
     return xx
 
-def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.ndarray, np.ndarray]:
+def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0, a0=0.0079, a1=0.96) -> Tuple[np.ndarray, np.ndarray]:
     '''
     Generating single curve based on CST method.
 
@@ -405,23 +405,19 @@ def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0) -> Tuple[np.nda
 
     '''
     if x is None:
-        x = np.zeros(nn)
-        for i in range(nn):
-            x[i] = clustcos(i, nn)
+        x = dist_clustcos(nn, a0, a1)
     elif x.shape[0] != nn:
         raise Exception('Specified point distribution has different size %d as input nn %d'%(x.shape[0], nn))
     
     n_cst = coef.shape[0]
-    y = np.zeros(nn)
-    for ip in range(nn):
-        s_psi = 0.0
-        for i in range(n_cst):
-            xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
-            s_psi += coef[i]*xk_i_n * np.power(x[ip],i) * np.power(1-x[ip],n_cst-1-i)
 
-        C_n1n2 = np.power(x[ip],xn1) * np.power(1-x[ip],xn2)
-        y[ip] = C_n1n2*s_psi
+    s_psi = np.zeros(nn)
+    for i in range(n_cst):
+        xk_i_n = factorial(n_cst-1)/factorial(i)/factorial(n_cst-1-i)
+        s_psi += coef[i] * xk_i_n * np.power(x, i) * np.power(1 - x, n_cst - 1 - i)
 
+    C_n1n2 = np.power(x, xn1) * np.power(1 - x, xn2)
+    y = C_n1n2 * s_psi
     y[0] = 0.0
     y[-1] = 0.0
 
@@ -688,6 +684,66 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     points = rot.apply(vector) + origin
     
     return points
+
+def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
+    '''
+    The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
+
+    ### Description
+    This function rotate a set of points based on the origin and the axis given by the inputs
+
+    ### Inputs
+    `pp`: The point set that is going to be rotated. `pp.shape = (n_points, 3)`
+
+    `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
+
+    `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
+
+    `angle`: The rotation angle in degree
+
+    ### Outputs
+    `xnew, ynew, znew`: The rotated points.
+    '''
+    # Translate the points to a coordinate system that has the origin defined by the input
+    # The points have to be translated back to the original frame before return.
+    
+    nn = pp.shape[0]
+    for i in range(nn):
+        pp[i, :] = pp[i, :] - origin
+    xnew, ynew, znew = np.zeros(nn), np.zeros(nn), np.zeros(nn)
+    
+    norm = np.sqrt(axis @ axis)
+    if norm < 1e-8:
+        raise Exception("The length of the axis is too short!")
+    e3 = axis / norm
+
+    angle_rad = np.pi * angle / 180.0
+
+    for i in range(nn):
+        vec = pp[i, :].copy()
+
+        # compute the parallel component
+        vec_p = (vec @ e3) * e3
+        # compute the normal component
+        vec_n = vec - vec_p
+
+        # define the local coordinate system
+        e1 = vec_n
+        e2 = np.cross(e3, e1)
+
+        # rotate
+        vec_n_rot = e1 * np.cos(angle_rad) + e2 * np.sin(angle_rad)
+
+        # assemble the vector
+        vec_new = vec_n_rot + vec_p
+        xnew[i], ynew[i], znew[i] = vec_new[0], vec_new[1], vec_new[2]
+
+    # transform back to the original frame
+    xnew, ynew, znew = xnew + origin[0], ynew + origin[1], znew + origin[2]
+
+    pp_new = np.hstack((xnew.reshape(-1,1), ynew.reshape(-1,1), znew.reshape(-1,1)))
+    # print(pp_new.shape)
+    return pp_new
 
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:

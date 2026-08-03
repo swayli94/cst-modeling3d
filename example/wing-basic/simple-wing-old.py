@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append('.')
 
-from cst_modeling.surface import Surface
+from cst_modeling.basic import Surface
 from cst_modeling.io import plot3d_to_igs
 
 

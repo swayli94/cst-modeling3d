@@ -8,7 +8,7 @@ import os
 import sys
 sys.path.append('.')
 
-from cst_modeling.surface2 import Surface
+from cst_modeling.surface import Surface
 
 
 if __name__ == "__main__":

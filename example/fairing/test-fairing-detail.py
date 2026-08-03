@@ -1,7 +1,7 @@
 
 
 import numpy as np
-from cst_modeling.surface import BasicSurface
+from cst_modeling.basic import BasicSurface
 
 from scipy.interpolate import CubicSpline, CubicHermiteSpline
 import matplotlib.pyplot as plt
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     #*==============================================
 
     # Read raw data
-    with open('tube-curve.dat', 'r') as f:
+    with open('../fuselage/tube-curve.dat', 'r') as f:
         X_end = []
         Y_end = []
         lines = f.readlines()

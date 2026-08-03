@@ -153,7 +153,7 @@ def cylinder_to_plane():
     '''
     Transform a curve on a cylinder to a curve on a plane
     '''
-    from cst_modeling.basic import toCylinder, fromCylinder, rotate, rotate_vector
+    from cst_modeling.math import toCylinder, fromCylinder, rotate, rotate_vector
     from cst_modeling.section import cst_foil
 
     fig = plt.figure(figsize=(10,5))

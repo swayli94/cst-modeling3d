@@ -1,6 +1,6 @@
 
 import numpy as np
-from cst_modeling.surface import OpenSurface
+from cst_modeling.basic import OpenSurface
 
 
 if __name__ == "__main__":

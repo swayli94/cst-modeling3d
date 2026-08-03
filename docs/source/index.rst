@@ -30,7 +30,6 @@ The following is an overview of the project's structure:
     │   ├── basic.py
     │   ├── section.py
     │   ├── surface.py
-    │   ├── surface2.py
     │   ├── foil.py
     │   ├── math.py
     │   ├── io.py
@@ -58,10 +57,9 @@ Directories and Files
 - **cst_modeling/**: Contains the source code.
 
   - **__init__.py**: Initialization file for the package.
-  - **basic.py**: Basic classes for sections and surfaces, and fundamental functions.
+  - **basic.py**: Basic classes for sections and surfaces, and fundamental functions. Hosts the classic section-interpolation surface classes (`BasicSurface`, `OpenSurface`, `Surface`).
   - **section.py**: Classes and functions for construction two-dimensional sections.
-  - **surface.py**: Classes and functions for construction three-dimensional surfaces.
-  - **surface2.py**: Classes and functions for construction three-dimensional surfaces with lofting method.
+  - **surface.py**: Classes and functions for construction three-dimensional surfaces with the lofting method (guide curves and `operation.Lofting`).
   - **foil.py**: Classes and functions for airfoil geometric feature extraction and modification.
   - **math.py**: Mathematical functions.
   - **io.py**: Input/output functions.

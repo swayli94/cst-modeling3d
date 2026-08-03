@@ -1,10 +1,10 @@
 
-from matplotlib.pyplot import axis
 import numpy as np
 from cst_modeling.basic import rotate
-from cst_modeling.foil import unify_foil, cst_foil, cst_foil_fit
+from cst_modeling.foil import cst_foil, cst_foil_fit
+from cst_modeling.section import normalize_foil
 from cst_modeling.tools.blwf import BLWF, output_curve, read_tecplot, extract_slice
-from cst_modeling.surface import Surface
+from cst_modeling.basic import Surface
 import os
 from scipy.spatial.distance import cdist
 
@@ -37,7 +37,7 @@ def extract_wing_section_info(section: np.array, n_cst=10):
         xu = section[:iLE+1,0]; xu=xu[::-1]
         yu = section[:iLE+1,1]; yu=yu[::-1]
 
-    xu, yu, xl, yl, twist, chord, tail = unify_foil(xu, yu, xl, yl)
+    xu, yu, xl, yl, twist, chord, tail = normalize_foil(xu, yu, xl, yl)
     
     cst_u, cst_l = cst_foil_fit(xu, yu, xl, yl, n_cst=n_cst)
     

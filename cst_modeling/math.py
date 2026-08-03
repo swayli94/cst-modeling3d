@@ -140,23 +140,6 @@ def find_circle_3p(p1, p2, p3) -> Tuple[float, np.ndarray]:
     y0 = -C/2/A
     R  = np.sqrt(B**2+C**2-4*A*D)/2/np.abs(A)
 
-    '''
-    x21 = p2[0] - p1[0]
-    y21 = p2[1] - p1[1]
-    x32 = p3[0] - p2[0]
-    y32 = p3[1] - p2[1]
-
-    if x21 * y32 - x32 * y21 == 0:
-        raise Exception('Finding circle: 3 points in one line')
-
-    xy21 = p2[0]*p2[0] - p1[0]*p1[0] + p2[1]*p2[1] - p1[1]*p1[1]
-    xy32 = p3[0]*p3[0] - p2[0]*p2[0] + p3[1]*p3[1] - p2[1]*p2[1]
-    
-    y0 = (x32 * xy21 - x21 * xy32) / 2 * (y21 * x32 - y32 * x21)
-    x0 = (xy21 - 2 * y0 * y21) / (2.0 * x21)
-    R = np.sqrt(np.power(p1[0]-x0,2) + np.power(p1[1]-y0,2))
-    '''
-
     return R, np.array([x0, y0])
 
 def angle_between_vectors(a: np.ndarray, b: np.ndarray, n=None, in_degree=True) -> float:
@@ -303,46 +286,6 @@ def cst_foil(nn: int, cst_u, cst_l, x=None, t=None, tail=0.0, xn1=0.5, xn2=1.0, 
     R0, _ = find_circle_3p([0.0,0.0], [x_RLE,yu_RLE], [x_RLE,yl_RLE])
 
     return x_, yu, yl, t0, R0
-
-def clustcos(i: int, nn: int, a0=0.0079, a1=0.96, beta=1.0) -> float:
-    '''
-    Point distribution on x-axis [0, 1]. (More points at both ends)
-    
-    Parameters
-    ----------
-    i: int
-        index of current point (start from 0)
-        
-    nn: int
-        total amount of points
-        
-    a0: float
-        Parameter for distributing points near x=0.
-        Smaller a0, more points near x=0.
-        
-    a1: float
-        Parameter for distributing points near x=1.
-        Larger a1, more points near x=1.
-        
-    beta: float
-        Parameter for distribution points.
-
-    Returns
-    ---------
-    float
-
-    Examples
-    ---------
-    >>> c = clustcos(i, n, a0, a1, beta)
-
-    '''
-    aa = np.power((1-np.cos(a0*np.pi))/2.0, beta)
-    dd = np.power((1-np.cos(a1*np.pi))/2.0, beta) - aa
-    yt = i/(nn-1.0)
-    a  = np.pi*(a0*(1-yt)+a1*yt)
-    c  = (np.power((1-np.cos(a))/2.0,beta)-aa)/dd
-
-    return c
 
 def dist_clustcos(nn: int, a0=0.0079, a1=0.96, beta=1.0) -> np.ndarray:
     '''
@@ -530,6 +473,9 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
     dx, dy : float
         translation vector, e.g., leading edge location.
         
+    dz : float
+        translation in the z direction, e.g., span-wise location.
+        
     scale : bool
         scale factor.
         
@@ -578,11 +524,11 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
 
     if abs(rot_x) > 1.0E-12:
         x,  y,  z  = rotate(x,  y,  z,  angle=rot_x, origin=[xr, yr, zr], axis='X')
-        xv, yv, zv = rotate(xv, yv, zv, angle=rot_z, axis='X')
+        xv, yv, zv = rotate(xv, yv, zv, angle=rot_x, axis='X')
 
     if abs(rot_y) > 1.0E-12:
         x,  y,  z  = rotate(x,  y,  z,  angle=rot_y, origin=[xr, yr, zr], axis='Y')
-        xv, yv, zv = rotate(xv, yv, zv, angle=rot_z, axis='Y')
+        xv, yv, zv = rotate(xv, yv, zv, angle=rot_y, axis='Y')
         
     if abs(rot_axis) > 1.0E-12:
         points = rotate_vector(x, y, z, angle=rot_axis, origin=[xr, yr, zr], axis_vector=[xv[0], yv[0], zv[0]])
@@ -593,7 +539,7 @@ def transform_curve(xx: np.ndarray, yy: np.ndarray, dx=0.0, dy=0.0, dz=0.0,
     return x, y, z
 
 def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
-           angle=0.0, origin=[0.0, 0.0, 0.0], axis='X') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+           angle=0.0, origin=None, axis='X') -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Rotate the 3D curve according to origin
     
@@ -618,11 +564,14 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     >>> x_, y_, z_ = rotate(x, y, z, angle=0.0, origin=[0.0, 0.0, 0.0], axis='X')
     
     '''
-    if axis in 'X':
+    if origin is None:
+        origin = [0.0, 0.0, 0.0]
+
+    if axis == 'X':
         axis_vector=[1,0,0]
-    if axis in 'Y':
+    if axis == 'Y':
         axis_vector=[0,1,0]
-    if axis in 'Z':
+    if axis == 'Z':
         axis_vector=[0,0,1]
 
     points = rotate_vector(x, y, z, angle=angle, origin=origin, axis_vector=axis_vector)
@@ -633,7 +582,7 @@ def rotate(x: np.ndarray, y: np.ndarray, z: np.ndarray,
 
     return x_, y_, z_
 
-def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np.ndarray:
+def rotate_vector(x, y, z, angle=0, origin=None, axis_vector=None) -> np.ndarray:
     '''
     Rotate 3D points (vectors) by axis-angle representation.
 
@@ -672,6 +621,11 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     https://en.wikipedia.org/wiki/Rotation_matrix
     
     '''
+    if origin is None:
+        origin = [0, 0, 0]
+    if axis_vector is None:
+        axis_vector = [0, 0, 1]
+
     origin = np.array(origin)
     vector = np.transpose(np.array([x, y, z]))  # [3] or [:,3]
     vector = vector - origin
@@ -684,66 +638,6 @@ def rotate_vector(x, y, z, angle=0, origin=[0, 0, 0], axis_vector=[0,0,1]) -> np
     points = rot.apply(vector) + origin
     
     return points
-
-def rotation_3d(pp: np.ndarray, origin: np.ndarray, axis: np.ndarray, angle: float):
-    '''
-    The rotation_3d is derived from Chenyu Wu. 2022. 11. 5
-
-    ### Description
-    This function rotate a set of points based on the origin and the axis given by the inputs
-
-    ### Inputs
-    `pp`: The point set that is going to be rotated. `pp.shape = (n_points, 3)`
-
-    `origin`: The numpy array that defines the origin of the rotation axis. The shape must be `(3,0)`
-
-    `axis`: The direction of the rotation axis. This axis does not need to be normalized. The shape must be `(3,0)`
-
-    `angle`: The rotation angle in degree
-
-    ### Outputs
-    `xnew, ynew, znew`: The rotated points.
-    '''
-    # Translate the points to a coordinate system that has the origin defined by the input
-    # The points have to be translated back to the original frame before return.
-    
-    nn = pp.shape[0]
-    for i in range(nn):
-        pp[i, :] = pp[i, :] - origin
-    xnew, ynew, znew = np.zeros(nn), np.zeros(nn), np.zeros(nn)
-    
-    norm = np.sqrt(axis @ axis)
-    if norm < 1e-8:
-        raise Exception("The length of the axis is too short!")
-    e3 = axis / norm
-
-    angle_rad = np.pi * angle / 180.0
-
-    for i in range(nn):
-        vec = pp[i, :].copy()
-
-        # compute the parallel component
-        vec_p = (vec @ e3) * e3
-        # compute the normal component
-        vec_n = vec - vec_p
-
-        # define the local coordinate system
-        e1 = vec_n
-        e2 = np.cross(e3, e1)
-
-        # rotate
-        vec_n_rot = e1 * np.cos(angle_rad) + e2 * np.sin(angle_rad)
-
-        # assemble the vector
-        vec_new = vec_n_rot + vec_p
-        xnew[i], ynew[i], znew[i] = vec_new[0], vec_new[1], vec_new[2]
-
-    # transform back to the original frame
-    xnew, ynew, znew = xnew + origin[0], ynew + origin[1], znew + origin[2]
-
-    pp_new = np.hstack((xnew.reshape(-1,1), ynew.reshape(-1,1), znew.reshape(-1,1)))
-    # print(pp_new.shape)
-    return pp_new
 
 def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0, 
                         xm=None, ym=None, xf=None, yf=None) -> Tuple[np.ndarray, np.ndarray]:
@@ -794,7 +688,7 @@ def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0,
     return x_, y_
 
 def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
-                 flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                 flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the cylinder curve to a 2D plane curve.
 
@@ -831,6 +725,9 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     '''
     coef = -1.0 if flip else 1.0
 
+    if origin is None:
+        origin = [0, 0]
+
     x = x - origin[0]
     y = y - origin[1]
 
@@ -844,7 +741,7 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
     return X, Y, Z
 
 def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
-               flip=True, origin=[0, 0]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+               flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the plane sections to curves on a cylinder.
 
@@ -880,6 +777,9 @@ def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray,
     Z = r \n
     '''
     coef = -1.0 if flip else 1.0
+
+    if origin is None:
+        origin = [0, 0]
 
     nn = X.shape[0]
     x = np.zeros(nn)
@@ -1502,8 +1402,8 @@ def reconstruct_curve_by_length(curve: np.ndarray, n:int) -> np.ndarray:
         
     return new_curve
     
-def extract_slice(data: List[np.ndarray], locations: List[float], Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
-                    zone_id=[], index_xyz=[0,1,2], index_var=None, arrange_method='join'):
+def extract_slice(data: List[np.ndarray], locations: List[float], Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=None,
+                    zone_id=None, index_xyz=None, index_var=None, arrange_method='join'):
     '''
     Extract data sliced by planes.
     
@@ -1551,6 +1451,13 @@ def extract_slice(data: List[np.ndarray], locations: List[float], Pref: np.ndarr
     >>> sections = extract_slice(data, locations, Pref, dir_norm, dir_ref=np.array([1.,0.,0.]),
                     zone_id=[], index_xyz=[0,1,2], arrange_method='join')
     '''
+    if dir_ref is None:
+        dir_ref = np.array([1.,0.,0.])
+    if zone_id is None:
+        zone_id = []
+    if index_xyz is None:
+        index_xyz = [0,1,2]
+
     if index_var is None:
         index_var = []
         for i in range(data[0].shape[3]):
@@ -1773,56 +1680,46 @@ class CoordinateTransformation():
         self.func = CubicSpline(x0, x1, bc_type=(bc0, bc1))
 
 
-if __name__ == '__main__':
+#* ===========================================
+#* Supportive functions
+#* ===========================================
 
-    import matplotlib.pyplot as plt
+def surf_axisymmetric(xx: np.ndarray, yy: np.ndarray, phi0=0.0, phi1=360.0, ns=1001) -> List[np.ndarray]:
+    '''
+    Axisymmetric surface between curves.
+    
+    Parameters
+    -----------
+    xx, yy : ndarray
+        generatrix profile
+    phi0, phi1 : float
+        angle (degree) about X-axis (X-Y plane is 0 degree)
+    ns : int
+        number of points in the interpolated direction.
+    
+    Returns
+    ---------
+    surf : list of ndarray
+        coordinates of the surface, `[surf_x, surf_y, surf_z]`,
+        `surf_x`'s shape is `[ns, nn]`. 
 
-    plt.figure(figsize=(16,4))
-    
-    xx = np.linspace(-1, 1, 1001, endpoint=True)
-    
-    plt.subplot(1,2,1)
-    plt.title('Scaled Sigmoid function')
-    
-    yy = scaled_sigmoid(xx, b=1)
-    plt.plot(xx, yy, 'k', label='b=1')
-    
-    yy = scaled_sigmoid(xx, b=10)
-    plt.plot(xx, yy, 'g', label='b=10')
-    
-    yy = scaled_sigmoid(xx, b=50)
-    plt.plot(xx, yy, 'r', label='b=50')
-    
-    
-    plt.legend()
-    
-    xx = np.linspace(0, 1, 1001, endpoint=True)
+    Examples
+    ------------
+    >>> surf = surf_axisymmetric(xx, yy, phi0=0.0, phi1=360.0, ns=1001)
 
-    plt.subplot(1,2,2)
-    plt.title('Smooth Ratio function')
-    
-    yy = smooth_omega_shape_function(xx, c0=0.1, c1=0.9, b0=50, b1=50)
-    plt.plot(xx, yy, 'k', label='c0=0.1, c1=0.9, b0=50, b1=50')
-    
-    yy = smooth_omega_shape_function(xx, c0=0.0, c1=0.8, b0=25, b1=25)
-    plt.plot(xx, yy, 'g', label='c0=0.0, c1=0.8, b0=25, b1=25')
-    
-    yy = smooth_omega_shape_function(xx, c0=0.1, c1=0.9, b0=1, b1=1)
-    plt.plot(xx, yy, 'r', label='c0=0.1, c1=0.9, b0=1, b1=1')
-    
-    plt.legend()
-    
-    plt.show()
-    
-    
-    xShift = CoordinateTransformation()
-    xShift.set_function_by_interpolation(x=[0.6], xp=[0.4], slope0=1.0, slope1=None)
-    
-    xp = xShift.transform(xx)
-    plt.plot(xx, xp, 'k')
-    plt.xlabel('x')
-    plt.ylabel('x\'')
-    plt.axis('equal')
-    plt.show()
-    
-    
+    '''
+    nn = xx.shape[0]
+    surf_x = np.zeros((ns,nn))
+    surf_y = np.zeros((ns,nn))
+    surf_z = np.zeros((ns,nn))
+    zz = np.zeros(nn)
+
+    for i in range(ns):
+
+        tt    = 1.0*i/(ns-1.0)
+        angle = (1-tt)*phi0 + tt*phi1
+
+        surf_x[i,:], surf_y[i,:], surf_z[i,:] = rotate(xx, yy, zz, angle=angle, axis='X')
+
+    return [surf_x, surf_y, surf_z]
+

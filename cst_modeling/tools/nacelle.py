@@ -64,9 +64,12 @@ class NacelleIntakeHighlight():
     def __init__(self, l_intake: float, 
                     theta_droop: float, theta_scarf: float,
                     n_circum=101, 
-                    circum_control_psi = [0.0, 90.0, 180.0, 270.0],
+                    circum_control_psi = None,
                     circum_control_r_highlight : Union[float, List[float]] = 1.0,
                 ) -> None:
+        
+        if circum_control_psi is None:
+            circum_control_psi = [0.0, 90.0, 180.0, 270.0]
         
         if theta_droop + theta_scarf > 45.0:
             raise ValueError('The sum of theta_droop and theta_scarf should be less than 45.0 degree.')

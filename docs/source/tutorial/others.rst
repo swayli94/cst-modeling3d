@@ -15,8 +15,6 @@ There are several formats available for I/O.
 
     output_plot3d(X, Y, Z, fname, scale=1.0)
 
-    xs, ys = read_curves(fname='curve.dat')
-
     data, name_var, titles = read_tecplot(fname='tecplot.dat')
 
     xyz, iLine0_new = read_block_plot3d(lines, iLine0, ni, nj, nk)

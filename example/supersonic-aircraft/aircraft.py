@@ -14,7 +14,7 @@ sys.path.append('.')
 import copy
 import numpy as np
 from cst_modeling.operation import GuideCurve
-from cst_modeling.surface2 import Surface, BasicSurface
+from cst_modeling.surface import Surface, BasicSurface
 from cst_modeling.io import plot3d_to_igs, output_plot3d_for_parts
 
 

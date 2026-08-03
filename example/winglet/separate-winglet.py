@@ -11,7 +11,7 @@ sys.path.append('.')
 import copy
 from scipy.interpolate import interp1d
 from cst_modeling.basic import BasicSection
-from cst_modeling.surface2 import Surface
+from cst_modeling.surface import Surface
 
 
 def extract_partial_section(sec: BasicSection, ratio: float, interp1d_kind='cubic') -> BasicSection:

@@ -3,7 +3,7 @@ from multiprocessing.connection import answer_challenge
 from re import A
 from statistics import harmonic_mean
 from string import hexdigits
-from cst_modeling.surface import OpenSurface
+from cst_modeling.basic import OpenSurface
 from cst_modeling.io import plot3d_to_igs
 from scipy.interpolate import CubicSpline
 import math

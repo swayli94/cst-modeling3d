@@ -172,7 +172,7 @@ def curve_curvature():
     '''
     Calculate the curvature distribution of a curve
     '''
-    from cst_modeling.basic import curve_curvature
+    from cst_modeling.math import curve_curvature
     from cst_modeling.section import cst_curve
 
     cst = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])

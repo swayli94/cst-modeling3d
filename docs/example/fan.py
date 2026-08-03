@@ -11,9 +11,9 @@ def fitting_blade_sections():
     For turbomachinery, the sections are a 3D curve on cylinders.
     The origin is (x,y,z)=(0,0,0), or (r,t,z)=(0,0,0). (t~theta, rad).
     '''
-    from cst_modeling.basic import fromCylinder
+    from cst_modeling.math import fromCylinder
     from cst_modeling.section import fit_curve_with_twist, find_circle_3p
-    from cst_modeling.surface import OpenSurface
+    from cst_modeling.basic import OpenSurface
 
     n_sec = 12
 
@@ -88,7 +88,7 @@ def fitting_blade_sections():
 
 def fan_blade():
     
-    from cst_modeling.surface import Surface
+    from cst_modeling.basic import Surface
     
     blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, projection=False)
 
@@ -105,7 +105,7 @@ def fan_blade():
 
 def fan_blade_split():
     
-    from cst_modeling.surface import OpenSurface
+    from cst_modeling.basic import OpenSurface
     
     #* ==========================================
     #* Suction side

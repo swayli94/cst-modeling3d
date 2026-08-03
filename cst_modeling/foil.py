@@ -29,9 +29,6 @@ def check_validity(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, eps=1e-6) -> b
         print('    Airfoil x coordinates are not normalized.')
         print('    x[0] = ', x[0], ', x[-1] = ', x[-1])
         return False
-    else:
-        x[0] = 0.0
-        x[-1] = 1.0
     
     if abs(yu[-1] + yl[-1]) > eps:
         print('>>> Error [check_validity]')
@@ -72,6 +69,10 @@ class FoilGeoFeatures():
         
         if not check_validity(x, yu, yl):
             raise ValueError('Invalid airfoil geometry')
+        
+        #* Normalize x coordinates to [0, 1]
+        self.x[0]  = 0.0
+        self.x[-1] = 1.0
         
         self.thickness = self.yu - self.yl
         self.camber = 0.5*(self.yu + self.yl)
@@ -508,6 +509,10 @@ class FoilModification():
         if not check_validity(x, yu, yl):
             raise ValueError('Invalid airfoil geometry')
         
+        #* Normalize x coordinates to [0, 1]
+        x[0]  = 0.0
+        x[-1] = 1.0
+        
         self.x = x.copy()
         self.yu = yu.copy()
         self.yl = yl.copy()
@@ -582,16 +587,7 @@ class FoilModification():
         xShift = CoordinateTransformation()
         xShift.set_function_by_interpolation(x=[x_t], xp=[x_t_new], slope0=slope0, slope1=slope1)
         
-        # xx = self.x.copy()
-        
         self.x = xShift.transform(self.x)
-        
-        # import matplotlib.pyplot as plt
-        # plt.plot(xx, self.x, 'k')
-        # plt.xlabel('x')
-        # plt.ylabel('x\'')
-        # plt.axis('equal')
-        # plt.show()
 
     def set_camber(self, c_new: float
                 ) -> Tuple[np.ndarray, np.ndarray, float, float]:

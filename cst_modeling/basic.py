@@ -10,260 +10,138 @@ import numpy as np
 
 from scipy.interpolate import CubicSpline
 
-from .math import rotate, transform, stretch_fixed_point, toCylinder
+from .math import rotate, transform, stretch_fixed_point, toCylinder, scaled_sigmoid
+from .section import BasicSection, interp_basic_sec  # re-exported for backward compatibility
+from .section import Section, OpenSection
 
 
-class BasicSection():
+def _read_surface_setting_blocks(fname: str, name: str, n_sec: int, key_dict: dict,
+                                 cst_lines_per_sec: int) -> dict:
     '''
-    Coordinates of the 2D unit curve (profile) and the 3D curve (section).
-    
+    Walk a surface setting file and collect the raw data blocks of surface `name`.
+
     Parameters
     ----------
-    thick : {float, None}, optional
-        specified maximum relative thickness, by default None.
-        
-    chord : float
-        chord length (m), by default 1.
-        
-    twist : float
-        twist angle, by default 0.
-        
-    lTwistAroundLE : bool
-        whether the twist center is LE, otherwise TE, by default True.
-    
-    Examples
-    --------
-    >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
-    
+    fname : str
+        settings file name.
+    name : str
+        name of the surface, i.e., the name after `[Surf]`.
+    n_sec : int
+        number of control sections.
+    key_dict : dict
+        keys to be parsed, e.g., `{'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}`.
+    cst_lines_per_sec : int
+        number of CST coefficient lines per section (1 for open sections, 2 for closed sections).
 
-    Notes
+    Returns
     -------
-    - +x:     flow direction (m)
-    - +y:     upside (m)
-    - +z:     span-wise (m)
-    - chord:  chord length (m)
-    - thick:  relative maximum thickness
-    - tail:   absolute tail thickness (m)
-    - twist:  rotation angle about the z-axis, +z direction (deg)
-    - rot_x:  rotation angle about the x-axis, +x direction (deg)
-    - rot_y:  rotation angle about the y-axis, +y direction (deg)
-    
-    Attributes
-    ------------
-    xLE, yLE, zLE : float
-        coordinates of the leading edge.
-        
-    thick : float
-        actual maximum relative thickness.
-        
-    chord : float
-        chord length.
-        
-    twist : float
-        twist angle (degree), i.e., rotation angle about z axis (rot_z).
-        
-    rot_x, rot_y : float
-        rotation angle (degree) about x and y axis.
-        
-    specified_thickness : float or None
-        specified maximum relative thickness, by default None.
-        
-    lTwistAroundLE : bool
-        whether the twist center is LE, otherwise TE.
-        
-    xx, yy, yu, yl : ndarray
-        the 2D unit curve coordinates. 
-        When it is an open section, only `yy` is available.
-        When it is a closed section, only `yu` and `yl` are available. 
-        They are then concatenated to one curve, e.g., an airfoil.
-        
-    x, y, z : ndarray
-        the 3D curve coordinates. The 3D curve is generated from the 2D curve through
-        translation, scale, and rotation.
+    blocks : dict
+        raw parsed blocks (tokens, i.e., list of str, for each line):
+
+        - 'Layout:':     list of tokens, one entry per section.
+        - 'CST_coefs:':  list of token lists of each section's line(s), i.e., [section][line].
+        - 'CST_refine:': (header tokens, [section][line] tokens).
+        - 'CST_flip:':   (header tokens, [section][line] tokens).
     '''
+    blocks = {}
 
-    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True) -> None:
-        
-        self.xLE = 0.0
-        self.yLE = 0.0
-        self.zLE = 0.0
-        self.chord = chord
-        self.twist = twist
-        self.thick = 0.0
-        self.specified_thickness = thick
-        
-        #* Rotation angles
-        # The rotation angles are applied after translation and scale
-        # The rotation center is the leading edge (LE) by default
-        self.rot_x = 0.0
-        self.rot_y = 0.0
-        
-        self.lTwistAroundLE = lTwistAroundLE
+    found_surf = False
+    found_key = 0
+    with open(fname, 'r') as f:
 
-        #* 2D unit curve
-        self.xx : np.ndarray = None
-        self.yy : np.ndarray = None     # open curve
-        self.yu : np.ndarray = None     # upper surface of closed curve
-        self.yl : np.ndarray = None     # lower surface of closed curve
+        lines = f.readlines()
+        iL = 0
 
-        #* 3D section
-        self.x : np.ndarray = None
-        self.y : np.ndarray = None
-        self.z : np.ndarray = None
+        while iL<len(lines):
 
-    @property
-    def has_profile(self) -> bool:
-        '''
-        Whether the 2D profile (unit curve) is constructed
-        '''
-        return isinstance(self.xx, np.ndarray)
-    
-    @property
-    def has_section(self) -> bool:
-        '''
-        Whether the 3D section is constructed
-        '''
-        return isinstance(self.x, np.ndarray)
-    
-    @property
-    def is_open_curve(self) -> bool:
-        '''
-        Whether the section is an open curve
-        '''
-        return isinstance(self.yy, np.ndarray)
+            line = lines[iL].split()
 
-    @property
-    def n_point_profile(self) -> int:
-        '''
-        Number of points in the 2D profile (unit curve)
-        '''
-        if isinstance(self.xx, np.ndarray):
-            return self.xx.shape[0]
-        else:
-            return 0
-        
-    @property
-    def n_point_section(self) -> int:
-        '''
-        Number of points in the 3D section (3D curve)
-        '''
-        if isinstance(self.x, np.ndarray):
-            return self.x.shape[0]
-        else:
-            return 0
+            if len(line) < 1:
+                iL += 1
+                continue
 
-    @property
-    def scale(self) -> float:
-        '''
-        Scale factor, e.g., chord length (m).
-        '''
-        return self.chord
-    
-    @scale.setter
-    def scale(self, value: float) -> None:
-        self.chord = value
+            if not found_surf and len(line) > 1:
+                if '[Surf]' in line[0] and name == line[1]:
+                    found_surf = True
 
-    @property
-    def rot_z(self) -> float:
-        '''
-        Rotation angle (degree) about z axis, i.e., the twist angle.
-        '''
-        return self.twist
-    
-    @rot_z.setter
-    def rot_z(self, value: float) -> None:
-        self.twist = value
+            elif found_surf and '[Surf]' in line[0]:
+                break
 
-    def get_profile(self) -> List[np.ndarray]:
-        '''
-        Get the 2D profile (unit curve) coordinates.
-        If it is a closed curve, the upper and lower surface curves are combined.
-        
-        Returns
-        ---------
-        profile : List[np.ndarray] [2][n_point_section]
-            the 2D profile coordinates, [profile_x, profile_y].
-        '''
-        profile : List[np.ndarray] = [None, None]
-        
-        if self.xx is None:
-            raise Exception('The 2D profile (xx, yy, yu, yl) has not been constructed')
-        
-        if not self.is_open_curve:
-        
-            profile[0] = np.concatenate((np.flip(self.xx), self.xx[1:]), axis=0)
-            profile[1] = np.concatenate((np.flip(self.yl), self.yu[1:]), axis=0)
-            
-        else:
-            
-            profile[0] = self.xx
-            profile[1] = self.yy
-            
-        return profile
+            elif found_surf and found_key == 0:
+                if line[0] in key_dict:
+                    found_key = key_dict[line[0]]
 
-    def section(self, flip_x=False, projection=True, nn=None) -> None:
-        '''
-        Calculate the 3D curve coordinates from the known 2D curve.
+            elif found_surf and found_key == 1:
+                rows = []
+                for _ in range(n_sec):
+                    iL += 1
+                    rows.append(lines[iL].split())
+                blocks['Layout:'] = rows
+                found_key = 0
 
-        Parameters
-        ------------
-        flip_x : bool
-            whether flip `xx` in the reverse order, by default False.
-            
-        projection : bool
-            whether keeps the projection length the same when rotating the section, by default True.
-        
-        nn : int
-            number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.update_sections`.
-        
-        Examples
-        ------------
-        >>> sec.section(flip_x=False, projection=True)
+            elif found_surf and found_key == 2:
+                coefs = []
+                for _ in range(n_sec):
+                    iL += 2
+                    sec_lines = [lines[iL].split()]
+                    for _ in range(cst_lines_per_sec-1):
+                        iL += 1
+                        sec_lines.append(lines[iL].split())
+                    coefs.append(sec_lines)
+                blocks['CST_coefs:'] = coefs
+                found_key = 0
 
-        '''
-        if not isinstance(self.xx, np.ndarray):
-            raise Exception('The 2D curve (sec.xx, sec.yy, sec.yu, sec.yl) has not been constructed')
+            elif found_surf and found_key in (3, 4):
+                key = 'CST_refine:' if found_key == 3 else 'CST_flip:'
 
-        #* Flip xx
-        if flip_x:
-            self.xx = np.flip(self.xx)
-        
-        #* Twist center (rotation after translation and scale)
-        if self.lTwistAroundLE:
-            xr = None
-            yr = None
-        else:
-            xr = self.xLE + self.chord
+                iL += 2
+                header = lines[iL].split()
+                n_cst_refine = int(header[0])
 
-        #* Transform to 3D for open section
-        if isinstance(self.yy, np.ndarray):
-            
-            if not self.lTwistAroundLE:
-                yr = self.yLE + self.yy[-1]*self.chord
-            
-            self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
-                scale=self.chord, rot=self.twist, xr=xr, yr=yr,
-                dx=self.xLE, dy=self.yLE, projection=projection)
+                if n_cst_refine <= 0:
+                    iL += n_sec*3
+                    blocks[key] = (header, [])
+                    found_key = 0
+                    continue
 
-            self.z = np.ones_like(self.x)*self.zLE
+                refines = []
+                for _ in range(n_sec):
+                    iL += 2
+                    sec_lines = [lines[iL].split()]
+                    for _ in range(cst_lines_per_sec-1):
+                        iL += 1
+                        sec_lines.append(lines[iL].split())
+                    refines.append(sec_lines)
+                blocks[key] = (header, refines)
+                found_key = 0
 
-        #* Transform to 3D for closed section
-        if isinstance(self.yu, np.ndarray):
-            
-            if not self.lTwistAroundLE:
-                yr = self.yLE + 0.5*(self.yu[-1]+self.yl[-1])*self.chord
-            
-            xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
-                scale=self.chord, rot=self.twist, xr=xr, yr=yr,
-                dx=self.xLE, dy=self.yLE, projection=projection)
+            else:
+                # Lines that are not relevant
+                pass
 
-            self.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
-            self.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
-            self.z = np.ones_like(self.x)*self.zLE
+            iL += 1
 
-        if self.x.shape[0] <= 1:
-            raise Exception('The 3D curve (sec.x, sec.y, sec.z) is not successfully constructed')
+    return blocks
+
+
+def _apply_surface_layout(secs: list, rows: list, is_2d: bool) -> None:
+    '''
+    Apply the raw 'Layout:' rows (tokens) to the section objects.
+    '''
+    for i, line in enumerate(rows):
+
+        secs[i].xLE   = float(line[0])
+        secs[i].yLE   = float(line[1])
+        secs[i].zLE   = float(line[2])
+        secs[i].chord = float(line[3])
+        secs[i].twist = float(line[4])
+
+        if len(line) >= 6:
+            secs[i].specified_thickness = float(line[5])
+
+        if is_2d:
+            secs[i].zLE = 0.0
+
 
 
 class BasicSurface():
@@ -384,57 +262,10 @@ class BasicSurface():
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface setting')
         
-        key_dict = {'Layout:': 1}
-
-        found_surf = False
-        found_key = 0
-        with open(fname, 'r') as f:
-
-            lines = f.readlines()
-            iL = 0
-
-            while iL<len(lines):
-
-                line = lines[iL].split()
-
-                if len(line) < 1:
-                    iL += 1
-                    continue
-                
-                if not found_surf and len(line) > 1:
-                    if '[Surf]' in line[0] and self.name == line[1]:
-                        found_surf = True
-
-                elif found_surf and '[Surf]' in line[0]:
-                    break
-
-                elif found_surf and found_key == 0:
-                    if line[0] in key_dict:
-                        found_key = key_dict[line[0]]
-
-                elif found_surf and found_key == 1:
-                    for i in range(self.n_sec):
-                        iL += 1
-                        line = lines[iL].split()
-                        self.secs[i].xLE   = float(line[0])
-                        self.secs[i].yLE   = float(line[1])
-                        self.secs[i].zLE   = float(line[2])
-                        self.secs[i].chord = float(line[3])
-                        self.secs[i].twist = float(line[4])
-
-                        if len(line) >= 6:
-                            self.secs[i].specified_thickness = float(line[5])
-
-                        if self.l2d:
-                            self.secs[i].zLE = 0.0
-
-                    found_key = 0
-
-                else:
-                    # Lines that are not relevant
-                    pass
-
-                iL += 1
+        blocks = _read_surface_setting_blocks(fname, self.name, self.n_sec, {'Layout:': 1}, 1)
+        
+        if 'Layout:' in blocks:
+            _apply_surface_layout(self.secs, blocks['Layout:'], self.l2d)
         
         self.layout_center()
 
@@ -479,7 +310,7 @@ class BasicSurface():
         #* Find the adjacent control sections
         i_sec = self.n_sec
         for i in range(self.n_sec-1):
-            if (z-self.secs[i].zLE)*(z-self.secs[i+1].zLE)<0 or z==self.secs[i].zLE:
+            if (z-self.secs[i].zLE)*(z-self.secs[i+1].zLE)<0 or z==self.secs[i].zLE or z==self.secs[i+1].zLE:
                 i_sec = i
 
         if i_sec >= self.n_sec:
@@ -940,10 +771,18 @@ class BasicSurface():
                         _yz = _y1/_z2 * np.clip(_x2/_x1, -1, 1)
                         bcy0 = (1,_yz)
                     else:
+                        #* Explicitly use the slope of the previous point (ip-1)
+                        _x1 = self.surfs[i_sec0][0][0,ip]   - self.surfs[i_sec0][0][0,ip-1]
+                        _y1 = self.surfs[i_sec0][1][0,ip]   - self.surfs[i_sec0][1][0,ip-1]
+                        _z2 = self.surfs[i_sec0][2][1,ip-1] - self.surfs[i_sec0][2][0,ip-1]
+                        _x2 = curve_x_prev(self.surfs[i_sec0][2][1,ip-1]) - self.surfs[i_sec0][0][0,ip-1]
+                        _yz = _y1/_z2 * np.clip(_x2/_x1, -1, 1)
                         bcy0 = (1,_yz)
                 else:
                     
                     bcy0 = (1,dyn0)
+
+            curve_x_prev = curve_x
 
             curve_y = CubicSpline(zz, yy, bc_type=(bcy0, bcy1))
             
@@ -1079,7 +918,7 @@ class BasicSurface():
         '''
         r0 = BasicSurface.smooth_ramp_function(-10*x, a0)
         r1 = BasicSurface.smooth_ramp_function(-10*(1-x), a1)
-        ratio = BasicSurface.scaled_sigmoid(r0+r1, b)
+        ratio = scaled_sigmoid(r0+r1, b)
         return ratio
     
     @staticmethod
@@ -1091,11 +930,6 @@ class BasicSurface():
         y2 = 1.0 + a/4*x
         rr = x < -2/a
         return rr*y1 + (1-rr)*y2
-    
-    @staticmethod
-    def scaled_sigmoid(x, b=1):
-        y = 1.0/(1.0+np.exp(-b*x))
-        return (y-np.min(y))/(np.max(y)-np.min(y))
 
 
     def bend(self, i_sec0: int, i_sec1: int, leader=None, 
@@ -1170,7 +1004,7 @@ class BasicSurface():
                 # Need c but have no c
                 for point in leader:
                     chord  = self.linear_interpolate_z(point[2], key='chord')
-                    point_ = point.append(chord)
+                    point_ = point + [chord]
                     leader_points.append(point_)
 
             else:
@@ -1447,12 +1281,12 @@ class BasicSurface():
             
             for j in range(self.n_sec-1):
                 
-                if axis in 'Y':
+                if axis == 'Y':
                     if (self.secs[j].yLE-loc)*(self.secs[j+1].yLE-loc)<0.0:
                         rr = (loc - self.secs[j].yLE)/(self.secs[j+1].yLE-self.secs[j].yLE)
                         found = True
 
-                if axis in 'Z':
+                if axis == 'Z':
                     if (self.secs[j].zLE-loc)*(self.secs[j+1].zLE-loc)<0.0:
                         rr = (loc - self.secs[j].zLE)/(self.secs[j+1].zLE-self.secs[j].zLE)
                         found = True
@@ -1654,7 +1488,7 @@ class BasicSurface():
         ax = fig.add_subplot(projection='3d')
 
         for surf in self.surfs:
-            if type in 'wireframe':
+            if type == 'wireframe':
                 ax.plot_wireframe(surf[0], surf[1], surf[2])
             else:
                 ax.plot_surface(surf[0], surf[1], surf[2])
@@ -1673,45 +1507,340 @@ class BasicSurface():
 
 
 #* ===========================================
-#* Interpolation
+#* CST surfaces
 #* ===========================================
 
-def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
+class OpenSurface(BasicSurface):
     '''
-    Interpolate a basic section by ratio.
-    
-    Parameters
-    ------------
-    sec0, sec1 : BasicSection
-        sections at both ends.
-    ratio : float
-        interpolation ratio.
+    Open surface defined by multiple OpenSection objects.
     
     Examples
-    --------------
-    >>> sec = interp_basic_sec(sec0, sec1, ratio)
+    ----------
+    >>> surf = OpenSurface(n_sec=0, name='Patch', nn=1001, ns=101, projection=True)
     '''
-    
-    sec = copy.deepcopy(sec0)
+    def __init__(self, n_sec=0, name='Patch', nn=1001, ns=101, projection=True):
 
-    sec.xLE   = (1-ratio)*sec0.xLE   + ratio*sec1.xLE
-    sec.yLE   = (1-ratio)*sec0.yLE   + ratio*sec1.yLE
-    sec.zLE   = (1-ratio)*sec0.zLE   + ratio*sec1.zLE
-    sec.chord = (1-ratio)*sec0.chord + ratio*sec1.chord
-    sec.twist = (1-ratio)*sec0.twist + ratio*sec1.twist
-    sec.thick = (1-ratio)*sec0.thick + ratio*sec1.thick
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
 
-    sec.xx = (1-ratio)*sec0.xx + ratio*sec1.xx
-    
-    if isinstance(sec.yy, np.ndarray):
-        sec.yy = (1-ratio)*sec0.yy + ratio*sec1.yy
-    else:
-        sec.yu = (1-ratio)*sec0.yu + ratio*sec1.yu
-        sec.yl = (1-ratio)*sec0.yl + ratio*sec1.yl
+        n_ = max(1, n_sec)
+        self.secs = [ OpenSection() for _ in range(n_) ]
 
-    sec.x  = (1-ratio)*sec0.x + ratio*sec1.x
-    sec.y  = (1-ratio)*sec0.y + ratio*sec1.y
-    sec.z  = (1-ratio)*sec0.z + ratio*sec1.z
+    def read_setting(self, fname) -> None:
+        '''
+        Read in Surface layout and CST parameters from file.
 
-    return sec
+        Parameters
+        ----------
+        fname : str
+            settings file name
+
+        '''
+        if not os.path.exists(fname):
+            raise Exception(fname+' does not exist for surface read setting')
+        
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
+
+        blocks = _read_surface_setting_blocks(fname, self.name, self.n_sec, key_dict, 1)
+        
+        if 'Layout:' in blocks:
+            _apply_surface_layout(self.secs, blocks['Layout:'], self.l2d)
+        
+        if 'CST_coefs:' in blocks:
+            for i in range(self.n_sec):
+                self.secs[i].cst = np.array([float(aa) for aa in blocks['CST_coefs:'][i][0]])
+        
+        if 'CST_refine:' in blocks:
+            header, sec_refines = blocks['CST_refine:']
+            n_cst_refine = int(header[0])
+            i_cst_start  = int(header[1])
+
+            if n_cst_refine > 0:
+                for i in range(self.n_sec):
+
+                    line1 = sec_refines[i][0]
+                    cst_r = np.zeros(n_cst_refine)
+
+                    i1 = 0
+
+                    for j in range(n_cst_refine):
+                        if j>=i_cst_start-1 and i1<len(line1):
+                            cst_r[j] = float(line1[i1])
+                            i1 += 1
+
+                    self.secs[i].refine = cst_r
+        
+        print('Read surface [%s] settings'%(self.name))
+
+        self.layout_center()
+
+
+class Surface(BasicSurface):
+    '''
+    Surface defined by multiple Section objects, i.e., foils
+
+    Examples
+    -----------
+    >>> surf = Surface(n_sec=0, name='Wing', nn=1001, ns=101, projection=True)
+    '''
+    def __init__(self, n_sec=0, name='Wing', nn=1001, ns=101, projection=True):
+
+        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
+
+        self.secs = [ Section() for _ in range(max(1, n_sec)) ]
+
+    def read_setting(self, fname, tail=0.0) -> None:
+        '''
+        Read in Surface layout and CST parameters from file
+
+        Parameters
+        ----------
+        fname : str
+            settings file name.
+        tail : float or list
+            tail thickness (m) of each section.
+        '''
+        if not os.path.exists(fname):
+            raise Exception(fname+' does not exist for surface read setting')
+        
+        key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
+
+        blocks = _read_surface_setting_blocks(fname, self.name, self.n_sec, key_dict, 2)
+        
+        if 'Layout:' in blocks:
+            for i, line in enumerate(blocks['Layout:']):
+
+                self.secs[i].xLE   = float(line[0])
+                self.secs[i].yLE   = float(line[1])
+                self.secs[i].zLE   = float(line[2])
+                self.secs[i].chord = float(line[3])
+                self.secs[i].twist = float(line[4])
+
+                if len(line) >= 6:
+                    self.secs[i].specified_thickness = float(line[5])
+
+                if isinstance(tail, float):
+                    self.secs[i].tail  = tail/self.secs[i].chord
+                elif len(tail)==self.n_sec:
+                    self.secs[i].tail  = tail[i]/self.secs[i].chord
+                else:
+                    raise Exception('tail must be a float or a list with length = section number')
+                
+                if self.secs[i].specified_thickness <= 0.0:
+                    self.secs[i].specified_thickness = None
+
+                if self.l2d:
+                    self.secs[i].zLE = 0.0
+        
+        if 'CST_coefs:' in blocks:
+            for i in range(self.n_sec):
+                self.secs[i].cst_u = np.array([float(aa) for aa in blocks['CST_coefs:'][i][0]])
+                self.secs[i].cst_l = np.array([float(aa) for aa in blocks['CST_coefs:'][i][1]])
+        
+        if 'CST_refine:' in blocks:
+            header, sec_refines = blocks['CST_refine:']
+            n_cst_refine = int(header[0])
+            i_cst_start  = int(header[1])
+
+            if n_cst_refine > 0:
+                for i in range(self.n_sec):
+
+                    line1 = sec_refines[i][0]
+                    line2 = sec_refines[i][1]
+
+                    cst_ur = np.zeros(n_cst_refine)
+                    cst_lr = np.zeros(n_cst_refine)
+
+                    i1 = 0
+                    i2 = 0
+                    for j in range(n_cst_refine):
+                        if j>=i_cst_start-1 and i1<len(line1):
+                            cst_ur[j] = float(line1[i1])
+                            i1 += 1
+                        if j>=i_cst_start-1 and i2<len(line2):
+                            cst_lr[j] = float(line2[i2])
+                            i2 += 1
+
+                    self.secs[i].refine_u = cst_ur
+                    self.secs[i].refine_l = cst_lr
+        
+        print('Read surface [%s] settings'%(self.name))
+
+        # Locate layout center for plot
+        self.layout_center()
+
+    def output_tecplot(self, fname=None, one_piece=False, split=False) -> None:
+        '''
+        Output the surface to `*.dat` in Tecplot format.
+
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        one_piece : bool
+            if True, combine the span-wise sections into one piece.
+        split : bool
+            if True, split to upper and lower surfaces.
+        '''
+        if not split:
+            super().output_tecplot(fname=fname, one_piece=one_piece)
+            return
+
+        if fname is None:
+            fname = self.name + '.dat'
+
+        n_sec   = 1 if self.l2d else self.n_sec-1
+        n_piece = len(self.surfs)
+        
+        with open(fname, 'w') as f:
+            f.write('Variables= X  Y  Z \n ')
+
+            if not one_piece:
+
+                for i_sec in range(n_piece):
+                    
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
+
+                    # surf_x[ns,nt], ns => spanwise
+                    ns = self.ns
+                    nt = int((surf_x.shape[1]+1)/2)
+
+                    f.write('zone T="sec-u %d" i= %d j= %d \n'%(i_sec, nt, ns))
+                    for i in range(ns):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j+nt-1], surf_y[i,j+nt-1], surf_z[i,j+nt-1]))
+
+                    f.write('zone T="sec-l %d" i= %d j= %d \n'%(i_sec, nt, ns))
+                    for i in range(ns):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
+
+            else:
+                
+                npoint = n_sec*(self.ns-1) + 1
+                ns = self.ns
+                nt = int((self.surfs[0][0].shape[1]+1)/2)
+                
+                f.write('zone T="sec-u" i= %d j= %d \n'%(nt, npoint))
+
+                for i_sec in range(n_piece):
+                    
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
+
+                    if i_sec>=n_piece-1:
+                        i_add = 0
+                    else:
+                        i_add = 1
+
+                    for i in range(ns-i_add):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,j+nt-1], surf_y[i,j+nt-1], surf_z[i,j+nt-1]))
+
+                f.write('zone T="sec-l" i= %d j= %d \n'%(nt, npoint))
+
+                for i_sec in range(n_piece):
+                    
+                    surf_x = self.surfs[i_sec][0]
+                    surf_y = self.surfs[i_sec][1]
+                    surf_z = self.surfs[i_sec][2]
+                    
+                    if i_sec>=n_piece-1:
+                        i_add = 0
+                    else:
+                        i_add = 1
+
+                    for i in range(ns-i_add):
+                        for j in range(nt):
+                            f.write('  %.9f   %.9f   %.9f\n'%(surf_x[i,nt-1-j], surf_y[i,nt-1-j], surf_z[i,nt-1-j]))
+
+    def output_plot3d(self, fname=None, split=False) -> None:
+        '''
+        Output the surface to `*.xyz` in plot3d format.
+
+        Parameters
+        ------------
+        fname : str
+            name of the output file.
+        split : bool
+            if True, split to upper and lower surfaces.
+        '''
+        if not split:
+            super().output_plot3d(fname=fname)
+            return
+
+        if fname is None:
+            fname = self.name + '.xyz'
+
+        n_piece = len(self.surfs)
+
+        # surf_x[ns,nt], ns => spanwise
+        ns = self.ns
+
+        with open(fname, 'w') as f:
+
+            f.write('%d \n '%(n_piece*2))   # Number of surfaces
+            for i_sec in range(n_piece):
+                nt = int((self.surfs[i_sec][0].shape[1]+1)/2)
+                f.write('%d %d 1\n '%(nt, ns))
+                f.write('%d %d 1\n '%(nt, ns))
+
+            for i_sec in range(n_piece):
+
+                X = self.surfs[i_sec][0]
+                Y = self.surfs[i_sec][1]
+                Z = self.surfs[i_sec][2]
+                nt = int((X.shape[1]+1)/2)
+
+                #* Upper surface
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(X[i,j+nt-1]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Y[i,j+nt-1]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Z[i,j+nt-1]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
+
+                #* Lower surface
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(X[i,nt-1-j]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Y[i,nt-1-j]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
+
+                ii = 0
+                for i in range(ns):
+                    for j in range(nt):
+                        f.write(' %.9f '%(Z[i,nt-1-j]))
+                        ii += 1
+                        if ii%3==0 or (i==ns-1 and j==nt-1):
+                            f.write(' \n ')
 

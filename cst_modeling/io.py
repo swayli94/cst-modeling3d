@@ -21,6 +21,8 @@ def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
     -----------
     x, y : ndarray
         coordinates of the curve.
+    fname : str
+        name of the output file.
     ID : int
         if `ID`=0, create new file and write header.
         If `ID`>0, append to existed file.
@@ -147,7 +149,7 @@ def read_tecplot(fname='tecplot.dat'):
                 iLine += 1
                 continue
             
-            if line[0] in 'Variables=' or line[0] in 'VARIABLES=' :
+            if line[0].lower().startswith('variables'):
                 
                 line = re.split(r'[=",\s]', lines[iLine])
                 while '' in line:
@@ -158,7 +160,7 @@ def read_tecplot(fname='tecplot.dat'):
                 iLine += 1
                 continue
         
-            if line[0] in 'zone' or line[0] in 'ZONE' or line[0] in 'Zone':
+            if line[0].lower().startswith('zone'):
                 line = re.split(r'[=\s]', lines[iLine])
                 while '' in line:
                     line.remove('')
@@ -599,7 +601,7 @@ def output_plot3d_for_parts(fname: str, *args, scale=1.0) -> None:
     
     Examples
     ------------
-    >>> output_plot3d_for_surfaces(fname='plot3d', surf1, surf2, surf3)
+    >>> output_plot3d_for_parts(fname='plot3d', surf1, surf2, surf3)
 
     '''
     n_part = len(args)

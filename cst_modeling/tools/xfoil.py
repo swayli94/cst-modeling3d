@@ -134,7 +134,7 @@ def run_xfoil(AoAs=None, Cls=None,
         
 
     #* Run the XFoil calling command
-    if platform.system() in 'Windows':
+    if platform.system() == 'Windows':
         
         os.system('cd %s && xfoil.exe < %s > %s'%(work_dir, fname_setting, fname_log))
         

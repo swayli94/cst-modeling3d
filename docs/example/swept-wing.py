@@ -10,7 +10,7 @@ def airfoil3d():
     3D surface for airfoil meshing in ICEM CFD
     '''
     from cst_modeling.io import plot3d_to_igs
-    from cst_modeling.surface import Surface
+    from cst_modeling.basic import Surface
     
     wing = Surface(n_sec=0, name='airfoil3d', nn=501, ns=11, projection=True)
     wing.read_setting('./files/swept-wing.txt', tail=0.01)
@@ -31,7 +31,7 @@ def transonic_wing():
     '''
     Swept wing for transonic jet 
     '''
-    from cst_modeling.surface import Surface
+    from cst_modeling.basic import Surface
     
     #* Define a [Surface] object, which is called 'transonic-wing'
     #  It has n_sec control sections.
@@ -73,7 +73,7 @@ def transonic_wing_winglet():
     '''
     Swept wing for transonic jet (with wing tip)
     '''
-    from cst_modeling.surface import Surface
+    from cst_modeling.basic import Surface
     
     wing = Surface(n_sec=6, name='transonic-wing', nn=101, ns=52)
     

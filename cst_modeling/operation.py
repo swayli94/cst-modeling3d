@@ -52,7 +52,10 @@ class GuideCurve():
         - 'rot_axis' : The rotation angle (degree) about the main axis of the profile at `s`.
     
     '''
-    def __init__(self, n_section=2, n_spanwise=101, section_s_loc=[0.0, 1.0]) -> None:
+    def __init__(self, n_section=2, n_spanwise=101, section_s_loc=None) -> None:
+        
+        if section_s_loc is None:
+            section_s_loc = [0.0, 1.0]
         
         self.n_section = n_section
         self.n_spanwise = n_spanwise
@@ -93,6 +96,19 @@ class GuideCurve():
 
 
     def __call__(self, key: str) -> np.ndarray:
+        '''
+        Dict-style access to the guide curve, i.e., `guide(key)` returns `guide.global_guide_curve[key]`.
+        
+        Parameters
+        ----------
+        key : str
+            The key of the guide curve, e.g., 's', 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z'.
+        
+        Returns
+        -------
+        np.ndarray [n_total]
+            The values of the guide curve for the given key.
+        '''
         return self.global_guide_curve[key]
 
     def get_local_parametric_coordinate(self, i_sec0: int) -> Tuple[np.ndarray, int, int]:
@@ -212,6 +228,44 @@ class GuideCurve():
         for key, value in kwargs.items():
             self.global_guide_curve[key] = value
     
+    def _build_spline(self, control_s: np.ndarray, values: np.ndarray,
+                            slope_s0=None, slope_s1=None, periodic=False) -> CubicSpline:
+        '''
+        Build a cubic spline through the control points.
+        
+        Parameters
+        ----------
+        control_s : np.ndarray [n_point]
+            The global parametric coordinates of the control points, range in [0, 1].
+            
+        values : np.ndarray [n_point]
+            The values of the control points.
+            
+        slope_s0, slope_s1 : float
+            The slope of the curve at the start and end points.
+            
+        periodic : bool
+            Whether the spline is periodic.
+        '''
+        if periodic:
+            
+            bc_type = 'periodic'
+            
+        else:
+            
+            bcx0 = (2, 0.0)
+            bcx1 = (2, 0.0)
+            
+            if slope_s0 is not None:
+                bcx0 = (1, slope_s0)
+                
+            if slope_s1 is not None:
+                bcx1 = (1, slope_s1)
+            
+            bc_type = (bcx0, bcx1)
+        
+        return CubicSpline(control_s, values, bc_type=bc_type)
+    
     def generate_by_spline(self, global_control_s: np.ndarray, global_values: np.ndarray, 
                                 slope_s0=None, slope_s1=None, key='x', periodic=False) -> None:
         '''
@@ -231,24 +285,8 @@ class GuideCurve():
         key : str
             The key of the global guide curve to update.
         '''        
-        if periodic:
-            
-            bc_type = 'periodic'
-            
-        else:
-            
-            bcx0 = (2, 0.0)
-            bcx1 = (2, 0.0)
-            
-            if slope_s0 is not None:
-                bcx0 = (1, slope_s0)
-                
-            if slope_s1 is not None:
-                bcx1 = (1, slope_s1)
-            
-            bc_type = (bcx0, bcx1)
-        
-        func = CubicSpline(global_control_s, global_values, bc_type=bc_type)
+        func = self._build_spline(global_control_s, global_values, 
+                                    slope_s0=slope_s0, slope_s1=slope_s1, periodic=periodic)
         
         self.global_guide_curve[key] = func(self.global_guide_curve['s'])
         
@@ -396,7 +434,7 @@ class GuideCurve():
         original_guide_curve = copy.deepcopy(self.global_guide_curve)
             
         if sections is None:
-            sections = [(0, self.n_section-1)]
+            sections = (0, self.n_section-1)
             
         index0 = sections[0] * (self.n_spanwise-1)
         index1 = sections[1] * (self.n_spanwise-1)
@@ -412,7 +450,11 @@ class GuideCurve():
         c0 = 0.0 if sections[0] == 0 else 0.2
         c1 = 1.0 if sections[1] == self.n_section-1 else 0.8
         
-        yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=30, b1=30)
+        if c0 == 0.0 and c1 == 1.0:
+            #* The entire surface is updated, no blending to the original geometry
+            yy = np.ones_like(xx)
+        else:
+            yy = smooth_omega_shape_function(xx, c0=c0, c1=c1, b0=30, b1=30)
         
         ratio_curve = np.zeros(self.n_total)
         ratio_curve[index0:index1+1] = yy
@@ -446,24 +488,8 @@ class GuideCurve():
         key : str
             The key of the global guide curve to update.
         '''        
-        if periodic:
-            
-            bc_type = 'periodic'
-            
-        else:
-            
-            bcx0 = (2, 0.0)
-            bcx1 = (2, 0.0)
-            
-            if slope_s0 is not None:
-                bcx0 = (1, slope_s0)
-                
-            if slope_s1 is not None:
-                bcx1 = (1, slope_s1)
-            
-            bc_type = (bcx0, bcx1)
-        
-        func = CubicSpline(control_s, values, bc_type=bc_type)
+        func = self._build_spline(control_s, values, 
+                                    slope_s0=slope_s0, slope_s1=slope_s1, periodic=periodic)
         
         for i in range(self.n_total):
             
@@ -902,11 +928,14 @@ class Lofting_Revolution():
 
     def __init__(self, profiles: List[List[np.ndarray]],
                     n_spanwise=101, 
-                    section_s_loc=[0.00, 0.25, 0.50, 0.75],
+                    section_s_loc=None,
                     section_x : Union[float, List[float]] = 0.0,
                     section_radius : Union[float, List[float]] = 0.0,
                     section_scale : Union[float, List[float]] = 1.0,
                     ) -> None:
+
+        if section_s_loc is None:
+            section_s_loc = [0.00, 0.25, 0.50, 0.75]
 
         self.profiles = profiles
         self.n_spanwise = n_spanwise

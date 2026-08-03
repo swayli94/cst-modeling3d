@@ -13,7 +13,10 @@ from ..math import (find_circle_3p, intersect_surface_plane, interp_from_curve,
 from ..io import read_tecplot
 
 
-def output_curve(curve, fname='curves.dat', append=False, name_var=['X', 'Y', 'Z']):
+def output_curve(curve, fname='curves.dat', append=False, name_var=None):
+    
+    if name_var is None:
+        name_var = ['X', 'Y', 'Z']
     
     if append:
         f = open(fname, 'a')
@@ -158,7 +161,7 @@ class BLWF():
         return read_tecplot(fname)
     
     def define_fuselage(self, zone_id: list, n_slice: int, n_point=0, extrapolate2sym=True,
-                        fname='surface-aircraft.dat', index_xyz=[0,1,2], sym='XY'):
+                        fname='surface-aircraft.dat', index_xyz=None, sym='XY'):
         '''
         Extract fuselage sections
         
@@ -179,6 +182,9 @@ class BLWF():
         '''
 
         #* Read surface data
+        if index_xyz is None:
+            index_xyz = [0,1,2]
+
         data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
@@ -297,7 +303,7 @@ class BLWF():
         return fuselage_sections
 
     def define_vertical_tail(self, zone_id: list, n_slice: int, n_point=0, avg_dir=None, 
-                        fname='surface-aircraft.dat', index_xyz=[0,1,2], ratio=0.1):
+                        fname='surface-aircraft.dat', index_xyz=None, ratio=0.1):
         '''
         Extract vertical tail sections
         
@@ -317,6 +323,9 @@ class BLWF():
         ```
         '''
         #* Read surface data
+        if index_xyz is None:
+            index_xyz = [0,1,2]
+
         data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
@@ -432,7 +441,7 @@ class BLWF():
         return tail_sections
 
     def define_wing(self, zone_id: list, n_slice: int, n_point=0, avg_dir=None, ratio_z=0.01,
-                        fname='surface-aircraft.dat', index_xyz=[0,1,2]):
+                        fname='surface-aircraft.dat', index_xyz=None):
         '''
         Extract wing or horizontal tail sections
         
@@ -453,6 +462,9 @@ class BLWF():
         ```
         '''
         #* Read surface data
+        if index_xyz is None:
+            index_xyz = [0,1,2]
+
         data_, _, _ = read_tecplot(fname)
         if len(zone_id)==0:
             data = data_
@@ -1016,8 +1028,8 @@ class BLWF():
         return rle, te_angle, te_slope
            
     @staticmethod
-    def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=np.array([1.,0.,0.]),
-                      fname='surface-aircraft.dat', zone_id=[], index_xyz=[0,1,2], arrange_method='join'):
+    def extract_slice(locations: list, Pref: np.ndarray, dir_norm: np.ndarray, dir_ref=None,
+                      fname='surface-aircraft.dat', zone_id=None, index_xyz=None, arrange_method='join'):
 
         data, name_var, _ = read_tecplot(fname)
 

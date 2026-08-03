@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from cst_modeling.basic import intersect_point
+from cst_modeling.math import intersect_point
 from cst_modeling.section import dist_clustcos
-from cst_modeling.surface import Surface
+from cst_modeling.basic import Surface
 
 file_dump = './dump/'
 
@@ -401,7 +401,7 @@ def hind_sting(n=101, rr=0.1):
 def vfe2():
     
     from cst_modeling.io import output_plot3d, plot3d_to_igs
-    from cst_modeling.surface import surf_axisymmetric
+    from cst_modeling.math import surf_axisymmetric
     
     delta = 65
     rr    = 0.05

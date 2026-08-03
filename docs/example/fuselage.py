@@ -1,8 +1,8 @@
 
 import numpy as np
 
-from cst_modeling.basic import output_curve
-from cst_modeling.surface import BasicSurface
+from cst_modeling.io import output_curve
+from cst_modeling.basic import BasicSurface
 
 from scipy.interpolate import CubicSpline
 

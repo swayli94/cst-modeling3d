@@ -1,11 +1,20 @@
 Surface
 ========================
 
+.. note::
+
+    This page documents the **classic** surface classes
+    :class:`cst_modeling.basic.BasicSurface`, :class:`cst_modeling.basic.OpenSurface`
+    and :class:`cst_modeling.basic.Surface`, which interpolate linearly between
+    control sections. For the newer lofting-based surface API (guide curves and
+    :class:`cst_modeling.operation.Lofting`), see the :mod:`cst_modeling.surface`
+    module, which is used by the wing, propeller and aircraft examples.
+
 Class: BasicSurface
 ----------------------
 
-`BasicSurface` is the parent class that generates surfaces between control sections.
-The control sections are objects of `BasicSection`. In CST-Modeling, a surface is 
+`cst_modeling.basic.BasicSurface` is the parent class that generates surfaces between control sections.
+The control sections are objects of `cst_modeling.section.BasicSection`. In CST-Modeling, a surface is 
 interpolated between two control sections, i.e., two 3D planar curves. 
 Multiple surfaces are generated when multiple sections are provided.
 
@@ -30,6 +39,8 @@ But of course, you can just define them in your own python script.
 .. code-block:: python
     :linenos:
 
+    from cst_modeling.basic import BasicSurface
+
     surface = BasicSurface(n_sec=2, name='basic-surface', nn=1001, ns=101, projection=True)
     surface.read_setting('Settings.txt')
     surface.geo()
@@ -51,7 +62,7 @@ But of course, you can just define them in your own python script.
 Class: OpenSurface
 ----------------------
 
-`OpenSurface` is a child class of `BasicSurface`. It uses `OpenSection` objects as 
+`cst_modeling.basic.OpenSurface` is a child class of `cst_modeling.basic.BasicSurface`. It uses `cst_modeling.section.OpenSection` objects as 
 the control sections, which uses CST method for constructing the unit 2D **open curve**.
 
 It provides a `read_setting` function to read control files, which contains all the
@@ -59,6 +70,8 @@ layout parameters and **CST coefficients**.
 
 .. code-block:: python
     :linenos:
+
+    from cst_modeling.basic import OpenSurface
 
     surface = OpenSurface(n_sec=2, name='open-surface', nn=1001, ns=101, projection=True)
     surface.read_setting('Settings.txt')
@@ -97,7 +110,7 @@ layout parameters and **CST coefficients**.
 Class: Surface
 ----------------------
 
-`Surface` is a child class of `BasicSurface`. It uses `Section` objects as 
+`cst_modeling.basic.Surface` is a child class of `cst_modeling.basic.BasicSurface`. It uses `cst_modeling.section.Section` objects as 
 the control sections, which uses CST method for constructing the unit 2D airfoil, 
 i.e., a **closed curve**.
 
@@ -110,6 +123,9 @@ It is a 3D surface of a 2D airfoil, which can be used for meshing in ICEM CFD.
 
 .. code-block:: python
     :linenos:
+
+    from cst_modeling.basic import Surface
+    from cst_modeling.io import plot3d_to_igs
 
     wing = Surface(n_sec=0, name='Airfoil3D', nn=1001, ns=101, projection=True)
     wing.read_setting('Settings.txt', tail=0.1)

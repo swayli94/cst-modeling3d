@@ -7,7 +7,7 @@ from cfdpost.section.physical import PhysicalSec
 
 from cst_modeling.basic import rotate
 from cst_modeling.foil import cst_foil
-from cst_modeling.surface import Surface
+from cst_modeling.basic import Surface
 from cst_modeling.tools.blwf import BLWF
 from scipy.spatial.distance import cdist
 

@@ -7,7 +7,7 @@ import copy
 from ..math import intersect_index, interp_from_curve
 from ..basic import transform
 from ..section import Section
-from ..surface import Surface
+from ..basic import Surface
 
 
 def section_flap(sec: Section, ratio: float, angle: float, dy_axis=None) -> None:

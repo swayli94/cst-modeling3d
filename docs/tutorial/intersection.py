@@ -6,7 +6,7 @@ def intersection_curve():
     Intersection between curves
     '''
 
-    from cst_modeling.basic import intersect_index, intersect_point
+    from cst_modeling.math import intersect_index, intersect_point
     
     x1 = np.linspace(0.5, 1.0, 151)
     x2 = np.linspace(0.5, 1.0, 101)
@@ -42,7 +42,7 @@ def intersection_vector_plane():
     Intersection between vector and plane
     '''
     
-    from cst_modeling.basic import intersect_vec_plane, plane_3points
+    from cst_modeling.math import intersect_vec_plane, plane_3points
 
     V0 = np.array([0.0, 0.0, 0.0])
     V1 = np.array([1.0, 1.0, 1.0])
@@ -83,7 +83,7 @@ def intersection_surface_plane():
     Intersection between vector and plane
     '''
     
-    from cst_modeling.basic import plane_3points, intersect_surface_plane
+    from cst_modeling.math import plane_3points, intersect_surface_plane
 
     def _cylinder(radius, height, origin):
     

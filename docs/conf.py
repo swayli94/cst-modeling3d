@@ -22,7 +22,7 @@ copyright = '2023, Li Runze'
 author = 'Li Runze'
 
 # The full version, including alpha/beta/rc tags
-release = 'v0.2.8'
+release = 'v1.0.0'
 
 
 # -- General configuration ---------------------------------------------------

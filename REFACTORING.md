@@ -23,7 +23,7 @@ python scripts/compare_outputs.py <基线目录> <新目录> # 数值对比输�
 
 最终结果：**基线中的 111 个输出文件全部零差异**；通过示例从 24 个增加到 **28 个**；剩余 4 个失败示例均因仓库之外的外部依赖（见第 6 节）。
 
-注意：示例依赖仓库内的 `cst_modeling`。系统里 pip 安装的是 0.2.4（仓库代码是 0.2.8），运行脚本已用 `PYTHONPATH` 指向仓库；手动跑示例时请 `pip install -e .` 或设置 `PYTHONPATH` 为仓库根目录。
+注意：示例依赖仓库内的 `cst_modeling`。系统里 pip 安装的是 0.2.4（仓库代码已升至 1.0.0），运行脚本已用 `PYTHONPATH` 指向仓库；手动跑示例时请 `pip install -e .` 或设置 `PYTHONPATH` 为仓库根目录。
 
 ---
 

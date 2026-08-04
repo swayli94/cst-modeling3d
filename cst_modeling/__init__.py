@@ -24,7 +24,7 @@ Information of modeling
     In other words, the direction of curves is based on the left-hand rule.
 '''
 
-__version__ = "0.2.8"
+__version__ = "1.0.0"
 
 #* Public API (new lofting-based architecture).
 #* The classic-architecture `Surface`/`OpenSurface` remain importable via `cst_modeling.basic`.

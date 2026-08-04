@@ -37,7 +37,7 @@ and its ratio in the `V01`, `P01`, `P03` directions.
 .. code-block:: python
     :linenos:
     
-    xi, t1, t3, rv = intersect_vec_plane(V0, V1, P0, P1, P3)
+    xi, t1, t3, rv = intersect_vec_plane(v0, v1, p0, p1, p2)
 
 .. _intersection_vector_plane:
 .. figure:: ../../tutorial/figures/intersection_vector_plane.jpg

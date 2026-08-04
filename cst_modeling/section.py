@@ -8,7 +8,7 @@ from numpy.linalg import lstsq
 
 from scipy.special import factorial
 
-from .math import (rotate, transform, interp_from_curve, find_circle_3p,
+from .math import (rotate, transform_foil, interp_from_curve, find_circle_3p,
                     cst_foil, dist_clustcos, cst_curve)
 
 
@@ -27,12 +27,12 @@ class BasicSection():
     twist : float
         twist angle, by default 0.
         
-    lTwistAroundLE : bool
+    twist_around_LE : bool
         whether the twist center is LE, otherwise TE, by default True.
     
     Examples
     --------
-    >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
+    >>> sec = BasicSection(thick=None, chord=1.0, twist=0.0, twist_around_LE=True)
     
 
     Notes
@@ -42,7 +42,7 @@ class BasicSection():
     - +z:     span-wise (m)
     - chord:  chord length (m)
     - thick:  relative maximum thickness
-    - tail:   absolute tail thickness (m)
+    - tail:   tail thickness relative to the chord length (Section) or absolute value in m (RoundTipSection)
     - twist:  rotation angle about the z-axis, +z direction (deg)
     - rot_x:  rotation angle about the x-axis, +x direction (deg)
     - rot_y:  rotation angle about the y-axis, +y direction (deg)
@@ -67,7 +67,7 @@ class BasicSection():
     specified_thickness : float or None
         specified maximum relative thickness, by default None.
         
-    lTwistAroundLE : bool
+    twist_around_LE : bool
         whether the twist center is LE, otherwise TE.
         
     xx, yy, yu, yl : ndarray
@@ -81,7 +81,7 @@ class BasicSection():
         translation, scale, and rotation.
     '''
 
-    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True) -> None:
+    def __init__(self, thick=None, chord=1.0, twist=0.0, twist_around_LE=True) -> None:
         
         self.xLE = 0.0
         self.yLE = 0.0
@@ -97,7 +97,7 @@ class BasicSection():
         self.rot_x = 0.0
         self.rot_y = 0.0
         
-        self.lTwistAroundLE = lTwistAroundLE
+        self.twist_around_LE = twist_around_LE
 
         #* 2D unit curve
         self.xx : np.ndarray = None
@@ -151,28 +151,6 @@ class BasicSection():
         else:
             return 0
 
-    @property
-    def scale(self) -> float:
-        '''
-        Scale factor, e.g., chord length (m).
-        '''
-        return self.chord
-    
-    @scale.setter
-    def scale(self, value: float) -> None:
-        self.chord = value
-
-    @property
-    def rot_z(self) -> float:
-        '''
-        Rotation angle (degree) about z axis, i.e., the twist angle.
-        '''
-        return self.twist
-    
-    @rot_z.setter
-    def rot_z(self, value: float) -> None:
-        self.twist = value
-
     def get_profile(self) -> List[np.ndarray]:
         '''
         Get the 2D profile (unit curve) coordinates.
@@ -200,7 +178,7 @@ class BasicSection():
             
         return profile
 
-    def section(self, flip_x=False, projection=True, nn=None) -> None:
+    def geo(self, flip_x=False, projection=True, nn=None) -> None:
         '''
         Calculate the 3D curve coordinates from the known 2D curve.
 
@@ -214,11 +192,11 @@ class BasicSection():
         
         nn : int
             number of points in `xx`, `yy`, `yu`, and `yl`. 
-            It's here for the consistency with `Section.section` and `BasicSurface.update_sections`.
+            It's here for the consistency with `Section.geo` and `BasicSurface.update_sections`.
         
         Examples
         ------------
-        >>> sec.section(flip_x=False, projection=True)
+        >>> sec.geo(flip_x=False, projection=True)
 
         '''
         if not isinstance(self.xx, np.ndarray):
@@ -229,7 +207,7 @@ class BasicSection():
             self.xx = np.flip(self.xx)
         
         #* Twist center (rotation after translation and scale)
-        if self.lTwistAroundLE:
+        if self.twist_around_LE:
             xr = None
             yr = None
         else:
@@ -238,10 +216,10 @@ class BasicSection():
         #* Transform to 3D for open section
         if isinstance(self.yy, np.ndarray):
             
-            if not self.lTwistAroundLE:
+            if not self.twist_around_LE:
                 yr = self.yLE + self.yy[-1]*self.chord
             
-            self.x, _, self.y, _ = transform(self.xx, self.xx, self.yy, self.yy, 
+            self.x, _, self.y, _ = transform_foil(self.xx, self.xx, self.yy, self.yy, 
                 scale=self.chord, rot=self.twist, xr=xr, yr=yr,
                 dx=self.xLE, dy=self.yLE, projection=projection)
 
@@ -250,10 +228,10 @@ class BasicSection():
         #* Transform to 3D for closed section
         if isinstance(self.yu, np.ndarray):
             
-            if not self.lTwistAroundLE:
+            if not self.twist_around_LE:
                 yr = self.yLE + 0.5*(self.yu[-1]+self.yl[-1])*self.chord
             
-            xu_, xl_, yu_, yl_ = transform(self.xx, self.xx, self.yu, self.yl, 
+            xu_, xl_, yu_, yl_ = transform_foil(self.xx, self.xx, self.yu, self.yl, 
                 scale=self.chord, rot=self.twist, xr=xr, yr=yr,
                 dx=self.xLE, dy=self.yLE, projection=projection)
 
@@ -269,7 +247,7 @@ class BasicSection():
 #* Interpolation
 #* ===========================================
 
-def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
+def interpolate_basic_sections(sec0: BasicSection, sec1: BasicSection, ratio: float) -> BasicSection:
     '''
     Interpolate a basic section by ratio.
     
@@ -282,7 +260,7 @@ def interp_basic_sec(sec0: BasicSection, sec1: BasicSection, ratio: float) -> Ba
     
     Examples
     --------------
-    >>> sec = interp_basic_sec(sec0, sec1, ratio)
+    >>> sec = interpolate_basic_sections(sec0, sec1, ratio)
     '''
     
     sec = copy.deepcopy(sec0)
@@ -320,12 +298,13 @@ class Section(BasicSection):
     
     Examples
     --------
-    >>> sec = Section(thick=None, chord=1.0, twist=0.0, tail=0.0, lTwistAroundLE=True)
+    >>> sec = Section(thick=None, chord=1.0, twist=0.0, tail=0.0, twist_around_LE=True)
     
     Attributes
     ------------
     tail : float
-        tail thickness (m)
+        tail thickness relative to the chord length
+        (the `tail` argument of `read_setting` is absolute (m) and is divided by the chord)
     RLE : float
         relative leading edge radius
     te_angle : float
@@ -338,9 +317,9 @@ class Section(BasicSection):
         cst coefficients of the refinement curve on upper and lower surfaces
     
     '''
-    def __init__(self, thick=None, chord=1.0, twist=0.0, tail=0.0, lTwistAroundLE=True):
+    def __init__(self, thick=None, chord=1.0, twist=0.0, tail=0.0, twist_around_LE=True):
 
-        super().__init__(thick=thick, chord=chord, twist=twist, lTwistAroundLE=lTwistAroundLE)
+        super().__init__(thick=thick, chord=chord, twist=twist, twist_around_LE=twist_around_LE)
 
         self.tail = tail
         self.RLE = 0.0
@@ -356,7 +335,7 @@ class Section(BasicSection):
         self.refine_u = None
         self.refine_l = None
 
-    def section(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True) -> None:
+    def geo(self, cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True) -> None:
         '''
         Generating the section (3D) by `cst_foil`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
@@ -374,7 +353,7 @@ class Section(BasicSection):
         
         Examples
         ------------
-        >>> sec.section(cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True)
+        >>> sec.geo(cst_u=None, cst_l=None, nn=1001, flip_x=False, projection=True)
         '''
         #* Update CST parameters
         if isinstance(cst_u, np.ndarray) and isinstance(cst_l, np.ndarray):
@@ -406,7 +385,7 @@ class Section(BasicSection):
         self.yu, self.yl = foil_increment_curve(self.xx, self.yu, self.yl, yu_i=yu_i, yl_i=yl_i, t=self.specified_thickness)
 
         #* Transform to 3D
-        super().section(flip_x=flip_x, projection=projection)
+        super().geo(flip_x=flip_x, projection=projection)
 
 
 class OpenSection(BasicSection):
@@ -415,7 +394,7 @@ class OpenSection(BasicSection):
     
     Examples
     --------
-    >>> sec = OpenSection(thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True)
+    >>> sec = OpenSection(thick=None, chord=1.0, twist=0.0, twist_around_LE=True)
     
     Attributes
     ------------
@@ -424,9 +403,9 @@ class OpenSection(BasicSection):
     refine: {None, ndarray}
         cst coefficients of the refinement curve 
     '''
-    def __init__(self, thick=None, chord=1.0, twist=0.0, lTwistAroundLE=True):
+    def __init__(self, thick=None, chord=1.0, twist=0.0, twist_around_LE=True):
 
-        super().__init__(thick=thick, chord=chord, twist=twist, lTwistAroundLE=lTwistAroundLE)
+        super().__init__(thick=thick, chord=chord, twist=twist, twist_around_LE=twist_around_LE)
 
         #* 2D unit curve
         self.cst = np.zeros(1)
@@ -434,7 +413,7 @@ class OpenSection(BasicSection):
         #* Refine airfoil
         self.refine = None
 
-    def section(self, cst=None, nn=1001, flip_x=False, projection=True):
+    def geo(self, cst=None, nn=1001, flip_x=False, projection=True):
         '''
         Generating the section (3D) by `cst_curve`. 
         First construct the 2D unit curve, then transform it to the 3D curve.
@@ -452,7 +431,7 @@ class OpenSection(BasicSection):
         
         Examples
         ------------
-        >>> sec.section(cst=None, nn=1001, flip_x=False, projection=True)
+        >>> sec.geo(cst=None, nn=1001, flip_x=False, projection=True)
         '''
         #* Update CST parameters
         if isinstance(cst, np.ndarray):
@@ -473,7 +452,7 @@ class OpenSection(BasicSection):
             self.thick = self.specified_thickness
 
         #* Transform to 3D
-        super().section(flip_x=flip_x, projection=projection)
+        super().geo(flip_x=flip_x, projection=projection)
 
 
 class RoundTipSection(BasicSection):
@@ -506,15 +485,15 @@ class RoundTipSection(BasicSection):
         ratio of the leading  edge region
     base_te_ratio: float
         ratio of the trailing edge region
-    aLE: float
+    angle_LE: float
         angle (deg) of the slope at leading  edge (a>0 => dy/dx>0)
-    aTE: float
+    angle_TE: float
         angle (deg) of the slope at trailing edge (a<0 => dy/dx<0)
     i_split: {None, int}
         active when leading edge and trailing edge curves are intersected
     nn : int
         number of points in `xx`, `yy`, `yu`, and `yl`. 
-    lTwistAroundLE : bool
+    twist_around_LE : bool
         whether the twist center is LE, otherwise TE, by default True.
     
     '''
@@ -523,9 +502,9 @@ class RoundTipSection(BasicSection):
                 cst_u: np.ndarray, cst_l: np.ndarray,
                 base_le_ratio: float, base_te_ratio: float, base_abs_thick: float, 
                 base_le_radius: float, base_te_radius: float,
-                aLE=0.0, aTE=0.0, i_split=None, nn=501, lTwistAroundLE=False):
+                angle_LE=0.0, angle_TE=0.0, i_split=None, nn=501, twist_around_LE=False):
 
-        super().__init__(thick=thick, chord=chord, twist=twist, lTwistAroundLE=lTwistAroundLE)
+        super().__init__(thick=thick, chord=chord, twist=twist, twist_around_LE=twist_around_LE)
         
         self.xLE = xLE
         self.yLE = yLE
@@ -541,7 +520,7 @@ class RoundTipSection(BasicSection):
             
             x_, y_ = RoundTipSection.base_shape(x_ref, xLE, xLE+chord, base_le_ratio*chord, base_te_ratio*chord, 
                                                 base_le_radius, base_te_radius, base_abs_thick/2.0, i_split=i_split)
-            dy_    = RoundTipSection.base_camber(x_, a_LE=aLE, a_TE=aTE)
+            dy_    = RoundTipSection.base_camber(x_, a_LE=angle_LE, a_TE=angle_TE)
 
             # Scale to unit chord length
             self.xx = (x_ - xLE)/chord
@@ -550,7 +529,7 @@ class RoundTipSection(BasicSection):
         
         else:
             
-            dy_ = RoundTipSection.base_camber(xLE+x_ref*chord, a_LE=aLE, a_TE=aTE)
+            dy_ = RoundTipSection.base_camber(xLE+x_ref*chord, a_LE=angle_LE, a_TE=angle_TE)
             
             self.xx = x_ref
             self.base_yu = dy_/chord

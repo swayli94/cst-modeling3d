@@ -160,7 +160,7 @@ class BLWF():
         '''
         return read_tecplot(fname)
     
-    def define_fuselage(self, zone_id: list, n_slice: int, n_point=0, extrapolate2sym=True,
+    def define_fuselage(self, zone_id: list, n_slice: int, n_point=0, extrapolate_to_sym=True,
                         fname='surface-aircraft.dat', index_xyz=None, sym='XY'):
         '''
         Extract fuselage sections
@@ -239,7 +239,7 @@ class BLWF():
             curve = np.array([curves[ii] for ii in old_index])
             
             #* Extrapolate to symmetry plane (Z=0)
-            if extrapolate2sym:
+            if extrapolate_to_sym:
                 if abs(curve[0,2])>1e-3:
                     y_sym = curve[0,1] - (curve[0,1]-curve[1,1])/(curve[0,2]-curve[1,2])*curve[0,2]
                     curve = np.array([[curve[0,0], y_sym, 0.0]]+[curves[ii] for ii in old_index])
@@ -533,35 +533,35 @@ class BLWF():
         '''
         Define wing parameters with wing
         '''
-        self.XLEW = wing.secs[0].xLE
-        self.YLEW = wing.secs[0].yLE
+        self.XLEW = wing.sections[0].xLE
+        self.YLEW = wing.sections[0].yLE
         
-        self.FNS = wing.n_sec
+        self.FNS = wing.n_section
         
-        self.XLE    = [wing.secs[i].xLE - wing.secs[0].xLE for i in range(self.FNS)]
-        self.YLE    = [wing.secs[i].yLE - wing.secs[0].yLE for i in range(self.FNS)]
-        self.ZLE    = [wing.secs[i].zLE     for i in range(self.FNS)]
-        self.CHORD  = [wing.secs[i].chord   for i in range(self.FNS)]
+        self.XLE    = [wing.sections[i].xLE - wing.sections[0].xLE for i in range(self.FNS)]
+        self.YLE    = [wing.sections[i].yLE - wing.sections[0].yLE for i in range(self.FNS)]
+        self.ZLE    = [wing.sections[i].zLE     for i in range(self.FNS)]
+        self.CHORD  = [wing.sections[i].chord   for i in range(self.FNS)]
         
-        self.EPSIL  = [-wing.secs[i].twist  for i in range(self.FNS)]
+        self.EPSIL  = [-wing.sections[i].twist  for i in range(self.FNS)]
         
         self.THICK  = [1.0 for _ in range(self.FNS)]
         self.FSEC_W = [1.0 for _ in range(self.FNS)]
         self.YSYM   = [0.0 for _ in range(self.FNS)]
-        self.NU     = [wing.secs[i].xx.shape[0] for i in range(self.FNS)]
-        self.NL     = [wing.secs[i].xx.shape[0] for i in range(self.FNS)]
+        self.NU     = [wing.sections[i].xx.shape[0] for i in range(self.FNS)]
+        self.NL     = [wing.sections[i].xx.shape[0] for i in range(self.FNS)]
         
-        self.XSING  = [0.5*wing.secs[i].RLE for i in range(self.FNS)]
+        self.XSING  = [0.5*wing.sections[i].RLE for i in range(self.FNS)]
         self.YSING  = [0.0 for _ in range(self.FNS)]
         
-        self.TRAIL  = [wing.secs[i].te_angle for i in range(self.FNS)]
-        self.SLOPT  = [wing.secs[i].te_slope for i in range(self.FNS)]
+        self.TRAIL  = [wing.sections[i].te_angle for i in range(self.FNS)]
+        self.SLOPT  = [wing.sections[i].te_slope for i in range(self.FNS)]
         
         for i in range(self.FNS):
-            self.XU.append(wing.secs[i].xx.tolist())
-            self.YU.append(wing.secs[i].yu.tolist())
-            self.XL.append(wing.secs[i].xx.tolist())
-            self.YL.append(wing.secs[i].yl.tolist())
+            self.XU.append(wing.sections[i].xx.tolist())
+            self.YU.append(wing.sections[i].yu.tolist())
+            self.XL.append(wing.sections[i].xx.tolist())
+            self.YL.append(wing.sections[i].yl.tolist())
     
     def update_input_wing(self, fname='blwf.in'):
         '''

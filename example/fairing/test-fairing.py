@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, projection=False)
+    fairing = BasicSurface(n_section=8, name='Fairing', nn=51, ns=101, projection=False)
     fairing.read_setting('Fairing.txt')
 
 
@@ -26,9 +26,9 @@ if __name__ == "__main__":
     X_end = np.array(X_end)
     Y_end = np.array(Y_end)
 
-    for i in range(fairing.n_sec):
-        fairing.secs[i].xx = X_end.copy()
-        fairing.secs[i].yy = Y_end.copy()
+    for i in range(fairing.n_section):
+        fairing.sections[i].xx = X_end.copy()
+        fairing.sections[i].yy = Y_end.copy()
 
 
     #* Control section curve
@@ -48,10 +48,10 @@ if __name__ == "__main__":
         plt.legend(['baseline curve', 'control points', 'incremental curve', 'final curve'])
         plt.show()
 
-    fairing.secs[2].yy += y_increment
-    fairing.secs[3].yy += y_increment
-    fairing.secs[4].yy += y_increment*1.2
-    fairing.secs[5].yy += y_increment*1.2
+    fairing.sections[2].yy += y_increment
+    fairing.sections[3].yy += y_increment
+    fairing.sections[4].yy += y_increment*1.2
+    fairing.sections[5].yy += y_increment*1.2
 
 
     #* Build geometry

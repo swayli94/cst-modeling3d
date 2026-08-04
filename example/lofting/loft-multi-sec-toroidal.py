@@ -75,5 +75,5 @@ if __name__ == "__main__":
 
     for i_surf in range(loft.n_profile-1):
         
-        output_surface(loft.surfs[i_surf], fname_save2, ID=i_surf)
+        output_surface(loft.surfaces[i_surf], fname_save2, zone_id=i_surf)
 

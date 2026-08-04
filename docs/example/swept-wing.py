@@ -12,7 +12,7 @@ def airfoil3d():
     from cst_modeling.io import plot3d_to_igs
     from cst_modeling.basic import Surface
     
-    wing = Surface(n_sec=0, name='airfoil3d', nn=501, ns=11, projection=True)
+    wing = Surface(n_section=0, name='airfoil3d', nn=501, ns=11, projection=True)
     wing.read_setting('./files/swept-wing.txt', tail=0.01)
     wing.geo()
     
@@ -34,11 +34,11 @@ def transonic_wing():
     from cst_modeling.basic import Surface
     
     #* Define a [Surface] object, which is called 'transonic-wing'
-    #  It has n_sec control sections.
+    #  It has n_section control sections.
     #  Each section's upper/lower surface are constructed by CST method.
     #  The chord-wise has nn points in the upper/lower surface.
     #  The span-wise has ns points in each surface between two adjacent sections.
-    wing = Surface(n_sec=6, name='transonic-wing', nn=101, ns=52)
+    wing = Surface(n_section=6, name='transonic-wing', nn=101, ns=52)
 
     #* Read settings from file
     #  The settings of `wing` object is under its name 'transonic-wing'
@@ -47,7 +47,7 @@ def transonic_wing():
     wing.read_setting('./files/swept-wing.txt', tail=0.01)
 
     #* Add an auxiliary section
-    wing.add_sec([5.0], axis='Z')
+    wing.add_section([5.0], axis='Z')
 
     #* Constructs the surfaces between sections
     wing.geo()
@@ -59,8 +59,8 @@ def transonic_wing():
     wing.output_plot3d(fname=file_dump+'transonic_wing.xyz', split=True)
 
     #* Output control sections
-    #  3D curves by default, 2D curves when `TwoD=True`.
-    wing.output_section(fname=file_dump+'transonic_wing-sections.dat', TwoD=False)
+    #  3D curves by default, 2D curves when `is_2d=True`.
+    wing.output_section(fname=file_dump+'transonic_wing-sections.dat', is_2d=False)
 
     #* Plot figure
     ax = wing.plot(type='surface', show=False)
@@ -75,7 +75,7 @@ def transonic_wing_winglet():
     '''
     from cst_modeling.basic import Surface
     
-    wing = Surface(n_sec=6, name='transonic-wing', nn=101, ns=52)
+    wing = Surface(n_section=6, name='transonic-wing', nn=101, ns=52)
     
     wing.read_setting('./files/swept-wing.txt', tail=[0.05, 0.05, 0.05, 0.05, 0.05, 0.01])
 

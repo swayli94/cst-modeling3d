@@ -293,14 +293,14 @@ def fitting_curve():
     '''
     Fitting a curve with CST
     '''
-    from cst_modeling.basic import transform
+    from cst_modeling.basic import transform_foil
     from cst_modeling.section import cst_curve, fit_curve_with_twist, fit_curve_partial
     
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
     
     x, y = cst_curve(1001, cst_u)
     
-    x_new, _, y_new, _ = transform(x, x, y, y, scale=1.5, rot=20, dx=-0.5, dy=0.2)
+    x_new, _, y_new, _ = transform_foil(x, x, y, y, scale=1.5, rot=20, dx=-0.5, dy=0.2)
 
     coef, chord, twist, _ = fit_curve_with_twist(x_new, y_new, n_cst=10, xn1=0.3, xn2=1.0)
     

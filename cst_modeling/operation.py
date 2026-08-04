@@ -95,22 +95,6 @@ class GuideCurve():
         self.global_guide_curve['z'] = copy.deepcopy(self.global_guide_curve['s'])
 
 
-    def __call__(self, key: str) -> np.ndarray:
-        '''
-        Dict-style access to the guide curve, i.e., `guide(key)` returns `guide.global_guide_curve[key]`.
-        
-        Parameters
-        ----------
-        key : str
-            The key of the guide curve, e.g., 's', 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z'.
-        
-        Returns
-        -------
-        np.ndarray [n_total]
-            The values of the guide curve for the given key.
-        '''
-        return self.global_guide_curve[key]
-
     def get_local_parametric_coordinate(self, i_sec0: int) -> Tuple[np.ndarray, int, int]:
         '''
         Get the local parametric coordinates of the guide curve.
@@ -577,7 +561,7 @@ class GuideCurve():
                 f.write('\n')
 
         
-class Lofting_2Profile():
+class Lofting2Profile():
     '''
     Create a surface by sweeping and blending two 2D profiles (unit curves),
     using a guide curve that runs through the leading/trailing edge point of each profile. 
@@ -606,7 +590,7 @@ class Lofting_2Profile():
     parametric_coord : np.ndarray [n_spanwise]
         The parametric coordinates of the guide curve, range in [0, 1].
     
-    guide_curve : Dict[str, np.ndarray] [n_spanwise]
+    guide_curve_data : Dict[str, np.ndarray] [n_spanwise]
         The guide curve to sweep the profiles.
         
         - 's' : The parametric coordinates of the guide curve, range in [0, 1].
@@ -649,7 +633,7 @@ class Lofting_2Profile():
         '''
         Initialize the 3D guide curve, a straight line segment by default.
         '''
-        self.guide_curve = {
+        self.guide_curve_data = {
             's':        np.linspace(0.0, 1.0, self.n_spanwise, endpoint=True),
             'x':        np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
             'y':        np.linspace(0.0, 0.0, self.n_spanwise, endpoint=True),
@@ -663,7 +647,7 @@ class Lofting_2Profile():
 
         if not self.is_guide_curve_at_LE:
             
-            self.guide_curve['x'] = self.guide_curve['x'] + self.guide_curve['scale']
+            self.guide_curve_data['x'] = self.guide_curve_data['x'] + self.guide_curve_data['scale']
         
     def update_guide_curve(self, **kwargs) -> None:
         '''
@@ -676,8 +660,8 @@ class Lofting_2Profile():
             Including 'x', 'y', 'z', 'scale', 'rot_x', 'rot_y', 'rot_z', 'rot_axis'.
         '''
         for key, value in kwargs.items():
-            if key in self.guide_curve:
-                self.guide_curve[key] = value
+            if key in self.guide_curve_data:
+                self.guide_curve_data[key] = value
 
     def sweep(self, spanwise_profiles=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
@@ -702,7 +686,7 @@ class Lofting_2Profile():
         #* Interpolate the two profiles and transform the 2D curve to a 3D curve.
         for i in range(self.n_spanwise):
             
-            ratio = self.guide_curve['s'][i]
+            ratio = self.guide_curve_data['s'][i]
             
             if spanwise_profiles is None:
             
@@ -714,9 +698,9 @@ class Lofting_2Profile():
                 xx = spanwise_profiles[i][0]
                 yy = spanwise_profiles[i][1]
             
-            gx = self.guide_curve['x'][i]
-            gy = self.guide_curve['y'][i]
-            gz = self.guide_curve['z'][i]           
+            gx = self.guide_curve_data['x'][i]
+            gy = self.guide_curve_data['y'][i]
+            gz = self.guide_curve_data['z'][i]           
 
             if self.is_guide_curve_at_LE:
                 
@@ -726,15 +710,15 @@ class Lofting_2Profile():
 
             else:
                 
-                dx = gx - self.guide_curve['scale'][i]
+                dx = gx - self.guide_curve_data['scale'][i]
                 x0 = dx
                 xr = gx
 
             surf_x[i], surf_y[i], surf_z[i] = transform_curve(xx, yy, 
                     dx=dx, dy=gy, dz=gz,
-                    scale=self.guide_curve['scale'][i], x0=x0, y0=gy,
-                    rot_x=self.guide_curve['rot_x'][i], rot_y=self.guide_curve['rot_y'][i], 
-                    rot_z=self.guide_curve['rot_z'][i], rot_axis=self.guide_curve['rot_axis'][i],
+                    scale=self.guide_curve_data['scale'][i], x0=x0, y0=gy,
+                    rot_x=self.guide_curve_data['rot_x'][i], rot_y=self.guide_curve_data['rot_y'][i], 
+                    rot_z=self.guide_curve_data['rot_z'][i], rot_axis=self.guide_curve_data['rot_axis'][i],
                     xr=xr, yr=gy, zr=gz)
                     
         return surf_x, surf_y, surf_z
@@ -775,7 +759,7 @@ class Lofting():
     n_total : int
         The total number of points for the guide curve.
     
-    surfs : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
+    surfaces : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
         The 3D coordinates of the surfaces.
     '''
     def __init__(self, profiles: List[List[np.ndarray]], global_guide_curve: GuideCurve, 
@@ -791,7 +775,7 @@ class Lofting():
         
         self.is_guide_curve_at_LE = is_guide_curve_at_LE
         
-        self.surfs : List[List[np.ndarray]] = []
+        self.surfaces : List[List[np.ndarray]] = []
         
         if len(profiles) != self.n_profile:
             raise ValueError('The number of profiles must be consistent with the guide curve number of section.')
@@ -842,7 +826,7 @@ class Lofting():
         
         Returns
         -------
-        surfs : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
+        surfaces : List[List[np.ndarray]] [n_profile-1][3][n_spanwise, n_point]
             The 3D coordinates of the surfaces.
         '''
         if interp_profile_kind is not None:
@@ -853,7 +837,7 @@ class Lofting():
             profile_0 = self.profiles[i_prf]
             profile_1 = self.profiles[i_prf+1]
             
-            loft = Lofting_2Profile(profile_0, profile_1, n_spanwise=self.n_spanwise, is_guide_curve_at_LE=self.is_guide_curve_at_LE)
+            loft = Lofting2Profile(profile_0, profile_1, n_spanwise=self.n_spanwise, is_guide_curve_at_LE=self.is_guide_curve_at_LE)
             
             guide_curve = self.guide_curve.get_local_guide_curve(i_prf)
             
@@ -872,12 +856,12 @@ class Lofting():
                     
             surf_x, surf_y, surf_z = loft.sweep(spanwise_profiles_2)
             
-            self.surfs.append([surf_x, surf_y, surf_z])
+            self.surfaces.append([surf_x, surf_y, surf_z])
             
-        return self.surfs
+        return self.surfaces
 
 
-class Lofting_Revolution():
+class LoftingRevolution():
     '''
     Create a surface of revolution by sweeping and blending multiple 2D profiles (unit curve),
     using a guide curve that runs through the reference point of each profile. 
@@ -921,7 +905,7 @@ class Lofting_Revolution():
     guide_curve : GuideCurve
         The global guide curve to sweep the profiles.
 
-    surfs : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
+    surfaces : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
         The 3D coordinates of the surfaces.
 
     '''
@@ -940,6 +924,8 @@ class Lofting_Revolution():
         self.profiles = profiles
         self.n_spanwise = n_spanwise
         self.n_profile = len(profiles)
+        #* Note: the revolution wraps around, so the last section coincides with the
+        #* first profile, i.e., `n_section` = `n_profile` + 1 (unlike `GuideCurve.n_section`).
         self.n_section = self.n_profile + 1
                 
         self.n_point = profiles[0][0].shape[0]
@@ -949,7 +935,7 @@ class Lofting_Revolution():
         self.section_x = section_x
         self.section_scale = section_scale
         
-        self.surfs : List[List[np.ndarray]] = []
+        self.surfaces : List[List[np.ndarray]] = []
         
         if len(section_s_loc) != self.n_profile:
             raise ValueError('The number of profiles must be consistent with the number of section locations.')
@@ -1079,12 +1065,12 @@ class Lofting_Revolution():
         
         Returns
         -------
-        surfs : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
+        surfaces : List[List[np.ndarray]] [n_profile][3][n_spanwise, n_point]
             The 3D coordinates of the surfaces.
         '''
         spanwise_profiles = self.create_circumferential_profiles(kind=interp_profile_kind)
         
-        self.surfs = []
+        self.surfaces = []
         
         for i_surf in range(self.n_profile):
             
@@ -1103,17 +1089,17 @@ class Lofting_Revolution():
                 profile_x = spanwise_profiles[i_total][0]
                 profile_y = spanwise_profiles[i_total][1]
             
-                x0 = self.guide_curve('x')[i_total]
-                y0 = self.guide_curve('y')[i_total]
-                z0 = self.guide_curve('z')[i_total]
+                x0 = self.guide_curve.global_guide_curve['x'][i_total]
+                y0 = self.guide_curve.global_guide_curve['y'][i_total]
+                z0 = self.guide_curve.global_guide_curve['z'][i_total]
             
                 surf_x[i_local], surf_y[i_local], surf_z[i_local] = transform_curve(
                         profile_x, profile_y, 
                         dx=x0, dy=y0, dz=z0,
-                        scale=self.guide_curve('scale')[i_total], 
-                        rot_x=self.guide_curve('rot_x')[i_total])
+                        scale=self.guide_curve.global_guide_curve['scale'][i_total], 
+                        rot_x=self.guide_curve.global_guide_curve['rot_x'][i_total])
                     
-            self.surfs.append([surf_x, surf_y, surf_z])
+            self.surfaces.append([surf_x, surf_y, surf_z])
             
-        return self.surfs
+        return self.surfaces
 

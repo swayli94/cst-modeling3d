@@ -851,14 +851,14 @@ class FoilModification():
 
         return cst_u, cst_l, tmax, rLE
         
-    def set_leading_edge_radius(self, rLE_new: float, width_bump=0.8
+    def set_leading_edge_radius(self, r_LE_new: float, width_bump=0.8
                 ) -> Tuple[np.ndarray, np.ndarray, float, float]:
         '''
         Change airfoil leading edge radius to a new value (the maximum thickness is kept).
         
         Parameters
         ----------
-        rLE_new : float
+        r_LE_new : float
             New leading edge radius
             
         width_bump : float
@@ -880,15 +880,15 @@ class FoilModification():
         
         n_try = 0
         
-        if abs(rLE-rLE_new) <= 1E-4:
+        if abs(rLE-r_LE_new) <= 1E-4:
             
             cst_u, cst_l = self.get_cst_coefficients()
             tmax = np.max(self.yu - self.yl)
         
-        while abs(rLE-rLE_new) > 1E-4 and n_try < self.MAX_TRY:
+        while abs(rLE-r_LE_new) > 1E-4 and n_try < self.MAX_TRY:
         
             cst_u, cst_l, tmax, rLE = self.add_bump_to_thickness(
-                geo.X_RLE, 2.0*(rLE_new-rLE), width_bump, kind='H', keep_tmax=True)
+                geo.X_RLE, 2.0*(r_LE_new-rLE), width_bump, kind='H', keep_tmax=True)
 
             n_try += 1
             

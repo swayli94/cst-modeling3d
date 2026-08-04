@@ -16,10 +16,10 @@ if __name__ == "__main__":
     # Step 1: 确定鼓包的总体参数 in Fairing.txt
     #   1. 鼓包是由若干 垂直于流向的截面曲线 拉伸生成的
     #   2. 总体参数：   各个截面的流向位置（控制文件每一行中的第三个参数）
-    #!  需要定义的量：n_sec, Fairing.txt 每一行中的第三个参数, nn (等于tube-curve.dat中的点数)
+    #!  需要定义的量：n_section, Fairing.txt 每一行中的第三个参数, nn (等于tube-curve.dat中的点数)
     #*==============================================
 
-    fairing = BasicSurface(n_sec=8, name='Fairing', nn=51, ns=101, projection=False)
+    fairing = BasicSurface(n_section=8, name='Fairing', nn=51, ns=101, projection=False)
     fairing.read_setting('Fairing.txt')
 
     #*==============================================
@@ -46,9 +46,9 @@ if __name__ == "__main__":
     X_end = np.array(X_end)
     Y_end = np.array(Y_end)
 
-    for i in range(fairing.n_sec):
-        fairing.secs[i].xx = X_end.copy()
-        fairing.secs[i].yy = Y_end.copy()
+    for i in range(fairing.n_section):
+        fairing.sections[i].xx = X_end.copy()
+        fairing.sections[i].yy = Y_end.copy()
 
     #*==============================================
     # Step 3: 定义鼓包控制截面的几何叠加量
@@ -82,10 +82,10 @@ if __name__ == "__main__":
         plt.show()
 
     # 将几何增量 y_increment 叠加到原始曲线上
-    fairing.secs[2].yy += y_increment
-    fairing.secs[3].yy += y_increment
-    fairing.secs[4].yy += y_increment*1.2
-    fairing.secs[5].yy += y_increment*1.2
+    fairing.sections[2].yy += y_increment
+    fairing.sections[3].yy += y_increment
+    fairing.sections[4].yy += y_increment*1.2
+    fairing.sections[5].yy += y_increment*1.2
 
     #*==============================================
     # Step 4: 生成三维曲面，光滑曲面，输出

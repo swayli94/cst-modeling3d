@@ -41,7 +41,7 @@ But of course, you can just define them in your own python script.
 
     from cst_modeling.basic import BasicSurface
 
-    surface = BasicSurface(n_sec=2, name='basic-surface', nn=1001, ns=101, projection=True)
+    surface = BasicSurface(n_section=2, name='basic-surface', nn=1001, ns=101, projection=True)
     surface.read_setting('Settings.txt')
     surface.geo()
     surface.output_tecplot(fname='basic-surface.dat', one_piece=False)
@@ -73,7 +73,7 @@ layout parameters and **CST coefficients**.
 
     from cst_modeling.basic import OpenSurface
 
-    surface = OpenSurface(n_sec=2, name='open-surface', nn=1001, ns=101, projection=True)
+    surface = OpenSurface(n_section=2, name='open-surface', nn=1001, ns=101, projection=True)
     surface.read_setting('Settings.txt')
     surface.geo()
     surface.output_tecplot(fname='open-surface.dat', one_piece=False)
@@ -127,7 +127,7 @@ It is a 3D surface of a 2D airfoil, which can be used for meshing in ICEM CFD.
     from cst_modeling.basic import Surface
     from cst_modeling.io import plot3d_to_igs
 
-    wing = Surface(n_sec=0, name='Airfoil3D', nn=1001, ns=101, projection=True)
+    wing = Surface(n_section=0, name='Airfoil3D', nn=1001, ns=101, projection=True)
     wing.read_setting('Settings.txt', tail=0.1)
     wing.geo()
     wing.output_plot3d(fname='Airfoil3D-basic.xyz', split=True)
@@ -188,7 +188,7 @@ The following functions are essential to construct surfaces.
   
   output surface in Plot3D format.
 
-- **output_section(fname, TwoD=True)**: 
+- **output_section(fname, is_2d=True)**: 
   
   output control sections (3D curves or 2D curves).
 
@@ -198,15 +198,15 @@ The following functions are essential to construct surfaces.
 
 There are some useful built-in functions users should be aware of.
 
-- **add_sec(location, axis='Z')**:
+- **add_section(location, axis='Z')**:
 
   add sections to the surface. This can be helpful for meshing.
   
   The new sections are interpolated from the existed ones.
 
-- **translate(dX=0.0, dY=0.0, dZ=0.0)**:
+- **translate(dx=0.0, dy=0.0, dz=0.0)**:
   
-  translate the surfaces by `[dX, dY, dZ]`.
+  translate the surfaces by `[dx, dy, dz]`.
 
 - **scale(scale=1.0, X0=0.0, Y0=0.0, Z0=0.0)**:
 
@@ -218,7 +218,7 @@ There are some useful built-in functions users should be aware of.
 
   The index of splitting points in the 3D control curves are `ips`.
 
-  Length of `surfs` is multiplied by len(ips)+1.
+  Length of `surfaces` is multiplied by len(ips)+1.
 
 - **smooth(i_sec0, i_sec1, smooth0=False, smooth1=False, dyn0=None, ratio_end=10)**:
 

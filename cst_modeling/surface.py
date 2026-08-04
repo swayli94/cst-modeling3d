@@ -11,7 +11,7 @@ from .section import BasicSection
 from .section import Section, OpenSection
 from .operation import Lofting, GuideCurve
 from .io import output_plot3d
-from .basic import _read_surface_setting_blocks, _apply_surface_layout
+from .io import read_surface_setting_blocks, apply_surface_layout
 
 
 class BasicSurface():
@@ -78,7 +78,7 @@ class BasicSurface():
     center : ndarray
         surface center for plotting.
     '''
-    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
@@ -94,10 +94,11 @@ class BasicSurface():
         
         #* Attributes
         
-        self.sections = [ BasicSection() for _ in range(max(1, n_sec)) ]
+        self.sections = [ BasicSection() for _ in range(max(1, n_section)) ]
         self.surfaces : List[List[np.ndarray]] = []
         
         self.lofting : Lofting = None
+        self.section_s_loc : List[float] = None
         
         #* Parameters for plot
         self.half_size = 0.5
@@ -150,10 +151,10 @@ class BasicSurface():
         if not os.path.exists(fname):
             raise Exception(fname+' does not exist for surface setting')
         
-        blocks = _read_surface_setting_blocks(fname, self.name, self.n_section, {'Layout:': 1}, 1)
+        blocks = read_surface_setting_blocks(fname, self.name, self.n_section, {'Layout:': 1}, 1)
         
         if 'Layout:' in blocks:
-            _apply_surface_layout(self.sections, blocks['Layout:'], self.is_2d)
+            apply_surface_layout(self.sections, blocks['Layout:'], self.is_2d)
         
         self.update_layout_center()
 
@@ -322,7 +323,7 @@ class BasicSurface():
             
         return profiles
 
-    def update_section(self) -> None:
+    def update_sections(self) -> None:
         '''
         Update all sections' profile curves.
         '''
@@ -346,11 +347,11 @@ class BasicSurface():
             
         Notes
         -------
-        In the `BasicSurface` class, the `update_section` method is not implemented.
+        In the `BasicSurface` class, the `update_sections` method is not implemented.
         Therefore, the profile curves are not generated.
         '''
         if update_section_profile:
-            self.update_section()
+            self.update_sections()
         
         if guide is None:
             guide = self.get_default_guide_curve(smooth_keys=smooth_keys)
@@ -482,18 +483,18 @@ class BasicSurface():
                 self.surfaces[i_sec][1] = -self.surfaces[i_sec][1]
             self.center[1] = - self.center[1]
 
-    def translate(self, dX=0.0, dY=0.0, dZ=0.0) -> None:
+    def translate(self, dx=0.0, dy=0.0, dz=0.0) -> None:
         '''
         Translate surface coordinates
         '''
         for surf in self.surfaces:
-            surf[0] += dX
-            surf[1] += dY
-            surf[2] += dZ
+            surf[0] += dx
+            surf[1] += dy
+            surf[2] += dz
 
-        self.center[0] += dX
-        self.center[1] += dY
-        self.center[2] += dZ
+        self.center[0] += dx
+        self.center[1] += dy
+        self.center[2] += dz
 
     def split(self, index_splitting_point: List[int]) -> None:
         '''
@@ -545,7 +546,7 @@ class BasicSurface():
         if fname is None:
             fname = self.name + '.dat'
 
-        n_sec   = 1 if self.is_2d else self.n_section-1
+        n_section   = 1 if self.is_2d else self.n_section-1
         n_piece = len(self.surfaces)
         
         if not append or not os.path.exists(fname):
@@ -573,7 +574,7 @@ class BasicSurface():
                             
             else:
                 
-                n_point = n_sec*(self.ns-1) + 1
+                n_point = n_section*(self.ns-1) + 1
                 nt = self.surfaces[0][0].shape[1]
                 
                 f.write('zone T="sec" i= %d j= %d \n'%(nt, n_point))
@@ -650,7 +651,7 @@ class BasicSurface():
         Parameters
         ------------
         fig_id : int
-            ID of the figure
+            zone_id of the figure
         type : str
             'wireframe', or 'surface'
         show : bool
@@ -693,10 +694,10 @@ class BasicSurface():
         surf_x, surf_y, surf_z : np.ndarray
             3D surface coordinates.
         '''
-        n_sec   = 1 if self.is_2d else self.n_section-1
+        n_section   = 1 if self.is_2d else self.n_section-1
         n_piece = len(self.surfaces)
         
-        ns_total = n_sec*(self.ns-1) + 1
+        ns_total = n_section*(self.ns-1) + 1
         nt = self.surfaces[0][0].shape[1]
         
         surf_x = np.zeros((ns_total, nt))
@@ -723,11 +724,11 @@ class BasicSurface():
         return surf_x, surf_y, surf_z
 
     #* Obsolete functions
-    def add_sec(self, *args, **kwargs) -> None:
+    def add_section(self, *args, **kwargs) -> None:
         '''
         Obsolete function.
         '''
-        raise NotImplementedError('The `add_sec` method is not implemented.')
+        raise NotImplementedError('The `add_section` method is not implemented.')
     
     def smooth(self, *args, **kwargs) -> None:
         '''
@@ -750,17 +751,17 @@ class OpenSurface(BasicSurface):
     '''
     Open surface defined by multiple OpenSection objects.
     '''
-    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
         
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, 
+        super().__init__(n_section=n_section, name=name, nn=nn, ns=ns, 
                             smooth_surface=smooth_surface, smooth_sections=smooth_sections,
                             rotate_x_section=rotate_x_section, rotation_sections=rotation_sections,
                             is_guide_curve_at_LE=is_guide_curve_at_LE)
 
-        self.sections = [ OpenSection() for _ in range(max(1, n_sec)) ]
+        self.sections = [ OpenSection() for _ in range(max(1, n_section)) ]
 
     def read_setting(self, fname) -> None:
         '''
@@ -777,10 +778,10 @@ class OpenSurface(BasicSurface):
         
         key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3}
 
-        blocks = _read_surface_setting_blocks(fname, self.name, self.n_section, key_dict, 1)
+        blocks = read_surface_setting_blocks(fname, self.name, self.n_section, key_dict, 1)
         
         if 'Layout:' in blocks:
-            _apply_surface_layout(self.sections, blocks['Layout:'], self.is_2d)
+            apply_surface_layout(self.sections, blocks['Layout:'], self.is_2d)
         
         if 'CST_coefs:' in blocks:
             for i in range(self.n_section):
@@ -810,29 +811,29 @@ class OpenSurface(BasicSurface):
 
         self.update_layout_center()
 
-    def update_section(self) -> None:
+    def update_sections(self) -> None:
         '''
         Update all sections' profile curves.
         '''
         for i in range(self.n_section):
-            self.sections[i].section(nn=self.nn, projection=False)
+            self.sections[i].geo(nn=self.nn, projection=False)
 
 
 class Surface(BasicSurface):
     '''
     Surface defined by multiple Section objects, i.e., foils
     '''
-    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101, 
+    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101, 
                     smooth_surface=False, smooth_sections : List[Tuple[int, int]] = None,
                     rotate_x_section=False, rotation_sections : List[Tuple[int, int]] = None,
                     is_guide_curve_at_LE=True):
         
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, 
+        super().__init__(n_section=n_section, name=name, nn=nn, ns=ns, 
                             smooth_surface=smooth_surface, smooth_sections=smooth_sections,
                             rotate_x_section=rotate_x_section, rotation_sections=rotation_sections,
                             is_guide_curve_at_LE=is_guide_curve_at_LE)
         
-        self.sections = [ Section() for _ in range(max(1, n_sec)) ]
+        self.sections = [ Section() for _ in range(max(1, n_section)) ]
 
     def read_setting(self, fname, tail=0.0) -> None:
         '''
@@ -850,7 +851,7 @@ class Surface(BasicSurface):
         
         key_dict = {'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}
 
-        blocks = _read_surface_setting_blocks(fname, self.name, self.n_section, key_dict, 2)
+        blocks = read_surface_setting_blocks(fname, self.name, self.n_section, key_dict, 2)
         
         if 'Layout:' in blocks:
             for i, line in enumerate(blocks['Layout:']):
@@ -912,12 +913,12 @@ class Surface(BasicSurface):
         # Locate layout center for plot
         self.update_layout_center()
 
-    def update_section(self) -> None:
+    def update_sections(self) -> None:
         '''
         Update all sections' profile curves.
         '''
         for i in range(self.n_section):
-            self.sections[i].section(nn=self.nn, projection=False)
+            self.sections[i].geo(nn=self.nn, projection=False)
 
     def output_tecplot(self, fname=None, one_piece=False, split=False, append=False) -> None:
         '''
@@ -944,7 +945,7 @@ class Surface(BasicSurface):
         if fname is None:
             fname = self.name + '.dat'
 
-        n_sec   = 1 if self.is_2d else self.n_section-1
+        n_section   = 1 if self.is_2d else self.n_section-1
         n_piece = len(self.surfaces)
         
         if not append or not os.path.exists(fname):
@@ -977,7 +978,7 @@ class Surface(BasicSurface):
 
             else:
                 
-                n_point = n_sec*(self.ns-1) + 1
+                n_point = n_section*(self.ns-1) + 1
                 ns = self.ns
                 nt = int((self.surfaces[0][0].shape[1]+1)/2)
                 

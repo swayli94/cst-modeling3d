@@ -45,13 +45,13 @@ import numpy as np
 from ..section import cst_foil_fit
 
 
-def naca_to_cst(NACA_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarray]:
+def naca_to_cst(naca_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarray]:
     '''
     Get CST parameters of a NACA series airfoil.
     
     Parameters
     ----------
-    NACA_series : str
+    naca_series : str
         4 or 5 digit NACA number string
     n_cst : int
         number of CST coefficients
@@ -65,10 +65,10 @@ def naca_to_cst(NACA_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarra
     
     Examples
     ----------
-    >>> cst_u, cst_l = naca_to_cst(NACA_series, n_cst, nn)
+    >>> cst_u, cst_l = naca_to_cst(naca_series, n_cst, nn)
 
     '''
-    xx, yy = naca(NACA_series, nn-1, finite_TE=False, half_cosine_spacing=True)
+    xx, yy = naca(naca_series, nn-1, finite_te=False, half_cosine_spacing=True)
 
     xu = np.zeros(nn)
     xl = np.zeros(nn)
@@ -92,13 +92,13 @@ def naca_to_cst(NACA_series: str, n_cst=7, nn=51) -> Tuple[np.ndarray, np.ndarra
 
     return cst_u, cst_l
 
-def linspace(start,stop,np):
+def _linspace(start, stop, n_point):
     """
     Emulate Matlab linspace
     """
-    return [start+(stop-start)*i/(np-1) for i in range(np)]
+    return [start+(stop-start)*i/(n_point-1) for i in range(n_point)]
 
-def interpolate(xa,ya,queryPoints):
+def _interpolate(xa, ya, query_points):
     """
     A cubic spline interpolation on a given set of points (x,y)
     Recalculates everything on every call which is far from efficient but does the job for now
@@ -145,7 +145,7 @@ def interpolate(xa,ya,queryPoints):
     results = [0]*n
 
     #loop over all query points
-    for i in range(len(queryPoints)):
+    for i in range(len(query_points)):
         # bisection. This is optimal if sequential calls to this
         # routine are at random values of x. If sequential calls
         # are in order, and closely spaced, one would do better
@@ -156,21 +156,21 @@ def interpolate(xa,ya,queryPoints):
 
         while (khi - klo > 1):
             k = (khi + klo) >> 1
-            if (xa[k] > queryPoints[i]):
+            if (xa[k] > query_points[i]):
                 khi = k
             else:
                 klo = k
 
         h = xa[khi] - xa[klo]
-        a = (xa[khi] - queryPoints[i]) / h
-        b = (queryPoints[i] - xa[klo]) / h
+        a = (xa[khi] - query_points[i]) / h
+        b = (query_points[i] - xa[klo]) / h
 
         # Cubic spline polynomial is now evaluated.
         results[i] = a * ya[klo] + b * ya[khi] + ((a * a * a - a) * y2[klo] + (b * b * b - b) * y2[khi]) * (h * h) / 6.0
 
     return results
 
-def naca4(number, n, finite_TE = False, half_cosine_spacing = False):
+def naca4(number, n, finite_te = False, half_cosine_spacing = False):
     """
     Returns 2*n+1 points in [0 1] for the given 4 digit NACA number string
     """
@@ -184,16 +184,16 @@ def naca4(number, n, finite_TE = False, half_cosine_spacing = False):
     a2 = -0.3516
     a3 = +0.2843
 
-    if finite_TE:
+    if finite_te:
         a4 = -0.1015 # For finite thick TE
     else:
         a4 = -0.1036 # For zero thick TE
 
     if half_cosine_spacing:
-        beta = linspace(0.0,pi,n+1)
+        beta = _linspace(0.0,pi,n+1)
         x = [(0.5*(1.0-cos(xx))) for xx in beta]  # Half cosine based spacing
     else:
-        x = linspace(0.0,1.0,n+1)
+        x = _linspace(0.0,1.0,n+1)
 
     yt = [5*t*(a0*sqrt(xx)+a1*xx+a2*pow(xx,2)+a3*pow(xx,3)+a4*pow(xx,4)) for xx in x]
 
@@ -231,7 +231,7 @@ def naca4(number, n, finite_TE = False, half_cosine_spacing = False):
 
     return X,Z
 
-def naca5(number, n, finite_TE = False, half_cosine_spacing = False):
+def naca5(number, n, finite_te = False, half_cosine_spacing = False):
     """
     Returns 2*n+1 points in [0 1] for the given 5 digit NACA number string
     """
@@ -249,16 +249,16 @@ def naca5(number, n, finite_TE = False, half_cosine_spacing = False):
     a2 = -0.3516
     a3 = +0.2843
 
-    if finite_TE:
+    if finite_te:
         a4 = -0.1015 # For finite thickness trailing edge
     else:
         a4 = -0.1036  # For zero thickness trailing edge
 
     if half_cosine_spacing:
-        beta = linspace(0.0,pi,n+1)
+        beta = _linspace(0.0,pi,n+1)
         x = [(0.5*(1.0-cos(x))) for x in beta]  # Half cosine based spacing
     else:
-        x = linspace(0.0,1.0,n+1)
+        x = _linspace(0.0,1.0,n+1)
 
     yt = [5*t*(a0*sqrt(xx)+a1*xx+a2*pow(xx,2)+a3*pow(xx,3)+a4*pow(xx,4)) for xx in x]
 
@@ -266,8 +266,8 @@ def naca5(number, n, finite_TE = False, half_cosine_spacing = False):
     M = [0.0580,0.1260,0.2025,0.2900,0.3910]
     K = [361.4,51.64,15.957,6.643,3.230]
 
-    m = interpolate(P,M,[p])[0]
-    k1 = interpolate(M,K,[m])[0]
+    m = _interpolate(P,M,[p])[0]
+    k1 = _interpolate(M,K,[m])[0]
 
     xc1 = [xx for xx in x if xx <= p]
     xc2 = [xx for xx in x if xx > p]
@@ -304,7 +304,7 @@ def naca5(number, n, finite_TE = False, half_cosine_spacing = False):
 
     return X,Z
 
-def naca(number: str, n: int, finite_TE=False, half_cosine_spacing=False):
+def naca(number: str, n: int, finite_te=False, half_cosine_spacing=False):
     '''
     Generate NACA 4 or 5 series airfoil.
     
@@ -314,7 +314,7 @@ def naca(number: str, n: int, finite_TE=False, half_cosine_spacing=False):
         NACA airfoil number.
     n : int
         number of points on upper/lower surface.
-    finite_TE : bool
+    finite_te : bool
         if True, generate an airfoil with a finite thickness trailing edge.
         Otherwise, the airfoil has a zero thickness trailing edge.
     half_cosine_spacing : bool
@@ -328,9 +328,9 @@ def naca(number: str, n: int, finite_TE=False, half_cosine_spacing=False):
     
     '''
     if len(number)==4:
-        return naca4(number, n, finite_TE, half_cosine_spacing)
+        return naca4(number, n, finite_te, half_cosine_spacing)
     elif len(number)==5:
-        return naca5(number, n, finite_TE, half_cosine_spacing)
+        return naca5(number, n, finite_te, half_cosine_spacing)
     else:
         raise Exception
 

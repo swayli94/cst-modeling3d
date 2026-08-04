@@ -371,7 +371,7 @@ def cst_curve(nn: int, coef: np.array, x=None, xn1=0.5, xn2=1.0, a0=0.0079, a1=0
 #* Transformation
 #* ===========================================
 
-def transform(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray, 
+def transform_foil(xu: np.ndarray, xl: np.ndarray, yu: np.ndarray, yl: np.ndarray, 
               scale=1.0, rot=None, x0=None, y0=None, xr=None, yr=None, dx=0.0, dy=0.0, 
               projection=False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     '''
@@ -687,7 +687,7 @@ def stretch_fixed_point(x: np.ndarray, y: np.ndarray, dx=0.0, dy=0.0,
 
     return x_, y_
 
-def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
+def from_cylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray, 
                  flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the cylinder curve to a 2D plane curve.
@@ -740,7 +740,7 @@ def fromCylinder(x: np.ndarray, y: np.ndarray, z: np.ndarray,
 
     return X, Y, Z
 
-def toCylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
+def to_cylinder(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, 
                flip=True, origin=None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Bend the plane sections to curves on a cylinder.
@@ -833,7 +833,7 @@ def interp_from_curve(x0: Union[float, np.ndarray], x: np.ndarray, y: np.ndarray
 
     return y0
 
-def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -> np.ndarray:
+def interpolate_idw(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -> np.ndarray:
     '''
     Inverse distance weighted interpolation.
     
@@ -855,7 +855,7 @@ def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -
     
     Examples
     ---------
-    >>> y0 = interpolate_IDW(x0, xs, ys, eps=1e-10)
+    >>> y0 = interpolate_idw(x0, xs, ys, eps=1e-10)
     
     '''
     n0 = x0.shape[0]
@@ -877,7 +877,7 @@ def interpolate_IDW(x0: np.ndarray, xs: np.ndarray, ys: np.ndarray, eps=1e-10) -
         
     return y0
 
-def plane_3points(P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+def plane_3points(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
     '''
     Calculate the plane function and the coordinates of given points (`xs`, `ys`).
     
@@ -885,7 +885,7 @@ def plane_3points(P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, xs: np.ndarray
     
     Parameters
     -------------
-    P0, P1, P3 : ndarray [3]
+    p0, p1, p2 : ndarray [3]
         coordinates of three points of plane P0123.
     xs, ys : ndarray [:] or [:,:]
         X and Y coordinates of plane points.
@@ -896,18 +896,18 @@ def plane_3points(P0: np.ndarray, P1: np.ndarray, P3: np.ndarray, xs: np.ndarray
     
     Examples
     ---------
-    >>> xs = plane_3points(P0, P1, P3, xs, ys)
+    >>> xs = plane_3points(p0, p1, p2, xs, ys)
     '''
-    a1 = P1[0] - P0[0]
-    b1 = P1[1] - P0[1]
-    c1 = P1[2] - P0[2]
-    a2 = P3[0] - P0[0]
-    b2 = P3[1] - P0[1]
-    c2 = P3[2] - P0[2]
+    a1 = p1[0] - p0[0]
+    b1 = p1[1] - p0[1]
+    c1 = p1[2] - p0[2]
+    a2 = p2[0] - p0[0]
+    b2 = p2[1] - p0[1]
+    c2 = p2[2] - p0[2]
     a = b1 * c2 - b2 * c1
     b = a2 * c1 - a1 * c2
     c = a1 * b2 - b1 * a2
-    d = (- a * P0[0] - b * P0[1] - c * P0[2])
+    d = (- a * p0[0] - b * p0[1] - c * p0[2])
     
     if c == 0:
         return np.zeros_like(xs)
@@ -1004,17 +1004,17 @@ def intersect_point(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, p4: np.ndarr
             pi = np.concatenate((x0, y0), axis=1)
             return pi
 
-def intersect_vec_plane(V0: np.ndarray, V1: np.ndarray, 
-                        P0: np.ndarray, P1: np.ndarray,
-                        P3: np.ndarray) -> Tuple[np.ndarray, float, float, float]:
+def intersect_vec_plane(v0: np.ndarray, v1: np.ndarray, 
+                        p0: np.ndarray, p1: np.ndarray,
+                        p2: np.ndarray) -> Tuple[np.ndarray, float, float, float]:
     '''
     Calculate the intersection point of a vector and a plane.
     
     Parameters
     -----------
-    V0, V1: ndarray [3]
+    v0, v1: ndarray [3]
         coordinates of vector: V01.
-    P0, P1, P3 : ndarray [3]
+    p0, p1, p2 : ndarray [3]
         coordinates of three points of plane P0123.
     
     Returns
@@ -1028,25 +1028,25 @@ def intersect_vec_plane(V0: np.ndarray, V1: np.ndarray,
     
     Examples
     ---------
-    >>> xi, t1, t3, rv = intersect_vec_plane(V0, V1, P0, P1, P3)
+    >>> xi, t1, t3, rv = intersect_vec_plane(v0, v1, p0, p1, p2)
 
     '''
-    nR  = V1 - V0
+    nR  = v1 - v0
     l0  = np.linalg.norm(nR) + 1E-20
     nR  = nR / l0
     
     A = np.zeros((3,3))
-    A[:,0] = P1-P0
-    A[:,1] = P3-P0
+    A[:,0] = p1-p0
+    A[:,1] = p2-p0
     A[:,2] = - nR
-    B = V0-P0
+    B = v0-p0
     
     Sol = np.linalg.solve(A, B)
     
     t1 = Sol[0]
     t3 = Sol[1]
     rv = Sol[2]/l0
-    xi = V0 + nR*Sol[2]
+    xi = v0 + nR*Sol[2]
 
     return xi, t1, t3, rv
 
@@ -1514,7 +1514,7 @@ def extract_slice(data: List[np.ndarray], locations: List[float], Pref: np.ndarr
                 ys = [surface_var[ii,jj,:], surface_var[ii+1,jj,:], surface_var[ii,jj+1,:], surface_var[ii+1,jj+1,:]]
                 
                 xyz = curve[i][None,:]
-                var = interpolate_IDW(xyz, np.array(xs), np.array(ys))
+                var = interpolate_idw(xyz, np.array(xs), np.array(ys))
                 tmp = np.concatenate((xyz, var), axis=1).squeeze()
 
                 new_curve.append(tmp)

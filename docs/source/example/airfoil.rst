@@ -129,9 +129,9 @@ or whether combine the span-wise sections into one piece. Please refer to the fu
     airfoil.yl = yl
 
     #* Build a 3D surface
-    geo3d = BasicSurface(n_sec=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
+    geo3d = BasicSurface(n_section=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
     
-    geo3d.secs = [airfoil]
+    geo3d.sections = [airfoil]
     
     geo3d.geo()
     

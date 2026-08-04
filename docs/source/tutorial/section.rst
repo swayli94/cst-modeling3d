@@ -15,15 +15,15 @@ The 2D-to-3D transformation is defined by:
 - the 3D location of the leading point (`xLE, yLE, zLE`);
 - the chord length `chord`, i.e., :math:`|| \mathbf{x}_\text{LE} - \mathbf{x}_\text{TE} || = \text{chord}`;
 - the twist angle `twist` (deg) defining the curve rotation about Z-axis (right hand rule);
-- a flag `lTwistAroundLE` specifies the rotation center being LE or TE;
+- a flag `twist_around_LE` specifies the rotation center being LE or TE;
 - an optional float `specified_thickness` that specifies the maximum relative thickness of the closed curve.
 
-The 2D-to-3D transformation is applied when calling `BasicSection.section()`.
+The 2D-to-3D transformation is applied when calling `BasicSection.geo()`.
 
 .. code-block:: python
     :linenos:
 
-    sec = BasicSection(thick=None, chord=2.0, twist=-3.0, lTwistAroundLE=False)
+    sec = BasicSection(thick=None, chord=2.0, twist=-3.0, twist_around_LE=False)
 
     sec.xx = np.linspace(0, 1, 101)
     sec.yy = np.sin(np.pi*sex.xx)
@@ -32,22 +32,22 @@ The 2D-to-3D transformation is applied when calling `BasicSection.section()`.
     sec.yLE = 0.0
     sec.zLE = 1.0
 
-    sec.section(flip_x=False, projection=True)
+    sec.geo(flip_x=False, projection=True)
 
 
 Class: OpenSection
 ----------------------
 
 `OpenSection` is a child class of `BasicSection`, which uses CST method for constructing
-the unit 2D **open curve**. The `OpenSection.section()` automatically construct the 2D curve 
+the unit 2D **open curve**. The `OpenSection.geo()` automatically construct the 2D curve 
 and transform it to the 3D curve.
 
 .. code-block:: python
     :linenos:
 
-    sec = OpenSection(thick=None, chord=2.0, twist=-3.0, lTwistAroundLE=False)
+    sec = OpenSection(thick=None, chord=2.0, twist=-3.0, twist_around_LE=False)
     
-    sec.section(cst=cst, nn=1001, flip_x=False, projection=True)
+    sec.geo(cst=cst, nn=1001, flip_x=False, projection=True)
 
 Several additional attributes are available:
 
@@ -59,15 +59,15 @@ Class: Section
 ----------------------
 
 `Section` is a child class of `BasicSection`, which uses CST method for constructing
-the unit 2D airfoil, i.e., a **closed curve**. The `Section.section()` automatically construct the 2D airfoil 
+the unit 2D airfoil, i.e., a **closed curve**. The `Section.geo()` automatically construct the 2D airfoil 
 and transform it to the 3D curve.
 
 .. code-block:: python
     :linenos:
 
-    sec = Section(thick=None, chord=2.0, twist=-3.0, tail=0.01, lTwistAroundLE=False)
+    sec = Section(thick=None, chord=2.0, twist=-3.0, tail=0.01, twist_around_LE=False)
     
-    sec.section(cst_u=cst_u, cst_l=cst_l, nn=1001, flip_x=False, projection=True)
+    sec.geo(cst_u=cst_u, cst_l=cst_l, nn=1001, flip_x=False, projection=True)
 
 Several additional attributes are available:
 
@@ -100,9 +100,9 @@ This class is suitable for round trailing edge foils, blades, or plates.
                 cst_u, cst_l,
                 base_le_ratio, base_te_ratio, base_abs_thick, 
                 base_le_radius, base_te_radius,
-                aLE=0.0, aTE=0.0, i_split=None, nn=501, lTwistAroundLE=False)
+                angle_LE=0.0, angle_TE=0.0, i_split=None, nn=501, twist_around_LE=False)
 
-    sec.section(flip_x=False, projection=True)
+    sec.geo(flip_x=False, projection=True)
 
 Compared with `Section`, several additional parameters are needed:
 
@@ -110,8 +110,8 @@ Compared with `Section`, several additional parameters are needed:
 - relative trailing edge radius of the base shape `base_te_radius`;
 - actual thickness of the base shape `base_abs_thick`;
 - ratio of the leading edge and trailing edge region `base_le_ratio`, `base_te_ratio`;
-- angle `aLE` (deg) of the slope at leading edge, i.e., :math:`dy/dx`;
-- angle `aLE` (deg) of the slope at leading edge, i.e., :math:`dy/dx`;
+- angle `angle_LE` (deg) of the slope at leading edge, i.e., :math:`dy/dx`;
+- angle `angle_LE` (deg) of the slope at leading edge, i.e., :math:`dy/dx`;
 
 
 Fitting blade with RoundTipSection

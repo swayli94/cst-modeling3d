@@ -51,7 +51,7 @@ x3, yu3, yl3, tmax3, rLE3 = cst_foil(201, cst_u, cst_l, x=None, t=0.11, tail=0.0
 ```python
 from cst_modeling.surface import Surface
 
-wing = Surface(n_sec=10, name='Wing-CRM-winglet', nn=201, ns=51, 
+wing = Surface(n_section=10, name='Wing-CRM-winglet', nn=201, ns=51, 
                 smooth_surface=True, smooth_sections=[(0, 2), (4, 7), (8, 9)],
                 rotate_x_section=True, rotation_sections=[(8, 9)])
 
@@ -69,7 +69,7 @@ wing.geo()
 
 ```python
 from cst_modeling.basic import Surface
-blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, projection=False)
+blade = Surface(n_section=6, name='Blade-simple',nn=101, ns=51, projection=False)
 blade.read_setting('Fan.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.1, 0.05])
 blade.geo()
 blade.smooth(i_sec0=0, i_sec1=4)

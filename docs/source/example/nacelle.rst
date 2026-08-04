@@ -9,7 +9,7 @@ Codes:
 :download:`nacelle-axisymmetric.py <../../../example/nacelle/nacelle-axisymmetric.py>`
 
 Generate 3D surfaces of an axisymmetric flow through nacelle (FTN).
-Use the :class:`Lofting_Revolution <cst_modeling.operation.Lofting_Revolution>` class
+Use the :class:`LoftingRevolution <cst_modeling.operation.LoftingRevolution>` class
 to generate the surface of rotation.
 
 The result is shown in :numref:`nacelle_axisymmetric`.

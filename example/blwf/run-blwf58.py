@@ -18,33 +18,33 @@ def run_BLWF(Coefs: dict, fname='blwf.in'):
 
     _,_,_,airfoil_thick,_ = cst_foil(501, Coefs['cst_u'], Coefs['cst_l'])
     
-    wing = Surface(n_sec=2, name='Wing', nn=73, ns=11)
+    wing = Surface(n_section=2, name='Wing', nn=73, ns=11)
     
     #* Root
-    wing.secs[0].xLE   = 31.0   #* Fixed
-    wing.secs[0].yLE   = -1.5   #* Fixed
-    wing.secs[0].zLE   = 0.0    #* Fixed
-    wing.secs[0].chord = 12.0   #* Fixed
-    wing.secs[0].twist = Coefs['TwistAngle']
-    wing.secs[0].tail  = 0.0    #* Fixed
-    wing.secs[0].specified_thickness = airfoil_thick*Coefs['RThickRatio']
+    wing.sections[0].xLE   = 31.0   #* Fixed
+    wing.sections[0].yLE   = -1.5   #* Fixed
+    wing.sections[0].zLE   = 0.0    #* Fixed
+    wing.sections[0].chord = 12.0   #* Fixed
+    wing.sections[0].twist = Coefs['TwistAngle']
+    wing.sections[0].tail  = 0.0    #* Fixed
+    wing.sections[0].specified_thickness = airfoil_thick*Coefs['RThickRatio']
     
-    wing.secs[0].cst_u = Coefs['cst_u'].copy()
-    wing.secs[0].cst_l = Coefs['cst_l'].copy()
+    wing.sections[0].cst_u = Coefs['cst_u'].copy()
+    wing.sections[0].cst_l = Coefs['cst_l'].copy()
     
-    half_span = Coefs['AspectRatio']*(1+Coefs['TRRatio'])*wing.secs[0].chord/4
+    half_size = Coefs['AspectRatio']*(1+Coefs['TRRatio'])*wing.sections[0].chord/4
 
     #* Tip
-    wing.secs[1].xLE   = wing.secs[0].xLE + half_span*np.tan(Coefs['SweptAngle']/180.0*np.pi)
-    wing.secs[1].yLE   = wing.secs[0].yLE + half_span*np.tan(Coefs['Dihedral']/180.0*np.pi)
-    wing.secs[1].zLE   = half_span
-    wing.secs[1].chord = Coefs['TRRatio']*wing.secs[0].chord
-    wing.secs[1].twist = - Coefs['TwistAngle']
-    wing.secs[1].tail  = 0.0    #* Fixed
-    wing.secs[1].specified_thickness = wing.secs[0].specified_thickness*Coefs['TRThickRatio']
+    wing.sections[1].xLE   = wing.sections[0].xLE + half_size*np.tan(Coefs['SweptAngle']/180.0*np.pi)
+    wing.sections[1].yLE   = wing.sections[0].yLE + half_size*np.tan(Coefs['Dihedral']/180.0*np.pi)
+    wing.sections[1].zLE   = half_size
+    wing.sections[1].chord = Coefs['TRRatio']*wing.sections[0].chord
+    wing.sections[1].twist = - Coefs['TwistAngle']
+    wing.sections[1].tail  = 0.0    #* Fixed
+    wing.sections[1].specified_thickness = wing.sections[0].specified_thickness*Coefs['TRThickRatio']
 
-    wing.secs[1].cst_u = Coefs['cst_u'].copy()
-    wing.secs[1].cst_l = Coefs['cst_l'].copy()
+    wing.sections[1].cst_u = Coefs['cst_u'].copy()
+    wing.sections[1].cst_l = Coefs['cst_l'].copy()
 
     wing.geo()
 
@@ -142,12 +142,12 @@ if __name__ == "__main__":
 
     #* Run BLWF
     wing = run_BLWF(Coefs)
-    half_span = wing.secs[-1].zLE
+    half_size = wing.sections[-1].zLE
     
     #* Extract slices
     Pref = np.array([20, 0, 0])
     dir_norm = np.array([0, 0, 1])
-    locations = np.array(SpanRatios)*half_span
+    locations = np.array(SpanRatios)*half_size
     sections, name_var = BLWF.extract_slice(locations, Pref, dir_norm, dir_ref=np.array([-1.,0.01,0.]), arrange_method='join')
     CLs = []
     with open('Mw.dat', 'w') as f:
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         for k in range(len(sections)):
             
             nn = sections[k].shape[0]
-            f.write('zone T="# %d Loc= %.2f" i= %d \n'%(int(Coefs['ID']), SpanRatios[k], nn))
+            f.write('zone T="# %d Loc= %.2f" i= %d \n'%(int(Coefs['zone_id']), SpanRatios[k], nn))
             
             xx, yy, cp = scale_slice(sections[k])
             mw = PhysicalSec.toMw(cp, Coefs['Minf'])

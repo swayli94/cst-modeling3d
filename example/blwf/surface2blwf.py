@@ -195,10 +195,10 @@ if __name__ == '__main__':
         Minf = 0.85
         AoA = 2.3
 
-        wing = Surface(n_sec=9, name='Wing', nn=73, ns=11)
+        wing = Surface(n_section=9, name='Wing', nn=73, ns=11)
         wing.read_setting('Wing.txt')
         
-        for sec in wing.secs:
+        for sec in wing.sections:
             sec.zLE = -sec.zLE
             
         wing.geo()

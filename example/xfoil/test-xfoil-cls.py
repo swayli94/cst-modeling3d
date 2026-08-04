@@ -2,7 +2,7 @@
 import numpy as np
 from cst_modeling.io import output_foil
 from cst_modeling.section import cst_foil
-from cst_modeling.tools.xfoil import read_xfoil_polar, run_xfoil, read_xfoil_dump, foil_for_XFoil
+from cst_modeling.tools.xfoil import read_xfoil_polar, run_xfoil, read_xfoil_dump, foil_for_xfoil
 import os
 import matplotlib.pyplot as plt
 
@@ -18,12 +18,12 @@ if __name__ == "__main__":
 
     x, yu, yl, t0, R0 = cst_foil(201, cst_u, cst_l, x=None, t=0.10, tail=0.0)
     
-    foil_for_XFoil(x, yu, yl, fname='airfoil.dat')
+    foil_for_xfoil(x, yu, yl, fname='airfoil.dat')
     output_foil(x, yu, yl, fname='foil.dat')
     
     #* Run XFoil
-    run_xfoil(AoAs=None, Cls=[0.0, 0.7, 0.1],
-    Minf=0.1, Re=1e6, nNodes=161, iterVis=10, 
+    run_xfoil(alphas=None, cls=[0.0, 0.7, 0.1],
+    minf=0.1, re=1e6, n_nodes=161, iter_viscous=10, 
     fname_airfoil='airfoil.dat', delete_temp=True,
     fname_cp=None, fname_raw='raw-cls.bin', fname_polar='polar-cls.dat')
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     result2 = read_xfoil_polar('polar-cls.dat')
 
     numCase = result1['numCase']
-    AoAs= result1['AoAs']
+    alphas= result1['AoAs']
     Xs  = result1['X']
     Cps = result1['Cp']
     Cfs = result1['Cf']
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         f.write('Variables= X Cp Cf \n')
         
         for k in range(numCase):
-            f.write('zone T= "%f" \n'%(AoAs[k]))
+            f.write('zone T= "%f" \n'%(alphas[k]))
 
             xx = Xs[k][1]
             nn = xx.shape[0]

@@ -10,12 +10,144 @@ import numpy as np
 
 
 #* ===========================================
+#* Surface setting file parsing
+#* ===========================================
+
+def read_surface_setting_blocks(fname: str, name: str, n_section: int, key_dict: dict,
+                                 cst_lines_per_sec: int) -> dict:
+    '''
+    Walk a surface setting file and collect the raw data blocks of surface `name`.
+
+    Parameters
+    ----------
+    fname : str
+        settings file name.
+    name : str
+        name of the surface, i.e., the name after `[Surf]`.
+    n_section : int
+        number of control sections.
+    key_dict : dict
+        keys to be parsed, e.g., `{'Layout:': 1, 'CST_coefs:': 2, 'CST_refine:': 3, 'CST_flip:': 4}`.
+    cst_lines_per_sec : int
+        number of CST coefficient lines per section (1 for open sections, 2 for closed sections).
+
+    Returns
+    -------
+    blocks : dict
+        raw parsed blocks (tokens, i.e., list of str, for each line):
+
+        - 'Layout:':     list of tokens, one entry per section.
+        - 'CST_coefs:':  list of token lists of each section's line(s), i.e., [section][line].
+        - 'CST_refine:': (header tokens, [section][line] tokens).
+        - 'CST_flip:':   (header tokens, [section][line] tokens).
+    '''
+    blocks = {}
+
+    found_surf = False
+    found_key = 0
+    with open(fname, 'r') as f:
+
+        lines = f.readlines()
+        iL = 0
+
+        while iL<len(lines):
+
+            line = lines[iL].split()
+
+            if len(line) < 1:
+                iL += 1
+                continue
+
+            if not found_surf and len(line) > 1:
+                if '[Surf]' in line[0] and name == line[1]:
+                    found_surf = True
+
+            elif found_surf and '[Surf]' in line[0]:
+                break
+
+            elif found_surf and found_key == 0:
+                if line[0] in key_dict:
+                    found_key = key_dict[line[0]]
+
+            elif found_surf and found_key == 1:
+                rows = []
+                for _ in range(n_section):
+                    iL += 1
+                    rows.append(lines[iL].split())
+                blocks['Layout:'] = rows
+                found_key = 0
+
+            elif found_surf and found_key == 2:
+                coefs = []
+                for _ in range(n_section):
+                    iL += 2
+                    sec_lines = [lines[iL].split()]
+                    for _ in range(cst_lines_per_sec-1):
+                        iL += 1
+                        sec_lines.append(lines[iL].split())
+                    coefs.append(sec_lines)
+                blocks['CST_coefs:'] = coefs
+                found_key = 0
+
+            elif found_surf and found_key in (3, 4):
+                key = 'CST_refine:' if found_key == 3 else 'CST_flip:'
+
+                iL += 2
+                header = lines[iL].split()
+                n_cst_refine = int(header[0])
+
+                if n_cst_refine <= 0:
+                    iL += n_section*3
+                    blocks[key] = (header, [])
+                    found_key = 0
+                    continue
+
+                refines = []
+                for _ in range(n_section):
+                    iL += 2
+                    sec_lines = [lines[iL].split()]
+                    for _ in range(cst_lines_per_sec-1):
+                        iL += 1
+                        sec_lines.append(lines[iL].split())
+                    refines.append(sec_lines)
+                blocks[key] = (header, refines)
+                found_key = 0
+
+            else:
+                # Lines that are not relevant
+                pass
+
+            iL += 1
+
+    return blocks
+
+
+def apply_surface_layout(sections: list, rows: list, is_2d: bool) -> None:
+    '''
+    Apply the raw 'Layout:' rows (tokens) to the section objects.
+    '''
+    for i, line in enumerate(rows):
+
+        sections[i].xLE   = float(line[0])
+        sections[i].yLE   = float(line[1])
+        sections[i].zLE   = float(line[2])
+        sections[i].chord = float(line[3])
+        sections[i].twist = float(line[4])
+
+        if len(line) >= 6:
+            sections[i].specified_thickness = float(line[5])
+
+        if is_2d:
+            sections[i].zLE = 0.0
+
+
+#* ===========================================
 #* I/O and format transfer
 #* ===========================================
 
-def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
+def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', zone_id=0) -> None:
     '''
-    Output airfoil data to tecplot ASCII format file.
+    Output curve data to tecplot ASCII format file.
 
     Parameters
     -----------
@@ -23,23 +155,23 @@ def output_curve(x: np.ndarray, y: np.ndarray, fname='curve.dat', ID=0) -> None:
         coordinates of the curve.
     fname : str
         name of the output file.
-    ID : int
-        if `ID`=0, create new file and write header.
-        If `ID`>0, append to existed file.
+    zone_id : int
+        if `zone_id`=0, create a new file (overwrite) and write the header.
+        If `zone_id`>0, append to the existed file with that zone name.
     '''
     nn = x.shape[0]
 
-    if ID == 0:
+    if zone_id == 0:
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  \n ')
 
     with open(fname, 'a') as f:
-        f.write('zone T="%d" i= %d \n'%(ID, nn))
+        f.write('zone T="%d" i= %d \n'%(zone_id, nn))
         for i in range(nn):
             f.write('   %20.9f  %20.9f \n'%(x[i], y[i]))
         f.write('\n')
 
-def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.dat', ID=0) -> None:
+def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.dat', zone_id=0) -> None:
     '''
     Output airfoil data to tecplot ASCII format file
 
@@ -48,27 +180,27 @@ def output_foil(x: np.ndarray, yu: np.ndarray, yl: np.ndarray, fname='airfoil.da
     x, yu, yl : ndarray
         coordinates of the baseline airfoil.
         
-    ID : int
-        if `ID`=0, create new file and write header.
-        If `ID`>0, append to existed file.
+    zone_id : int
+        if `zone_id`=0, create a new file (overwrite) and write the header.
+        If `zone_id`>0, append to the existed file with that zone name.
     '''
     nn = x.shape[0]
 
-    if ID == 0:
+    if zone_id == 0:
         # Write header
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  \n ')
 
     with open(fname, 'a') as f:
-        f.write('zone T="Upp-%d" i= %d \n'%(ID, nn))
+        f.write('zone T="Upp-%d" i= %d \n'%(zone_id, nn))
         for i in range(nn):
             f.write('   %20.9f  %20.9f \n'%(x[i], yu[i]))
             
-        f.write('zone T="Low-%d" i= %d \n'%(ID, nn))
+        f.write('zone T="Low-%d" i= %d \n'%(zone_id, nn))
         for i in range(nn):
             f.write('   %20.9f  %20.9f \n'%(x[i], yl[i]))
 
-def output_surface(surf: List[np.ndarray], fname: str, ID=0, zone_name=None) -> None:
+def output_surface(surf: List[np.ndarray], fname: str, zone_id=0, zone_name=None) -> None:
     '''
     Output the surface to `*.dat` in Tecplot format.
     
@@ -80,9 +212,9 @@ def output_surface(surf: List[np.ndarray], fname: str, ID=0, zone_name=None) -> 
     fname : str
         name of the output file.
         
-    ID : int
-        if `ID`=0, create new file and write header.
-        If `ID`>0, append to existed file.
+    zone_id : int
+        if `zone_id`=0, create a new file (overwrite) and write the header.
+        If `zone_id`>0, append to the existed file with that zone name.
         
     zone_name : str
         name of the zone.
@@ -92,14 +224,14 @@ def output_surface(surf: List[np.ndarray], fname: str, ID=0, zone_name=None) -> 
     ns = surf[0].shape[0]
     nt = surf[0].shape[1]
 
-    if ID == 0:
+    if zone_id == 0:
         with open(fname, 'w') as f:
             f.write('Variables= X  Y  Z \n ')
 
     with open(fname, 'a') as f:
 
         if zone_name is None:
-            zone_name = '%d'%(ID)
+            zone_name = '%d'%(zone_id)
         
         f.write('zone T=" %s " i= %d j= %d \n'%(zone_name, nt, ns))
 
@@ -215,7 +347,7 @@ def read_tecplot(fname='tecplot.dat'):
     return data, name_var, titles
 
 
-def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tuple[np.ndarray, int]:
+def read_block_plot3d(lines: list, i_line0: int, ni: int, nj: int, nk: int) -> Tuple[np.ndarray, int]:
     '''
     Read block data from lines.
     
@@ -224,8 +356,8 @@ def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tu
     lines : list of str
         f.readlines() of the entire plot3d formate file
         
-    iLine0 : int
-        the first line of this block is lines[iLine0]
+    i_line0 : int
+        the first line of this block is lines[i_line0]
         
     ni, nj, nk: int
         size of this block
@@ -240,11 +372,11 @@ def read_block_plot3d(lines: list, iLine0: int, ni: int, nj: int, nk: int) -> Tu
 
     Examples
     ----------
-    >>> xyz, iLine0_new = read_block_plot3d(lines, iLine0, ni, nj, nk)
+    >>> xyz, iLine0_new = read_block_plot3d(lines, i_line0, ni, nj, nk)
 
     '''
     xyz = np.zeros([ni,nj,nk,3])
-    ll  = iLine0
+    ll  = i_line0
     ii  = 0
     line = []
 

@@ -11,8 +11,8 @@ from scipy.io import FortranFile
 from scipy.interpolate import PchipInterpolator
 
 
-def run_xfoil(AoAs=None, Cls=None,
-    Minf=0.1, Re=1e5, nNodes=161, iterVis=10, MReDependence=1,
+def run_xfoil(alphas=None, cls=None,
+    minf=0.1, re=1e5, n_nodes=161, iter_viscous=10, re_mach_dependence=1,
     fname_airfoil='airfoil.dat', fname_setting='xfoil-input.txt',
     fname_cp='cp.dat', fname_raw='dump.bin', fname_polar='polar.dat',
     fname_log='_xfoil.log', delete_temp=True, work_dir=None
@@ -22,34 +22,34 @@ def run_xfoil(AoAs=None, Cls=None,
     
     Parameters
     ----------
-    AoAs: float, or list [start, end, division]
+    alphas: float, or list [start, end, division]
         angle of attack (deg)
         
-    Cls: float, or list [start, end, division]
+    cls: float, or list [start, end, division]
         lift coefficient
         
-    Minf: float
+    minf: float
         free stream Mach number
-        > 0: take in account compressibility effects through the Prandtl-Glauert correlation (Re must > 0)
+        > 0: take in account compressibility effects through the Prandtl-Glauert correlation (re must > 0)
         = 0: no compressibility effects
     
-    Re: float
-        Reynolds number (inviscid when Re<=0)
+    re: float
+        Reynolds number (inviscid when re<=0)
     
-    nNodes: int
+    n_nodes: int
         Number of panel nodes (upper+lower)
         
-    iterVis: int
+    iter_viscous: int
         Viscous-solution iteration limit
     
-    MReDependence: int
-        Re - Mach dependence, (1,2,3)
+    re_mach_dependence: int
+        re - Mach dependence, (1,2,3)
         
         Type   parameters held constant       varying      fixed
         ----   ------------------------       -------   -----------
-        1    M          , Re            ..   lift     chord, vel.
-        2    M sqrt(CL) , Re sqrt(CL)   ..   vel.     chord, lift
-        3    M          , Re CL         ..   chord    lift , vel.
+        1    M          , re            ..   lift     chord, vel.
+        2    M sqrt(CL) , re sqrt(CL)   ..   vel.     chord, lift
+        3    M          , re CL         ..   chord    lift , vel.
     
     work_dir: str
         working directory of XFoil executable file.
@@ -85,18 +85,18 @@ def run_xfoil(AoAs=None, Cls=None,
         
 
         f.write('PPAR \n')                          #*  Start paneling menu
-        f.write('N %d \n \n'%(nNodes))              # > Number of panel nodes (upper+lower)
+        f.write('N %d \n \n'%(n_nodes))              # > Number of panel nodes (upper+lower)
         f.write('\n')                               # > Back to main menu
         
         
         f.write('OPER \n')                          #*  Start operation menu
-        if Minf > 0:
-            f.write('MACH %f \n'%(Minf))            # > Free stream Mach number
+        if minf > 0:
+            f.write('MACH %f \n'%(minf))            # > Free stream Mach number
         
-        if Re > 0:
-            f.write('VISC %f \n'%(Re))              # > Activate viscous mode, set Reynolds number
-            f.write('ITER %d \n'%(iterVis))         # > Viscous-solution iteration limit
-            f.write('TYPE %d \n'%(MReDependence))   # > Re, Mach dependence
+        if re > 0:
+            f.write('VISC %f \n'%(re))              # > Activate viscous mode, set Reynolds number
+            f.write('ITER %d \n'%(iter_viscous))         # > Viscous-solution iteration limit
+            f.write('TYPE %d \n'%(re_mach_dependence))   # > re, Mach dependence
         
         f.write('PACC \n')                          # > Activate polar accumulation
         f.write('%s \n'%(fname_polar))              # > File of polar output 
@@ -105,27 +105,27 @@ def run_xfoil(AoAs=None, Cls=None,
         else:
             f.write('\n')
         
-        if AoAs is not None:                        #* Start calculation
+        if alphas is not None:                        #* Start calculation
             
-            if isinstance(AoAs, float) or isinstance(AoAs, int):
-                f.write('ALFA %f \n'%(AoAs))            # > Angle of attack
+            if isinstance(alphas, float) or isinstance(alphas, int):
+                f.write('ALFA %f \n'%(alphas))            # > Angle of attack
                 if fname_cp is not None:
                     f.write('CPWR %s \n'%(fname_cp))    # > Output x, y, Cp to file
             else:
-                f.write('ASeq %f %f %f\n'%(AoAs[0], AoAs[1], AoAs[2])) 
+                f.write('ASeq %f %f %f\n'%(alphas[0], alphas[1], alphas[2])) 
             
-        elif Cls is not None:
+        elif cls is not None:
             
-            if isinstance(Cls, float) or isinstance(Cls, int):
-                f.write('Cl %f \n'%(Cls))               # > Lift coefficient
+            if isinstance(cls, float) or isinstance(cls, int):
+                f.write('Cl %f \n'%(cls))               # > Lift coefficient
                 if fname_cp is not None:
                     f.write('CPWR %s \n'%(fname_cp))    # > Output x, y, Cp to file
             else:
-                f.write('CSeq %f %f %f\n'%(Cls[0], Cls[1], Cls[2]))
+                f.write('CSeq %f %f %f\n'%(cls[0], cls[1], cls[2]))
 
             
         else:
-            raise Exception('Must specify AoAs or Cls')
+            raise Exception('Must specify alphas or cls')
         
         
         f.write('PACC \n')                          # > Deactivate polar accumulation
@@ -353,7 +353,7 @@ def read_xfoil_polar(fname: str) -> dict:
 
     return result
 
-def foil_for_XFoil(x, yu, yl, fname='airfoil.dat'):
+def foil_for_xfoil(x, yu, yl, fname='airfoil.dat'):
     '''
     Output airfoil geometry for XFoil input
     '''

@@ -9,15 +9,15 @@ There are several formats available for I/O.
 .. code-block:: python
     :linenos:
     
-    output_curve(x, y, fname='curve.dat', ID=0)
+    output_curve(x, y, fname='curve.dat', zone_id=0)
 
-    output_foil(x, yu, yl, fname='airfoil.dat', ID=0, info=False)
+    output_foil(x, yu, yl, fname='airfoil.dat', zone_id=0, info=False)
 
     output_plot3d(X, Y, Z, fname, scale=1.0)
 
     data, name_var, titles = read_tecplot(fname='tecplot.dat')
 
-    xyz, iLine0_new = read_block_plot3d(lines, iLine0, ni, nj, nk)
+    xyz, iLine0_new = read_block_plot3d(lines, i_line0, ni, nj, nk)
 
 
 Format transformation

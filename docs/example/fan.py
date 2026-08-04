@@ -11,13 +11,13 @@ def fitting_blade_sections():
     For turbomachinery, the sections are a 3D curve on cylinders.
     The origin is (x,y,z)=(0,0,0), or (r,t,z)=(0,0,0). (t~theta, rad).
     '''
-    from cst_modeling.math import fromCylinder
+    from cst_modeling.math import from_cylinder
     from cst_modeling.section import fit_curve_with_twist, find_circle_3p
     from cst_modeling.basic import OpenSurface
 
-    n_sec = 12
+    n_section = 12
 
-    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, projection=False)
+    blade = OpenSurface(n_section=n_section, name='Blade', nn=101, ns=101, projection=False)
 
     CST = []
     origins = []
@@ -26,7 +26,7 @@ def fitting_blade_sections():
     with open('./files/fan-blade-sections.dat', 'r') as f:
         line = f.readline()    # Variables= X Y Z
 
-        for i in range(n_sec):
+        for i in range(n_section):
 
             #* Original curve on cylinder
             line = f.readline().split()
@@ -52,7 +52,7 @@ def fitting_blade_sections():
             origins.append(origin)
             
             #* Convert to plane curve
-            xx, yy, zz = fromCylinder(x, y, z, flip=True, origin=origin)
+            xx, yy, zz = from_cylinder(x, y, z, flip=True, origin=origin)
 
             XLE = xx[0]
             YLE = yy[0]
@@ -64,13 +64,13 @@ def fitting_blade_sections():
 
             print(np.array([XLE, YLE, ZLE, chord, twist, thick]))
 
-            blade.secs[i].xLE   = XLE
-            blade.secs[i].yLE   = YLE
-            blade.secs[i].zLE   = ZLE
-            blade.secs[i].chord = chord
-            blade.secs[i].twist = twist
-            blade.secs[i].thick = thick
-            blade.secs[i].cst   = cst.copy()
+            blade.sections[i].xLE   = XLE
+            blade.sections[i].yLE   = YLE
+            blade.sections[i].zLE   = ZLE
+            blade.sections[i].chord = chord
+            blade.sections[i].twist = twist
+            blade.sections[i].thick = thick
+            blade.sections[i].cst   = cst.copy()
 
     print()
     print('CST Parameters')
@@ -84,13 +84,13 @@ def fitting_blade_sections():
 
     blade.update_sections()
     blade.surf_to_cylinder(flip=True, origin=origins)
-    blade.output_section(file_dump+'fitting_blade_sections.dat', TwoD=False)
+    blade.output_section(file_dump+'fitting_blade_sections.dat', is_2d=False)
 
 def fan_blade():
     
     from cst_modeling.basic import Surface
     
-    blade = Surface(n_sec=6, name='Blade-simple',nn=101, ns=51, projection=False)
+    blade = Surface(n_section=6, name='Blade-simple',nn=101, ns=51, projection=False)
 
     blade.read_setting('./files/Fan.txt', tail=[0.1, 0.1, 0.1, 0.1, 0.1, 0.05])
 
@@ -109,7 +109,7 @@ def fan_blade_split():
     
     #* ==========================================
     #* Suction side
-    blade1 = OpenSurface(n_sec=7, name='Blade-suction',nn=101, ns=51, projection=False)
+    blade1 = OpenSurface(n_section=7, name='Blade-suction',nn=101, ns=51, projection=False)
 
     blade1.read_setting('./files/Fan.txt')
 
@@ -126,7 +126,7 @@ def fan_blade_split():
 
     #* ==========================================
     #* Pressure side
-    blade2 = OpenSurface(n_sec=7, name='Blade-pressure',nn=101, ns=51, projection=False)
+    blade2 = OpenSurface(n_section=7, name='Blade-pressure',nn=101, ns=51, projection=False)
 
     blade2.read_setting('./files/Fan.txt')
 

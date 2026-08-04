@@ -22,7 +22,7 @@ import numpy as np
 
 from typing import Dict, Tuple, List, Union
 
-from ..math import rotate_vector, transform, cst_foil, dist_clustcos, interp_from_curve
+from ..math import rotate_vector, transform_foil, cst_foil, dist_clustcos, interp_from_curve
 
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
@@ -571,7 +571,7 @@ class PoweredNacelleProfile():
                             self.segment_points[4][0] - self.segment_points[3][0])
         angle = np.rad2deg(angle)
         
-        self._foil_xu, self._foil_xl, self._foil_yu, self._foil_yl = transform(
+        self._foil_xu, self._foil_xl, self._foil_yu, self._foil_yl = transform_foil(
                     self._xx, self._xx, self._yu, self._yl, scale=scale, rot=angle, 
                     dx=self.segment_points[3][0], dy=self.segment_points[3][1])
         
@@ -602,7 +602,7 @@ class PoweredNacelleProfile():
 
             def func(scale):
 
-                _, _foil_xl, _, _foil_yl = transform(
+                _, _foil_xl, _, _foil_yl = transform_foil(
                             self._xx, self._xx, scale*self._yl, scale*self._yl, 
                             scale=self.features['scale_airfoil'], 
                             rot=self.features['theta_airfoil'], 
@@ -617,7 +617,7 @@ class PoweredNacelleProfile():
             
             print('> Inlet surface scale: %.2f'%(scale))
         
-        _, _foil_xl, _, _foil_yl = transform(
+        _, _foil_xl, _, _foil_yl = transform_foil(
                     self._xx, self._xx, scale*self._yl, scale*self._yl, 
                     scale=self.features['scale_airfoil'], 
                     rot=self.features['theta_airfoil'], 
@@ -651,7 +651,7 @@ class PoweredNacelleProfile():
 
             def func(scale):
                 
-                _, _foil_xl, _, _foil_yl = transform(
+                _, _foil_xl, _, _foil_yl = transform_foil(
                             self._xx, self._xx, scale*self._yl, scale*self._yl, 
                             scale=self.features['scale_airfoil'], 
                             rot=self.features['theta_airfoil'], 
@@ -666,7 +666,7 @@ class PoweredNacelleProfile():
             
             print('> Bypass duct outer surface scale: %.2f'%(scale))
         
-        _, _foil_xl, _, _foil_yl = transform(
+        _, _foil_xl, _, _foil_yl = transform_foil(
                     self._xx, self._xx, scale*self._yl, scale*self._yl, 
                     scale=self.features['scale_airfoil'], 
                     rot=self.features['theta_airfoil'], 

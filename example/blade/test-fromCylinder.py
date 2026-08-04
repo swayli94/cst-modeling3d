@@ -1,7 +1,7 @@
 
 
 import numpy as np
-from cst_modeling.math import fromCylinder
+from cst_modeling.math import from_cylinder
 from cst_modeling.section import fit_curve_with_twist, find_circle_3p
 from cst_modeling.basic import OpenSurface
 
@@ -16,9 +16,9 @@ if __name__ == "__main__":
     # This .py transfer the coordinates of curves on cylinders
     # to 2D sections on planes
 
-    n_sec = 12
+    n_section = 12
 
-    blade = OpenSurface(n_sec=n_sec, name='Blade', nn=101, ns=101, projection=False)
+    blade = OpenSurface(n_section=n_section, name='Blade', nn=101, ns=101, projection=False)
 
     CST = []
     origins = []
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     with open('ori-sections.dat', 'r') as f:
         line = f.readline()    # Variables= X Y Z
 
-        for i in range(n_sec):
+        for i in range(n_section):
 
             #* Original curve on cylinder
             line = f.readline().split()
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             origins.append(origin)
             
             #* Convert to plane curve
-            xx, yy, zz = fromCylinder(x, y, z, flip=True, origin=origin)
+            xx, yy, zz = from_cylinder(x, y, z, flip=True, origin=origin)
 
             XLE = xx[0]
             YLE = yy[0]
@@ -65,13 +65,13 @@ if __name__ == "__main__":
 
             print(np.array([XLE, YLE, ZLE, chord, twist, thick]))
 
-            blade.secs[i].xLE   = XLE
-            blade.secs[i].yLE   = YLE
-            blade.secs[i].zLE   = ZLE
-            blade.secs[i].chord = chord
-            blade.secs[i].twist = twist
-            blade.secs[i].thick = thick
-            blade.secs[i].cst   = cst.copy()
+            blade.sections[i].xLE   = XLE
+            blade.sections[i].yLE   = YLE
+            blade.sections[i].zLE   = ZLE
+            blade.sections[i].chord = chord
+            blade.sections[i].twist = twist
+            blade.sections[i].thick = thick
+            blade.sections[i].cst   = cst.copy()
 
     print()
     print('CST Parameters')
@@ -85,5 +85,5 @@ if __name__ == "__main__":
 
     blade.update_sections()
     blade.surf_to_cylinder(flip=True, origin=origins)
-    blade.output_section(TwoD=False)
+    blade.output_section(is_2d=False)
 

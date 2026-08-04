@@ -30,14 +30,14 @@ __version__ = "0.2.8"
 #* The classic-architecture `Surface`/`OpenSurface` remain importable via `cst_modeling.basic`.
 
 from .surface import Surface, OpenSurface, BasicSurface
-from .operation import GuideCurve, Lofting, Lofting_2Profile, Lofting_Revolution
+from .operation import GuideCurve, Lofting, Lofting2Profile, LoftingRevolution
 from .section import BasicSection, Section, OpenSection, RoundTipSection, cst_foil, cst_foil_fit
 from .math import cst_curve, dist_clustcos
 from .foil import FoilGeoFeatures, FoilModification
 
 __all__ = [
     'Surface', 'OpenSurface', 'BasicSurface',
-    'GuideCurve', 'Lofting', 'Lofting_2Profile', 'Lofting_Revolution',
+    'GuideCurve', 'Lofting', 'Lofting2Profile', 'LoftingRevolution',
     'BasicSection', 'Section', 'OpenSection', 'RoundTipSection', 'cst_foil', 'cst_foil_fit',
     'cst_curve', 'dist_clustcos',
     'FoilGeoFeatures', 'FoilModification',

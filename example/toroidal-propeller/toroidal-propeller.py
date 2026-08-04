@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append('.')
 
-from cst_modeling.surface2 import Surface
+from cst_modeling.surface import Surface
 
 
 if __name__ == "__main__":
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     path = os.path.dirname(sys.argv[0])
 
 
-    propeller = Surface(n_sec=11, name='Propeller', nn=101, ns=51,
+    propeller = Surface(n_section=11, name='Propeller', nn=101, ns=51,
                     smooth_surface=True, smooth_sections=None,
                     rotate_x_section=False, rotation_sections=None)
 

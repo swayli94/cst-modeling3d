@@ -2,7 +2,7 @@
 import numpy as np
 
 from cst_modeling.io import output_curve
-from cst_modeling.surface import BasicSurface
+from cst_modeling.basic import BasicSurface
 
 from scipy.interpolate import CubicSpline
 
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     #* Nose
     #* ============================================
 
-    nose = BasicSurface(n_sec=7, name='Nose', nn=201, ns=51, projection=False)
+    nose = BasicSurface(n_section=7, name='Nose', nn=201, ns=51, projection=False)
     nose.read_setting('Fuselage.txt')
 
     #* Top curve
@@ -33,10 +33,10 @@ if __name__ == "__main__":
         else:
             yy[i] += bn
 
-    nose.secs[0].xx = xx/xc[-1]
-    nose.secs[0].yy = yy/xc[-1]
-    nose.secs[-1].xx = xx/xc[-1]
-    nose.secs[-1].yy = yy/xc[-1]
+    nose.sections[0].xx = xx/xc[-1]
+    nose.sections[0].yy = yy/xc[-1]
+    nose.sections[-1].xx = xx/xc[-1]
+    nose.sections[-1].yy = yy/xc[-1]
 
     #* Side top curves
     xc = np.array([0.00,  2.00,  6.00])
@@ -55,11 +55,11 @@ if __name__ == "__main__":
         else:
             yy[i] -= bn
 
-    nose.secs[1].xx = xx/xc[-1]
-    nose.secs[1].yy = yy/xc[-1]
+    nose.sections[1].xx = xx/xc[-1]
+    nose.sections[1].yy = yy/xc[-1]
 
-    nose.secs[-2].xx = nose.secs[1].xx
-    nose.secs[-2].yy = nose.secs[1].yy
+    nose.sections[-2].xx = nose.sections[1].xx
+    nose.sections[-2].yy = nose.sections[1].yy
 
     #* Side curve and bottom curve
     xc = np.array([0.00,  2.00,  6.00])
@@ -78,14 +78,14 @@ if __name__ == "__main__":
         else:
             yy[i] -= bn
 
-    nose.secs[2].xx = xx/xc[-1]
-    nose.secs[2].yy = yy/xc[-1]
+    nose.sections[2].xx = xx/xc[-1]
+    nose.sections[2].yy = yy/xc[-1]
 
-    nose.secs[-3].xx = nose.secs[2].xx
-    nose.secs[-3].yy = nose.secs[2].yy
+    nose.sections[-3].xx = nose.sections[2].xx
+    nose.sections[-3].yy = nose.sections[2].yy
 
-    nose.secs[3].xx = xx/xc[-1]
-    nose.secs[3].yy = yy/xc[-1]
+    nose.sections[3].xx = xx/xc[-1]
+    nose.sections[3].yy = yy/xc[-1]
 
     phi = [0.0, 30.0, 90.0, 180.0, 270.0, 330.0, 360.0]
 
@@ -96,35 +96,35 @@ if __name__ == "__main__":
     nose.output_tecplot(fname='nose.dat')
 
     #* Nose end curve
-    Y = nose.surfs[0][1][:,-1]
-    Z = nose.surfs[0][2][:,-1]
-    for i in range(nose.n_sec-2):
-        Y = np.concatenate((Y, nose.surfs[i+1][1][1:,-1]), axis=0)
-        Z = np.concatenate((Z, nose.surfs[i+1][2][1:,-1]), axis=0)
+    Y = nose.surfaces[0][1][:,-1]
+    Z = nose.surfaces[0][2][:,-1]
+    for i in range(nose.n_section-2):
+        Y = np.concatenate((Y, nose.surfaces[i+1][1][1:,-1]), axis=0)
+        Z = np.concatenate((Z, nose.surfaces[i+1][2][1:,-1]), axis=0)
 
     scale = 5.6
     Y = (Y - Y[0]) / scale
     Z = Z / scale
 
-    output_curve(Y, Z, fname='tube-section.dat', ID=0)
+    output_curve(Y, Z, fname='tube-section.dat', zone_id=0)
 
     #* ============================================
     #* Tube and aft body
     #* ============================================
     if True:
 
-        tube = BasicSurface(n_sec=3, name='Tube', nn=Y.shape[0], ns=51, projection=False)
+        tube = BasicSurface(n_section=3, name='Tube', nn=Y.shape[0], ns=51, projection=False)
         tube.read_setting('Fuselage.txt')
 
-        tube.secs[0].xx = Y
-        tube.secs[0].yy = Z
+        tube.sections[0].xx = Y
+        tube.sections[0].yy = Z
 
-        tube.secs[1].xx = tube.secs[0].xx
-        tube.secs[1].yy = tube.secs[0].yy
+        tube.sections[1].xx = tube.sections[0].xx
+        tube.sections[1].yy = tube.sections[0].yy
 
         aa = np.linspace(0.0, 2*np.pi, num=tube.nn)
-        tube.secs[2].xx = (np.cos(aa)-1)*0.5
-        tube.secs[2].yy = np.sin(aa)*0.5
+        tube.sections[2].xx = (np.cos(aa)-1)*0.5
+        tube.sections[2].yy = np.sin(aa)*0.5
 
         tube.geo()
 
@@ -132,6 +132,6 @@ if __name__ == "__main__":
 
         tube.flip(axis='+Z +Y')
 
-        tube.translate(dX=6.0, dY=3.8)
+        tube.translate(dx=6.0, dy=3.8)
 
         tube.output_tecplot(fname='tube.dat')

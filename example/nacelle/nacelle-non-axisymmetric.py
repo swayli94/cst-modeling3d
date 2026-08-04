@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from cst_modeling.io import output_surface
-from cst_modeling.operation import Lofting_Revolution
+from cst_modeling.operation import LoftingRevolution
 from cst_modeling.tools.nacelle import NacelleIntakeHighlight, PoweredNacelleProfile
 
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     
     #* Nacelle surface of revolution
     
-    nacelle = Lofting_Revolution(
+    nacelle = LoftingRevolution(
         profiles=profiles,
         section_s_loc=[a/360.0 for a in circum_control_psi],
         section_x=0.0,
@@ -91,8 +91,8 @@ if __name__ == "__main__":
         n_spanwise=51,
     )
 
-    surfs = nacelle.sweep(interp_profile_kind='periodic')
+    surfaces = nacelle.sweep(interp_profile_kind='periodic')
 
-    for i_surf, surf in enumerate(surfs):
-        output_surface(surf, fname=os.path.join(path, 'nacelle-non-axisymmetric.dat'), ID=i_surf)
+    for i_surf, surf in enumerate(surfaces):
+        output_surface(surf, fname=os.path.join(path, 'nacelle-non-axisymmetric.dat'), zone_id=i_surf)
 

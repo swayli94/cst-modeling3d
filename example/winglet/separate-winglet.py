@@ -11,7 +11,7 @@ sys.path.append('.')
 import copy
 from scipy.interpolate import interp1d
 from cst_modeling.basic import BasicSection
-from cst_modeling.surface2 import Surface
+from cst_modeling.surface import Surface
 
 
 def extract_partial_section(sec: BasicSection, ratio: float, interp1d_kind='cubic') -> BasicSection:
@@ -25,7 +25,7 @@ def extract_partial_section(sec: BasicSection, ratio: float, interp1d_kind='cubi
     
     sec.yu = f_yu(sec.xx * ratio) / ratio
     sec.yl = f_yl(sec.xx * ratio) / ratio
-    sec.scale = sec.scale * ratio
+    sec.chord = sec.chord * ratio
     
     return sec
 
@@ -40,21 +40,21 @@ if __name__ == "__main__":
     
     #* Main wing
 
-    wing = Surface(n_sec=2, name='main_wing', nn=201, ns=51)
+    wing = Surface(n_section=2, name='main_wing', nn=201, ns=51)
     wing.read_setting(fname_setting, tail=0.001)
     wing.geo()
     
     #* Wing let
 
-    winglet = Surface(n_sec=2, name='winglet', nn=201, ns=51, rotate_x_section=True)
+    winglet = Surface(n_section=2, name='winglet', nn=201, ns=51, rotate_x_section=True)
     winglet.read_setting(fname_setting, tail=0.001)
     winglet.geo()
     
     #* Transition from wing to winglet
-    transition = Surface(n_sec=2, name='transition', nn=201, ns=501)
+    transition = Surface(n_section=2, name='transition', nn=201, ns=501)
     
     # Set the two sections of the transition surface
-    ratio = (winglet.sections[0].scale + winglet.sections[0].xLE - wing.sections[-1].xLE) / wing.sections[-1].scale
+    ratio = (winglet.sections[0].chord + winglet.sections[0].xLE - wing.sections[-1].xLE) / wing.sections[-1].chord
     transition.sections[0] = extract_partial_section(wing.sections[-1], ratio)
     transition.sections[1] = copy.deepcopy(winglet.sections[0])
     
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         )
     
     for ii in range(transition.ns):
-        value = winglet.sections[0].xLE + winglet.sections[0].scale - guide.get_value('x', ii)
+        value = winglet.sections[0].xLE + winglet.sections[0].chord - guide.get_value('x', ii)
         guide.set_value('scale', ii, value)
     
     guide.generate_rotation_angle_with_tangent('rot_x')

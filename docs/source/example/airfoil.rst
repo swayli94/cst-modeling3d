@@ -107,8 +107,8 @@ Build a 3D airfoil
 :download:`airfoil.py <../../../example/airfoil-basic/airfoil.py>`
 
 Sometimes, you may need to build a 3D airfoil from the 2D airfoil data.
-Then, you need the :class:`BasicSection <cst_modeling.basic.BasicSection>`
-and :class:`BasicSurface <cst_modeling.surface2.BasicSurface>` (or an old version :class:`BasicSurface <cst_modeling.basic.BasicSurface>`) classes.
+Then, you need the :class:`BasicSection <cst_modeling.section.BasicSection>`
+and :class:`BasicSurface <cst_modeling.surface.BasicSurface>` (or the classic version :class:`BasicSurface <cst_modeling.basic.BasicSurface>`) classes.
 You can specify how the surface is output, such as whether the upper and lower surfaces are output separately or together, 
 or whether combine the span-wise sections into one piece. Please refer to the function document for details.
 
@@ -129,9 +129,9 @@ or whether combine the span-wise sections into one piece. Please refer to the fu
     airfoil.yl = yl
 
     #* Build a 3D surface
-    geo3d = BasicSurface(n_sec=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
+    geo3d = BasicSurface(n_section=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
     
-    geo3d.secs = [airfoil]
+    geo3d.sections = [airfoil]
     
     geo3d.geo()
     

@@ -14,7 +14,7 @@ sys.path.append('.')
 import copy
 import numpy as np
 from cst_modeling.operation import GuideCurve
-from cst_modeling.surface2 import Surface, BasicSurface
+from cst_modeling.surface import Surface, BasicSurface
 from cst_modeling.io import plot3d_to_igs, output_plot3d_for_parts
 
 
@@ -26,12 +26,12 @@ class Fuselage(BasicSurface):
     In consequence, the 3D section profile is in y-z plane.
     '''
     
-    def __init__(self, n_sec=1, name='Surf', nn=1001, ns=101,
+    def __init__(self, n_section=1, name='Surf', nn=1001, ns=101,
             smooth_surface=False, smooth_sections = None,
             rotate_x_section=False, rotation_sections = None, 
             is_guide_curve_at_LE=True):
         
-        super().__init__(n_sec, name, nn, ns, smooth_surface, smooth_sections, 
+        super().__init__(n_section, name, nn, ns, smooth_surface, smooth_sections, 
                     rotate_x_section, rotation_sections, is_guide_curve_at_LE)
 
     @staticmethod
@@ -45,7 +45,7 @@ class Fuselage(BasicSurface):
 
         return x, y
 
-    def update_section(self) -> None:
+    def update_sections(self) -> None:
         '''
         Update all sections' profile curves, i.e., a closed circle
         '''
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     if True:
         
         #* Delta wing
-        wing1 = Surface(n_sec=4, name='wing', nn=201, ns=101, smooth_surface=True)
+        wing1 = Surface(n_section=4, name='wing', nn=201, ns=101, smooth_surface=True)
         wing1.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
         wing1.prepare(smooth_keys=['x', 'y', 'z', 'scale', 'rot_z'])
         wing1.geo()
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         
 
         #* V-tail
-        vTail1 = Surface(n_sec=2, name='vTail', nn=201, ns=21)
+        vTail1 = Surface(n_section=2, name='vTail', nn=201, ns=21)
         vTail1.read_setting(fname=os.path.join(path, 'aircraft.txt'), tail=0.005)
         vTail1.prepare()
         vTail1.geo()
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
 
         #* Fuselage
-        fuselage = Fuselage(n_sec=6, name='fuselage', nn=201, ns=21, smooth_surface=True,
+        fuselage = Fuselage(n_section=6, name='fuselage', nn=201, ns=21, smooth_surface=True,
                     smooth_sections=[(0,2), (3,5)])
         fuselage.read_setting(fname=os.path.join(path, 'aircraft.txt'))
         fuselage.prepare()

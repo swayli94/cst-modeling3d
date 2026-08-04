@@ -9,7 +9,7 @@ import numpy as np
 
 from cst_modeling.io import output_surface
 from cst_modeling.section import cst_foil
-from cst_modeling.operation import Lofting_Revolution
+from cst_modeling.operation import LoftingRevolution
 
 
 if __name__ == "__main__":
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     for i_profile in range(len(section_s_loc)):
         profiles.append([xx, yy])
 
-    nacelle = Lofting_Revolution(
+    nacelle = LoftingRevolution(
         profiles=profiles,
         section_s_loc=section_s_loc,
         section_x=0.0,
@@ -44,10 +44,10 @@ if __name__ == "__main__":
         n_spanwise=21,
     )
 
-    surfs = nacelle.sweep(interp_profile_kind='linear')
+    surfaces = nacelle.sweep(interp_profile_kind='linear')
 
-    for i_surf, surf in enumerate(surfs):
-        output_surface(surf, fname=os.path.join(path, 'nacelle-axisymmetric.dat'), ID=i_surf)
+    for i_surf, surf in enumerate(surfaces):
+        output_surface(surf, fname=os.path.join(path, 'nacelle-axisymmetric.dat'), zone_id=i_surf)
 
     nacelle.guide_curve.output(os.path.join(path, 'nacelle-axisymmetric-guide-curve.dat'))
 

@@ -123,7 +123,7 @@ def reconstruct_curve():
     '''
     Reconstruct a curve
     '''
-    from cst_modeling.basic import reconstruct_curve_by_length
+    from cst_modeling.math import reconstruct_curve_by_length
 
     x = np.linspace(0, 1, 51)
     y = np.sin(3*np.pi*x)

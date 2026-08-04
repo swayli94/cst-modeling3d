@@ -159,7 +159,7 @@ class Section(BasicSection):
     ```
     '''
     def __init__(self, xLE, yLE, zLE, xTE, l_LE, l_TE, h, thick, rr, cst_u: np.ndarray, cst_l: np.ndarray,
-               x_ref, twist=0.0, tail=0.0, aLE=0.0, aTE=0.0, i_split=None):
+               x_ref, twist=0.0, tail=0.0, angle_LE=0.0, angle_TE=0.0, i_split=None):
 
         chord = xTE - xLE
         
@@ -171,8 +171,8 @@ class Section(BasicSection):
         self.tail = tail
 
         #* Base shape
-        x_, self.base_yu = base_shape(x_ref, xLE, xTE, l_LE, l_TE, h, rr, a_LE= aLE, a_TE= aTE, i_split=i_split)
-        x_, self.base_yl = base_shape(x_ref, xLE, xTE, l_LE, l_TE, h, rr, a_LE=-aLE, a_TE=-aTE, i_split=i_split)
+        x_, self.base_yu = base_shape(x_ref, xLE, xTE, l_LE, l_TE, h, rr, a_LE= angle_LE, a_TE= angle_TE, i_split=i_split)
+        x_, self.base_yl = base_shape(x_ref, xLE, xTE, l_LE, l_TE, h, rr, a_LE=-angle_LE, a_TE=-angle_TE, i_split=i_split)
         h_max_base = np.max(self.base_yu)
         
         #* 2D unit airfoil
@@ -206,22 +206,22 @@ class Section(BasicSection):
             self.yl = self.base_yl
 
         #* 3D airfoil
-        self.section()
+        self.geo()
 
 
 class Wing(BasicSurface):
     
     def __init__(self, sections: list, ns=101):
         
-        super().__init__(n_sec=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, projection=True)
+        super().__init__(n_section=len(sections), name='Wing', nn=sections[0].x.shape[0], ns=ns, projection=True)
         
-        self.secs = sections
+        self.sections = sections
         
-        self.layout_center()
+        self.update_layout_center()
 
-        for i in range(self.n_sec-1):
-            surf = self.section2surf(self.secs[i], self.secs[i+1], ns=self.ns)
-            self.surfs.append(surf)
+        for i in range(self.n_section-1):
+            surf = self.sections_to_surface(self.sections[i], self.sections[i+1], ns=self.ns)
+            self.surfaces.append(surf)
 
 
 def layout(SweptAngle_LE: float, AspectRatio: float, Anhedral: float, Section_zRatio: list):
@@ -235,13 +235,13 @@ def layout(SweptAngle_LE: float, AspectRatio: float, Anhedral: float, Section_zR
     rz = np.array(Section_zRatio)
     xLEs = rz*xTip
     yLEs = rz*yTip
-    zLEs = rz*zTip
+    spanwise_locations = rz*zTip
     xTEs = (1-rz)+ rz*xTip
     
     SweptAngle_TE = np.arctan((1-xTip)/zTip)/np.pi*180
     Area = zTip
     
-    return xLEs, yLEs, zLEs, xTEs, SweptAngle_TE, Area
+    return xLEs, yLEs, spanwise_locations, xTEs, SweptAngle_TE, Area
     
 def rel_thick_dist(z, zTip: float):
     
@@ -275,15 +275,15 @@ if __name__ == '__main__':
     ]
     
     nSec = len(Section_zRatio)
-    xLEs, yLEs, zLEs, xTEs, SweptAngle_TE, Area = layout(SweptAngle_LE, AspectRatio, Anhedral, Section_zRatio)
-    rel_thicks = rel_thick_dist(zLEs, zLEs[-1])
+    xLEs, yLEs, spanwise_locations, xTEs, SweptAngle_TE, Area = layout(SweptAngle_LE, AspectRatio, Anhedral, Section_zRatio)
+    rel_thicks = rel_thick_dist(spanwise_locations, spanwise_locations[-1])
     thicks = np.multiply(rel_thicks, xTEs-xLEs)
     
     print('Leading  edge swept angle = %.1f deg'%(SweptAngle_LE))
     print('Trailing edge swept angle = %.1f deg'%(SweptAngle_TE))
     print('Aspect ratio =              %.1f'%(AspectRatio))
     print('Anhedral angle =            %.1f deg'%(Anhedral))
-    print('Span =                      %.2f'%(zLEs[-1]*2))
+    print('Span =                      %.2f'%(spanwise_locations[-1]*2))
     print('Area =                      %.2f'%(Area))
     
     x_ref= dist_clustcos(201, a0=0.0079, a1=0.96, beta=2)
@@ -292,12 +292,12 @@ if __name__ == '__main__':
     hh = 0.01
     rr = 0.02
     
-    secs = []
+    sections = []
     for i in range(nSec):
-        secs.append(Section(xLEs[i], yLEs[i], zLEs[i], xTEs[i], l_LE, l_TE, hh, thicks[i], rr,
-                            np.array(CST_Us[i]), np.array(CST_Ls[i]), x_ref, aLE=0.0, aTE=0.0, i_split=None))
+        sections.append(Section(xLEs[i], yLEs[i], spanwise_locations[i], xTEs[i], l_LE, l_TE, hh, thicks[i], rr,
+                            np.array(CST_Us[i]), np.array(CST_Ls[i]), x_ref, angle_LE=0.0, angle_TE=0.0, i_split=None))
     
-    diamond = Wing(secs, ns=31)
+    diamond = Wing(sections, ns=31)
     diamond.smooth(0, nSec-1, dyn0=0, ratio_end=10)
     diamond.output_tecplot(fname='Wing.dat', one_piece=False)
 

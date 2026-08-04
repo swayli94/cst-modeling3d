@@ -10,15 +10,15 @@ translation (`dx`, `dy`), scale (`scale`, `x0`, `y0`), and rotation (`rot`, `xr`
 .. code-block:: python
     :linenos:
     
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, rot=20, projection=True)           # black
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, rot=20, projection=True)           # black
 
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=20, 
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=20, 
         dx=xLE-0.0, dy=yLE-0.0, x0=None, y0=None, xr=None, yr=None, projection=False)   # blue
 
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=-10, 
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=-10, 
         dx=xTE-1.0, dy=yTE-0.0, x0=xTE, y0=yTE, xr=xTE, yr=yTE, projection=False)       # green
 
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=-10,    
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=-10,    
         dx=0.0, dy=0.0, x0=0.5, y0=0.0, xr=None, yr=None, projection=False)             # red
 
 .. _transform_airfoil:
@@ -119,9 +119,9 @@ The transformation is defined by :eq:`cylinder2plane`. This shows that the 2D cu
 .. code-block:: python
     :linenos:
     
-    x, y, z = toCylinder(X, Y, Z, flip=False, origin=[0, 0])
+    x, y, z = to_cylinder(X, Y, Z, flip=False, origin=[0, 0])
 
-    X, Y, Z = fromCylinder(x, y, z, flip=False, origin=[0, 0])
+    X, Y, Z = from_cylinder(x, y, z, flip=False, origin=[0, 0])
 
 .. _cylinder_to_plane:
 .. figure:: ../../tutorial/figures/cylinder_to_plane.jpg

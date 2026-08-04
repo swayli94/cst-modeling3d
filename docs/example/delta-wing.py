@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from cst_modeling.basic import intersect_point
+from cst_modeling.math import intersect_point
 from cst_modeling.section import dist_clustcos
-from cst_modeling.surface import Surface
+from cst_modeling.basic import Surface
 
 file_dump = './dump/'
 
@@ -12,18 +12,18 @@ class DiamondWing(Surface):
     
     def __init__(self, sections: list, name='Wing', ns=101, projection=True):
         
-        super().__init__(n_sec=len(sections), name=name, 
+        super().__init__(n_section=len(sections), name=name, 
                          nn=sections[0].xx.shape[0], ns=ns, projection=projection)
         
-        self.secs = sections
+        self.sections = sections
         
         self.update_sections()
         
-        self.layout_center()
+        self.update_layout_center()
 
-        for i in range(self.n_sec-1):
-            surf = self.section2surf(self.secs[i], self.secs[i+1], ns=self.ns)
-            self.surfs.append(surf)
+        for i in range(self.n_section-1):
+            surf = self.sections_to_surface(self.sections[i], self.sections[i+1], ns=self.ns)
+            self.surfaces.append(surf)
 
     @staticmethod
     def layout(SweptAngle_LE: float, AspectRatio: float, Anhedral: float, SecZRatio: list):
@@ -37,14 +37,14 @@ class DiamondWing(Surface):
         rz = np.array(SecZRatio)
         xLEs = rz*xTip
         yLEs = rz*yTip
-        zLEs = rz*zTip
+        spanwise_locations = rz*zTip
         xTEs = (1-rz)+ rz*xTip
         Chords = xTEs - xLEs
         
         SweptAngle_TE = np.arctan((1-xTip)/zTip)/np.pi*180
         Area = zTip
         
-        return xLEs, yLEs, zLEs, Chords, SweptAngle_TE, Area, zTip
+        return xLEs, yLEs, spanwise_locations, Chords, SweptAngle_TE, Area, zTip
 
 def diamond_wing_parameters():
     
@@ -94,7 +94,7 @@ def diamond_wing_parameters():
         [-0.0453, 0.0450,-0.1448, 0.1984,-0.2982, 0.2245,-0.1845, 0.0613,-0.0431,-0.0132],
     ]
         
-    xLEs, yLEs, zLEs, Chords, SweptAngle_TE, Area, zTip = DiamondWing.layout(SweptAngle_LE, AspectRatio, Anhedral, SecZRatio)
+    xLEs, yLEs, spanwise_locations, Chords, SweptAngle_TE, Area, zTip = DiamondWing.layout(SweptAngle_LE, AspectRatio, Anhedral, SecZRatio)
 
     #* Reference tmax distribution in the span-wise direction
     #  tmax is the maximum relative thickness of the control section
@@ -102,24 +102,24 @@ def diamond_wing_parameters():
     BASELINE_T = [0.09842, 0.10187, 0.09603, 0.07207, 0.03649, 0.03578, 0.03570, 0.03550]
     f = interp1d(BASELINE_Z, BASELINE_T, kind=3)
     
-    SecRelTmax = f(zLEs/zTip)
+    SecRelTmax = f(spanwise_locations/zTip)
 
 
     print('Leading  edge swept angle = %.4f deg'%(SweptAngle_LE))
     print('Trailing edge swept angle = %.4f deg'%(SweptAngle_TE))
     print('Aspect ratio =              %.2f'%(AspectRatio))
     print('Anhedral angle =            %.2f deg'%(Anhedral))
-    print('Span =                      %.3f'%(zLEs[-1]*2))
+    print('Span =                      %.3f'%(spanwise_locations[-1]*2))
     print('Area =                      %.3f'%(Area))
     
-    secs = []
+    sections = []
     for i in range(len(SecZRatio)):
-        secs.append(RoundTipSection(xLEs[i], yLEs[i], zLEs[i], Chords[i], SecRelTmax[i], TwistAngle[i], TailThick,
+        sections.append(RoundTipSection(xLEs[i], yLEs[i], spanwise_locations[i], Chords[i], SecRelTmax[i], TwistAngle[i], TailThick,
                             np.array(CST_Us[i]), np.array(CST_Ls[i]),
                             BaseLERatio[i], BaseTERatio[i], BaseAbsThick[i], BaseRelRadius[i], 0.0, 
-                            aLE=BaseAlphaLE[i], aTE=BaseAlphaTE[i], i_split=None, nn=n_point, lTwistAroundLE=False))
+                            angle_LE=BaseAlphaLE[i], angle_TE=BaseAlphaTE[i], i_split=None, nn=n_point, twist_around_LE=False))
     
-    return secs, n_point
+    return sections, n_point
 
 def diamond_wing():
     '''
@@ -128,26 +128,26 @@ def diamond_wing():
     - `nz` is number of points in Z direction (span-wise direction).
     - `nx` is number of points in X direction (chord-wise direction).
     '''
-    secs, n_point = diamond_wing_parameters()
+    sections, n_point = diamond_wing_parameters()
 
-    diamond = DiamondWing(secs, ns=21, projection=True)
-    diamond.add_sec([0.17468, 0.19964, 0.34936])
+    diamond = DiamondWing(sections, ns=21, projection=True)
+    diamond.add_section([0.17468, 0.19964, 0.34936])
     diamond.geo()
     
     # Split the surface at leading edge 
     diamond.split([n_point])
 
     # For inner wing lower surface: nx=0 is trailing edge, nz=0 is symmetry plan, so dyn0=0
-    diamond.smooth(0,                 diamond.n_sec-2,   dyn0=0,       ratio_end=10)
+    diamond.smooth(0,                 diamond.n_section-2,   dyn0=0,       ratio_end=10)
     
     # For outer wing lower surface: nx=0 is trailing edge, nz=0 connects inner wing, so smooth0
-    diamond.smooth(diamond.n_sec-2,   diamond.n_sec-1,   smooth0=True, ratio_end=[10, 1, 10])
+    diamond.smooth(diamond.n_section-2,   diamond.n_section-1,   smooth0=True, ratio_end=[10, 1, 10])
     
     # For inner wing upper surface: nx=0 is leading edge, nz=0 is symmetry plan, so dyn0=0
-    diamond.smooth(diamond.n_sec-1,   2*diamond.n_sec-3, dyn0=0,       ratio_end=10)
+    diamond.smooth(diamond.n_section-1,   2*diamond.n_section-3, dyn0=0,       ratio_end=10)
     
     # For outer wing lower surface: nx=0 is leading edge, nz=0 connects inner wing, so smooth0
-    diamond.smooth(2*diamond.n_sec-3, 2*diamond.n_sec-2, smooth0=True, ratio_end=[1, 10, 10])
+    diamond.smooth(2*diamond.n_section-3, 2*diamond.n_section-2, smooth0=True, ratio_end=[1, 10, 10])
     
     ax = diamond.plot(type='surface', show=False)
     ax.view_init(elev=150, azim=-90)
@@ -401,7 +401,7 @@ def hind_sting(n=101, rr=0.1):
 def vfe2():
     
     from cst_modeling.io import output_plot3d, plot3d_to_igs
-    from cst_modeling.surface import surf_axisymmetric
+    from cst_modeling.math import surf_axisymmetric
     
     delta = 65
     rr    = 0.05

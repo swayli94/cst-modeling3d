@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
             modify = FoilModification(x, yu, yl)
             
-            _, _, _, rLE_new = modify.set_leading_edge_radius(rLE_new=rLE, width_bump=width_bump)
+            _, _, _, r_LE_new = modify.set_leading_edge_radius(r_LE_new=rLE, width_bump=width_bump)
             
             geo_new = FoilGeoFeatures(modify.x, modify.yu, modify.yl)
 
@@ -55,9 +55,9 @@ if __name__ == '__main__':
             plt.axis('equal')
             plt.legend(['Airfoil (old)', 'Thickness (old)', 'Camber (old)', 'Airfoil (new)', 'Thickness (new)'])
             
-            plt.title('Leading edge modification: %.3f -> %.3f'%(rLE_old, rLE_new))
+            plt.title('Leading edge modification: %.3f -> %.3f'%(rLE_old, r_LE_new))
 
-            plt.savefig(os.path.join(path, 'airfoil-modify-rLE-%.3f.png'%(rLE_new)), dpi=300)
+            plt.savefig(os.path.join(path, 'airfoil-modify-rLE-%.3f.png'%(r_LE_new)), dpi=300)
             
         
     #* Leading edge slope angle modification

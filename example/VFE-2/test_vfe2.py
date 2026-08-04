@@ -4,7 +4,7 @@ import numpy as np
 from cst_modeling.math import intersect_point
 from cst_modeling.io import output_plot3d, plot3d_to_igs
 from cst_modeling.section import dist_clustcos
-from cst_modeling.surface import surf_axisymmetric
+from cst_modeling.math import surf_axisymmetric
 
 '''
 Experimental Surface Pressure Data Obtained on 65° Delta Wing Across Reynolds Number

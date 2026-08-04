@@ -5,19 +5,19 @@ import numpy as np
 import copy
 
 from ..math import intersect_index, interp_from_curve
-from ..basic import transform
+from ..basic import transform_foil
 from ..section import Section
-from ..surface import Surface
+from ..basic import Surface
 
 
-def section_flap(sec: Section, ratio: float, angle: float, dy_axis=None) -> None:
+def section_flap(section: Section, ratio: float, angle: float, dy_axis=None) -> None:
     '''
     Deflect flap by angle (degree) of a section.
     Flap starts from chord-wise ratio = ratio.
     
     Parameters
     ----------
-    sec: Section object
+    section: Section object
         section to be deflected
     
     ratio: float
@@ -32,37 +32,37 @@ def section_flap(sec: Section, ratio: float, angle: float, dy_axis=None) -> None
     if angle == 0.0:
         return
 
-    nn = len(sec.xx)
-    xu_, xl_, yu_, yl_ = transform(sec.xx, sec.xx, sec.yu, sec.yl, rot=angle, x0=ratio, y0=dy_axis)
+    nn = len(section.xx)
+    xu_, xl_, yu_, yl_ = transform_foil(section.xx, section.xx, section.yu, section.yl, rot=angle, x0=ratio, y0=dy_axis)
 
-    iu1, iu2, _ = intersect_index(sec.xx, sec.yu, xu_, yu_)
-    il1, il2, _ = intersect_index(sec.xx, sec.yl, xl_, yl_)
+    iu1, iu2, _ = intersect_index(section.xx, section.yu, xu_, yu_)
+    il1, il2, _ = intersect_index(section.xx, section.yl, xl_, yl_)
     nu_flap = nn - iu1
     nl_flap = nn - il1
 
     #* Adjust number of points on the flap
-    xu_new2 = np.concatenate((sec.xx[:iu1], xu_[iu2:]), axis=0)
-    yu_new2 = np.concatenate((sec.yu[:iu1], yu_[iu2:]), axis=0)
-    xl_new2 = np.concatenate((sec.xx[:il1], xl_[il2:]), axis=0)
-    yl_new2 = np.concatenate((sec.yl[:il1], yl_[il2:]), axis=0)
+    xu_new2 = np.concatenate((section.xx[:iu1], xu_[iu2:]), axis=0)
+    yu_new2 = np.concatenate((section.yu[:iu1], yu_[iu2:]), axis=0)
+    xl_new2 = np.concatenate((section.xx[:il1], xl_[il2:]), axis=0)
+    yl_new2 = np.concatenate((section.yl[:il1], yl_[il2:]), axis=0)
 
-    xx_u = np.linspace(sec.xx[iu1], xu_[-1], nu_flap)
+    xx_u = np.linspace(section.xx[iu1], xu_[-1], nu_flap)
     yy_u = interp_from_curve(xx_u, xu_new2, yu_new2)
-    xu_new = np.concatenate((sec.xx[:iu1], xx_u), axis=0)
-    yu_new = np.concatenate((sec.yu[:iu1], yy_u), axis=0)
+    xu_new = np.concatenate((section.xx[:iu1], xx_u), axis=0)
+    yu_new = np.concatenate((section.yu[:iu1], yy_u), axis=0)
 
-    xx_l = np.linspace(sec.xx[il1], xl_[-1], nl_flap)
+    xx_l = np.linspace(section.xx[il1], xl_[-1], nl_flap)
     yy_l = interp_from_curve(xx_l, xl_new2, yl_new2)
-    xl_new = np.concatenate((sec.xx[:il1], xx_l), axis=0)
-    yl_new = np.concatenate((sec.yl[:il1], yy_l), axis=0)
+    xl_new = np.concatenate((section.xx[:il1], xx_l), axis=0)
+    yl_new = np.concatenate((section.yl[:il1], yy_l), axis=0)
 
     #* Update 3D section
-    xu_, xl_, yu_, yl_ = transform(xu_new, xl_new, yu_new, yl_new, 
-        scale=sec.chord, rot=sec.twist, dx=sec.xLE, dy=sec.yLE, projection=True)
+    xu_, xl_, yu_, yl_ = transform_foil(xu_new, xl_new, yu_new, yl_new, 
+        scale=section.chord, rot=section.twist, dx=section.xLE, dy=section.yLE, projection=True)
 
-    sec.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
-    sec.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
-    sec.z = np.ones(2*nn-1)*sec.zLE
+    section.x = np.concatenate((np.flip(xl_),xu_[1:]), axis=0)
+    section.y = np.concatenate((np.flip(yl_),yu_[1:]), axis=0)
+    section.z = np.ones(2*nn-1)*section.zLE
 
 
 class WingVariableCamber(Surface):
@@ -71,7 +71,7 @@ class WingVariableCamber(Surface):
 
     Parameters
     ----------
-    n_sec: int
+    n_section: int
         number of control sections (2D if set to 0 or 1)
         
     tail: float
@@ -118,7 +118,7 @@ class WingVariableCamber(Surface):
     - tail:   absolute tail thickness (m)
 
     '''
-    def __init__(self, n_sec=0, name='WingVC', fname='Wing.txt', **kwargs):
+    def __init__(self, n_section=0, name='WingVC', fname='Wing.txt', **kwargs):
 
         tail = 0.0
         projection = True
@@ -137,7 +137,7 @@ class WingVariableCamber(Surface):
         if 'ns' in kwargs.keys():
             ns = kwargs['ns']
 
-        super().__init__(n_sec=n_sec, name=name, nn=nn, ns=ns, projection=projection)
+        super().__init__(n_section=n_section, name=name, nn=nn, ns=ns, projection=projection)
 
         self.read_setting(fname, tail=tail)
 
@@ -177,7 +177,7 @@ class WingVariableCamber(Surface):
         Parameters
         ----------
         split: bool
-            generate [surfs] as upper and lower separately
+            generate [surfaces] as upper and lower separately
             
         one_piece: bool
             combine the spanwise sections into one piece (for tecplot format)
@@ -197,15 +197,15 @@ class WingVariableCamber(Surface):
                 z_secs.append(self.flap_loc[2*i+1]-self.flap_trans)
                 z_secs.append(self.flap_loc[2*i+1])
 
-            self.add_sec(z_secs)
+            self.add_section(z_secs)
 
         self.update_sections()
 
-        zLE_secs = self.zLEs
+        spanwise_locations = self.spanwise_locations
 
         for i in range(self.n_flap):
-            i1 = zLE_secs.index(z_secs[4*i]) + 1
-            i2 = zLE_secs.index(z_secs[4*i+1]) + 1
+            i1 = spanwise_locations.index(z_secs[4*i]) + 1
+            i2 = spanwise_locations.index(z_secs[4*i+1]) + 1
             ax = self.axis_xloc[i]
             aa = self.flap_angle[i]
 
@@ -214,8 +214,8 @@ class WingVariableCamber(Surface):
             else:
                 ay = None
 
-            section_flap(self.secs[i1], ax, aa, dy_axis=ay)
-            section_flap(self.secs[i2], ax, aa, dy_axis=ay)
+            section_flap(self.sections[i1], ax, aa, dy_axis=ay)
+            section_flap(self.sections[i2], ax, aa, dy_axis=ay)
 
         self.geo(update_sec=False)
 
@@ -225,13 +225,13 @@ class WingVariableCamber(Surface):
         if f_plot3d is not None:
             self.output_plot3d(fname=f_plot3d)
 
-class DeflectSurf():
+class DeflectSurface():
     '''
     Deflecting surface by axis defined by (x0, y0, z0) and (z1, y1, z1).
 
     Movable region: chord-wise ratio from r0 to 1, span-wise from z0 to z1
 
-    >>> DeflectSurf(surf: Surface, z0, z1, r0, r1, trans_len=0.5)
+    >>> DeflectSurface(surf: Surface, z0, z1, r0, r1, trans_len=0.5)
 
     Parameters
     ----------
@@ -247,10 +247,10 @@ class DeflectSurf():
 
     Attributes
     ------------
-    LE0, LE1, TE0, TE1: ndarray
+    le_0, le_1, te_0, te_1: ndarray
         [x, y, z], LE & TE coordinates of the two end sections of the deflection region
         
-    AX0, AX1: ndarray
+    ax_0, ax_1: ndarray
         [x, y, z], axis ends coordinates. By default, AX = (1-r)*LE + r*TE
 
     i_sec0, i_sec1: int
@@ -273,59 +273,59 @@ class DeflectSurf():
         '''
         Define the rotation axis.
 
-        AX0, AX1: ndarray, [x, y, z], axis ends coordinates \n
+        ax_0, ax_1: ndarray, [x, y, z], axis ends coordinates \n
 
         If by default, (x, y) = (1-r)*LE + r*TE.
         '''
-        self.AX0 = np.array([x0, y0, self.z0])
-        self.AX1 = np.array([x1, y1, self.z1])
+        self.ax_0 = np.array([x0, y0, self.z0])
+        self.ax_1 = np.array([x1, y1, self.z1])
 
 
     def _locate_ends(self):
         '''
         Locate two end sections of the deflection region. \n
         
-        LE0, LE1, TE0, TE1, AX0, AX1 (ndarray, [x, y, z])
+        le_0, le_1, te_0, te_1, ax_0, ax_1 (ndarray, [x, y, z])
         '''
 
-        secs = self.surf.secs
+        sections = self.surf.sections
 
-        for j in range(self.surf.n_sec-1):
+        for j in range(self.surf.n_section-1):
 
-            if (secs[j].zLE-self.z0)*(secs[j+1].zLE-self.z0)<0.0:
-                s0 = (self.z0 - secs[j].zLE)/(secs[j+1].zLE-secs[j].zLE)
+            if (sections[j].zLE-self.z0)*(sections[j+1].zLE-self.z0)<0.0:
+                s0 = (self.z0 - sections[j].zLE)/(sections[j+1].zLE-sections[j].zLE)
 
-                X0 = np.array([secs[j  ].xLE, secs[j  ].yLE, secs[j  ].zLE])
-                X1 = np.array([secs[j+1].xLE, secs[j+1].yLE, secs[j+1].zLE])
-                self.LE0 = (1-s0)*X0 + s0*X1
+                X0 = np.array([sections[j  ].xLE, sections[j  ].yLE, sections[j  ].zLE])
+                X1 = np.array([sections[j+1].xLE, sections[j+1].yLE, sections[j+1].zLE])
+                self.le_0 = (1-s0)*X0 + s0*X1
 
-                X0 = np.array([secs[j  ].x[0]+secs[j  ].x[-1], 
-                               secs[j  ].y[0]+secs[j  ].y[-1], 
-                               secs[j  ].z[0]+secs[j  ].z[-1]])*0.5
-                X1 = np.array([secs[j+1].x[0]+secs[j+1].x[-1], 
-                               secs[j+1].y[0]+secs[j+1].y[-1], 
-                               secs[j+1].z[0]+secs[j+1].z[-1]])*0.5
-                self.TE0 = (1-s0)*X0 + s0*X1
-                self.AX0 = (1-self.r0)*self.LE0 + self.r0*self.TE0
+                X0 = np.array([sections[j  ].x[0]+sections[j  ].x[-1], 
+                               sections[j  ].y[0]+sections[j  ].y[-1], 
+                               sections[j  ].z[0]+sections[j  ].z[-1]])*0.5
+                X1 = np.array([sections[j+1].x[0]+sections[j+1].x[-1], 
+                               sections[j+1].y[0]+sections[j+1].y[-1], 
+                               sections[j+1].z[0]+sections[j+1].z[-1]])*0.5
+                self.te_0 = (1-s0)*X0 + s0*X1
+                self.ax_0 = (1-self.r0)*self.le_0 + self.r0*self.te_0
 
                 self.i_sec0 = j
                 
-            if (secs[j].zLE-self.z1)*(secs[j+1].zLE-self.z1)<0.0:
-                s1 = (self.z1 - secs[j].zLE)/(secs[j+1].zLE-secs[j].zLE)
+            if (sections[j].zLE-self.z1)*(sections[j+1].zLE-self.z1)<0.0:
+                s1 = (self.z1 - sections[j].zLE)/(sections[j+1].zLE-sections[j].zLE)
                 i1 = j
 
-                X0 = np.array([secs[j  ].xLE, secs[j  ].yLE, secs[j  ].zLE])
-                X1 = np.array([secs[j+1].xLE, secs[j+1].yLE, secs[j+1].zLE])
-                self.LE1 = (1-s1)*X0 + s1*X1
+                X0 = np.array([sections[j  ].xLE, sections[j  ].yLE, sections[j  ].zLE])
+                X1 = np.array([sections[j+1].xLE, sections[j+1].yLE, sections[j+1].zLE])
+                self.le_1 = (1-s1)*X0 + s1*X1
 
-                X0 = np.array([secs[j  ].x[0]+secs[j  ].x[-1], 
-                               secs[j  ].y[0]+secs[j  ].y[-1], 
-                               secs[j  ].z[0]+secs[j  ].z[-1]])*0.5
-                X1 = np.array([secs[j+1].x[0]+secs[j+1].x[-1], 
-                               secs[j+1].y[0]+secs[j+1].y[-1], 
-                               secs[j+1].z[0]+secs[j+1].z[-1]])*0.5
-                self.TE1 = (1-s1)*X0 + s1*X1
-                self.AX1 = (1-self.r1)*self.LE1 + self.r1*self.TE1
+                X0 = np.array([sections[j  ].x[0]+sections[j  ].x[-1], 
+                               sections[j  ].y[0]+sections[j  ].y[-1], 
+                               sections[j  ].z[0]+sections[j  ].z[-1]])*0.5
+                X1 = np.array([sections[j+1].x[0]+sections[j+1].x[-1], 
+                               sections[j+1].y[0]+sections[j+1].y[-1], 
+                               sections[j+1].z[0]+sections[j+1].z[-1]])*0.5
+                self.te_1 = (1-s1)*X0 + s1*X1
+                self.ax_1 = (1-self.r1)*self.le_1 + self.r1*self.te_1
 
                 self.i_sec1 = j
 

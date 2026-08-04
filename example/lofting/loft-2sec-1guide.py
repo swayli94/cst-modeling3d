@@ -7,7 +7,7 @@ sys.path.append('.')
 
 import numpy as np
 
-from cst_modeling.operation import GuideCurve, Lofting_2Profile
+from cst_modeling.operation import GuideCurve, Lofting2Profile
 from cst_modeling.basic import BasicSection
 from cst_modeling.io import output_surface
 from cst_modeling.section import cst_foil
@@ -62,24 +62,24 @@ if __name__ == "__main__":
 
     #* Lofting
     
-    loft = Lofting_2Profile(profile_0, profile_1, n_spanwise=101, is_guide_curve_at_LE=True)
+    loft = Lofting2Profile(profile_0, profile_1, n_spanwise=101, is_guide_curve_at_LE=True)
     
     loft.update_guide_curve(**guide.global_guide_curve)
 
     surf_x, surf_y, surf_z = loft.sweep()
 
-    output_surface([surf_x, surf_y, surf_z], fname_save2, ID=0, zone_name='rotate-about-LE')
+    output_surface([surf_x, surf_y, surf_z], fname_save2, zone_id=0, zone_name='rotate-about-LE')
 
 
-    loft = Lofting_2Profile(profile_0, profile_1, n_spanwise=101, is_guide_curve_at_LE=False)
+    loft = Lofting2Profile(profile_0, profile_1, n_spanwise=101, is_guide_curve_at_LE=False)
     
     loft.update_guide_curve(**guide.global_guide_curve)
     
     #* Update the guide curve to go through the trailing edge
-    loft.guide_curve['x'] = loft.guide_curve['x'] + loft.guide_curve['scale']
+    loft.guide_curve_data['x'] = loft.guide_curve_data['x'] + loft.guide_curve_data['scale']
 
     surf_x, surf_y, surf_z = loft.sweep()
 
-    output_surface([surf_x, surf_y, surf_z], fname_save2, ID=1, zone_name='rotate-about-TE')
+    output_surface([surf_x, surf_y, surf_z], fname_save2, zone_id=1, zone_name='rotate-about-TE')
 
 

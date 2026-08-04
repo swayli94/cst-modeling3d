@@ -6,7 +6,7 @@ def intersection_curve():
     Intersection between curves
     '''
 
-    from cst_modeling.basic import intersect_index, intersect_point
+    from cst_modeling.math import intersect_index, intersect_point
     
     x1 = np.linspace(0.5, 1.0, 151)
     x2 = np.linspace(0.5, 1.0, 101)
@@ -42,27 +42,27 @@ def intersection_vector_plane():
     Intersection between vector and plane
     '''
     
-    from cst_modeling.basic import intersect_vec_plane, plane_3points
+    from cst_modeling.math import intersect_vec_plane, plane_3points
 
-    V0 = np.array([0.0, 0.0, 0.0])
-    V1 = np.array([1.0, 1.0, 1.0])
-    P0 = np.array([0.0, 0.0, 1.0])
-    P1 = np.array([0.0, 1.0, 0.0])
-    P3 = np.array([1.0, 0.0, 0.0])
+    v0 = np.array([0.0, 0.0, 0.0])
+    v1 = np.array([1.0, 1.0, 1.0])
+    p0 = np.array([0.0, 0.0, 1.0])
+    p1 = np.array([0.0, 1.0, 0.0])
+    p2 = np.array([1.0, 0.0, 0.0])
     
     uu = np.linspace(0, 1, 101)
     u, v = np.meshgrid(uu, uu)
-    w = plane_3points(P0, P1, P3, u, v)
+    w = plane_3points(p0, p1, p2, u, v)
         
-    xi, t1, t3, rv = intersect_vec_plane(V0, V1, P0, P1, P3)
+    xi, t1, t3, rv = intersect_vec_plane(v0, v1, p0, p1, p2)
 
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1,projection='3d')
     ax.plot_surface(u, v, w, alpha=0.2, rstride=1, cstride=1, color='gray')
     
-    ax.plot3D([P0[0], P1[0]], [P0[1], P1[1]], [P0[2], P1[2]], 'k')
-    ax.plot3D([P0[0], P3[0]], [P0[1], P3[1]], [P0[2], P3[2]], 'k')
-    ax.plot3D([V0[0], V1[0]], [V0[1], V1[1]], [V0[2], V1[2]], 'b--')
+    ax.plot3D([p0[0], p1[0]], [p0[1], p1[1]], [p0[2], p1[2]], 'k')
+    ax.plot3D([p0[0], p2[0]], [p0[1], p2[1]], [p0[2], p2[2]], 'k')
+    ax.plot3D([v0[0], v1[0]], [v0[1], v1[1]], [v0[2], v1[2]], 'b--')
     
     ax.plot3D([xi[0]], [xi[1]], [xi[2]], 'ro')
     
@@ -83,7 +83,7 @@ def intersection_surface_plane():
     Intersection between vector and plane
     '''
     
-    from cst_modeling.basic import plane_3points, intersect_surface_plane
+    from cst_modeling.math import plane_3points, intersect_surface_plane
 
     def _cylinder(radius, height, origin):
     

@@ -63,15 +63,15 @@ if __name__ == "__main__":
 
 
     #* 3D airfoil geometry
-    airfoil = BasicSection(thick=None, chord=1, twist=0.0, lTwistAroundLE=True)
+    airfoil = BasicSection(thick=None, chord=1, twist=0.0, twist_around_LE=True)
     
     airfoil.xx = x1
     airfoil.yu = yu1
     airfoil.yl = yl1
 
-    geo3d = BasicSurface(n_sec=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
+    geo3d = BasicSurface(n_section=0, name='wing', nn=airfoil.xx.shape[0], ns=5)
     
-    geo3d.secs = [airfoil]
+    geo3d.sections = [airfoil]
     
     geo3d.geo()
     

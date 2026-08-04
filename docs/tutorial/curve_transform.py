@@ -7,7 +7,7 @@ def transform_airfoil():
     '''
     Transform an airfoil or a curve
     '''
-    from cst_modeling.basic import transform
+    from cst_modeling.basic import transform_foil
     from cst_modeling.section import cst_foil
     
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
@@ -20,7 +20,7 @@ def transform_airfoil():
     plt.plot(x0, yu0, 'k')
     plt.plot(x0, yl0, 'k')
     
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, rot=20, projection=True)
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, rot=20, projection=True)
     plt.plot(xu_, yu_, 'k--')
     plt.plot(xl_, yl_, 'k--')
     plt.text(-0.5, 0.65, 'rotation when keeping the projection length unchanged', fontsize=8, color='k')
@@ -29,7 +29,7 @@ def transform_airfoil():
     xLE = -0.5
     yLE = 0.2
     
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=20, dx=xLE-0.0, dy=yLE-0.0, 
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=20, dx=xLE-0.0, dy=yLE-0.0, 
                                    x0=None, y0=None, xr=None, yr=None, projection=False)
     plt.plot(xu_, yu_, 'b')
     plt.plot(xl_, yl_, 'b')
@@ -39,7 +39,7 @@ def transform_airfoil():
     xTE = 1.0
     yTE = 0.2
 
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=-10, dx=xTE-1.0, dy=yTE-0.0, 
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=-10, dx=xTE-1.0, dy=yTE-0.0, 
                                    x0=xTE, y0=yTE, xr=xTE, yr=yTE, projection=False)
     plt.plot(xu_, yu_, 'g--')
     plt.plot(xl_, yl_, 'g--')
@@ -47,7 +47,7 @@ def transform_airfoil():
 
 
 
-    xu_, xl_, yu_, yl_ = transform(x0, x0, yu0, yl0, scale=1.5, rot=-10, dx=0.0, dy=0.0, 
+    xu_, xl_, yu_, yl_ = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=-10, dx=0.0, dy=0.0, 
                                    x0=0.5, y0=0.0, xr=None, yr=None, projection=False)
     plt.plot(xu_, yu_, 'r--')
     plt.plot(xl_, yl_, 'r--')
@@ -63,7 +63,7 @@ def normalize_airfoil():
     '''
     Normalize an airfoil
     '''
-    from cst_modeling.basic import transform
+    from cst_modeling.basic import transform_foil
     from cst_modeling.section import cst_foil, normalize_foil
     
     cst_u = np.array([ 0.118598,  0.118914,  0.155731,  0.136732,  0.209265,  0.148305,  0.193591])
@@ -71,7 +71,7 @@ def normalize_airfoil():
     
     x0, yu0, yl0, t0, r0 = cst_foil(1001, cst_u, cst_l, x=None, t=None, tail=0.01)
 
-    xu1, xl1, yu1, yl1 = transform(x0, x0, yu0, yl0, scale=1.5, rot=20, dx=-0.4, dy=0.1)
+    xu1, xl1, yu1, yl1 = transform_foil(x0, x0, yu0, yl0, scale=1.5, rot=20, dx=-0.4, dy=0.1)
     
     xu2, yu2, xl2, yl2, twist, chord, tail = normalize_foil(xu1, yu1, xl1, yl1)
 
@@ -153,7 +153,7 @@ def cylinder_to_plane():
     '''
     Transform a curve on a cylinder to a curve on a plane
     '''
-    from cst_modeling.basic import toCylinder, fromCylinder, rotate, rotate_vector
+    from cst_modeling.math import to_cylinder, from_cylinder, rotate, rotate_vector
     from cst_modeling.section import cst_foil
 
     fig = plt.figure(figsize=(10,5))
@@ -172,8 +172,8 @@ def cylinder_to_plane():
 
         X, YU, YL, _, _ = cst_foil(1001, cst_u, cst_l)
         
-        xu, yu, zu = toCylinder(X, YU, np.ones_like(X)*radius, flip=False, origin=origin)
-        xl, yl, zl = toCylinder(X, YL, np.ones_like(X)*radius, flip=False, origin=origin)
+        xu, yu, zu = to_cylinder(X, YU, np.ones_like(X)*radius, flip=False, origin=origin)
+        xl, yl, zl = to_cylinder(X, YL, np.ones_like(X)*radius, flip=False, origin=origin)
         
         xu, yu, zu = rotate(xu, yu, zu, thetaLE, origin=origin, axis='Z')
         xl, yl, zl = rotate(xl, yl, zl, thetaLE, origin=origin, axis='Z')
@@ -181,8 +181,8 @@ def cylinder_to_plane():
         zu = zu + zLE
         zl = zl + zLE
         
-        XU_, YU_, ZU_ = fromCylinder(xu, yu, zu, flip=False, origin=origin)
-        XL_, YL_, ZL_ = fromCylinder(xl, yl, zl, flip=False, origin=origin)
+        XU_, YU_, ZU_ = from_cylinder(xu, yu, zu, flip=False, origin=origin)
+        XL_, YL_, ZL_ = from_cylinder(xl, yl, zl, flip=False, origin=origin)
 
         ax.plot3D(xu, yu, zu, 'k')
         ax.plot3D(XU_, YU_, ZU_, 'r')

@@ -204,53 +204,53 @@ def order_curve3d(x,y,z,axis = 'z'):
 if __name__== "__main__":
 
     #create outward
-    n_sec = 5
+    n_section = 5
 
-    outward = BasicSurface(n_sec=5, name='out', nn=201, ns=51, projection = False)
+    outward = BasicSurface(n_section=5, name='out', nn=201, ns=51, projection = False)
 
-    outward.secs[0] = Section(n_curve = 4)
-    outward.secs[0].curve[0] = curve(r0=np.array([0,     -1.505,15    ]), r1=np.array([0,     -3.030,15    ]), nn=125)
-    outward.secs[0].curve[1] = curve(r0=np.array([0,     -3.030,15    ]), r1=np.array([-1.395,-3.025,18.532]), nn=125)
-    outward.secs[0].curve[2] = curve(r0=np.array([-1.395,-3.025,18.532]), r1=np.array([-1.395,-1.505,18.532]), nn=125)
-    outward.secs[0].curve[3] = curve(r0=np.array([-1.395,-1.505,18.532]), r1=np.array([0,     -1.505,15    ]), nn=125)
-    outward.secs[0].join_curve()
+    outward.sections[0] = Section(n_curve = 4)
+    outward.sections[0].curve[0] = curve(r0=np.array([0,     -1.505,15    ]), r1=np.array([0,     -3.030,15    ]), nn=125)
+    outward.sections[0].curve[1] = curve(r0=np.array([0,     -3.030,15    ]), r1=np.array([-1.395,-3.025,18.532]), nn=125)
+    outward.sections[0].curve[2] = curve(r0=np.array([-1.395,-3.025,18.532]), r1=np.array([-1.395,-1.505,18.532]), nn=125)
+    outward.sections[0].curve[3] = curve(r0=np.array([-1.395,-1.505,18.532]), r1=np.array([0,     -1.505,15    ]), nn=125)
+    outward.sections[0].join_curve()
 
-    outward.secs[-1] = Section(n_curve = 4)
-    outward.secs[-1].curve[0] = curve(r0=np.array([0,     -1.765,29.570]), r1=np.array([0,     -2.765,29.570]), nn=125)
-    outward.secs[-1].curve[1] = curve(r0=np.array([0,     -2.765,29.570]), r1=np.array([-1.445,-2.765,27.068]), nn=125)
-    outward.secs[-1].curve[2] = curve(r0=np.array([-1.445,-2.765,27.068]), r1=np.array([-1.445,-1.765,27.068]), nn=125)
-    outward.secs[-1].curve[3] = curve(r0=np.array([-1.445,-1.765,27.068]), r1=np.array([0,     -1.765,29.570]), nn=125)
-    outward.secs[-1].join_curve()
+    outward.sections[-1] = Section(n_curve = 4)
+    outward.sections[-1].curve[0] = curve(r0=np.array([0,     -1.765,29.570]), r1=np.array([0,     -2.765,29.570]), nn=125)
+    outward.sections[-1].curve[1] = curve(r0=np.array([0,     -2.765,29.570]), r1=np.array([-1.445,-2.765,27.068]), nn=125)
+    outward.sections[-1].curve[2] = curve(r0=np.array([-1.445,-2.765,27.068]), r1=np.array([-1.445,-1.765,27.068]), nn=125)
+    outward.sections[-1].curve[3] = curve(r0=np.array([-1.445,-1.765,27.068]), r1=np.array([0,     -1.765,29.570]), nn=125)
+    outward.sections[-1].join_curve()
 
-    outward.secs[1] = Section(n_curve = 4)
-    outward.secs[1].curve[0] = curve(r0=np.array([0,-1.50,20.307]), r1=np.array([0,-3.030,20.307]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5, 
+    outward.sections[1] = Section(n_curve = 4)
+    outward.sections[1].curve[0] = curve(r0=np.array([0,-1.50,20.307]), r1=np.array([0,-3.030,20.307]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5, 
                                      coef=1.0*np.array([0.22706027, 1.1, 0.19973993, 0.9007924,  0.44730042, 0.44728627, 0.90080244, 0.19973533, 1.1,  0.22706104]))
-    outward.secs[1].curve[1] = curve(r0=np.array([0,     -3.030,20.307]), r1=np.array([-1.676,-3.025,20.307]), nn=125)
-    outward.secs[1].curve[2] = curve(r0=np.array([-1.676,-3.025,20.307]), r1=np.array([-1.676,-1.505,20.307]), nn=125)
-    outward.secs[1].curve[3] = curve(r0=np.array([-1.676,-1.505,20.307]), r1=np.array([0,     -1.50, 20.307]), nn=125)
-    outward.secs[1].join_curve()
+    outward.sections[1].curve[1] = curve(r0=np.array([0,     -3.030,20.307]), r1=np.array([-1.676,-3.025,20.307]), nn=125)
+    outward.sections[1].curve[2] = curve(r0=np.array([-1.676,-3.025,20.307]), r1=np.array([-1.676,-1.505,20.307]), nn=125)
+    outward.sections[1].curve[3] = curve(r0=np.array([-1.676,-1.505,20.307]), r1=np.array([0,     -1.50, 20.307]), nn=125)
+    outward.sections[1].join_curve()
 
-    outward.secs[2] = Section(n_curve = 4)
-    outward.secs[2].curve[0] = curve(r0=np.array([0,-1.50,23.307]), r1=np.array([0,-3.030,23.307]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5,
+    outward.sections[2] = Section(n_curve = 4)
+    outward.sections[2].curve[0] = curve(r0=np.array([0,-1.50,23.307]), r1=np.array([0,-3.030,23.307]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5,
                                      coef=1.2*np.array([0.22706027, 1.1, 0.19973993, 0.9007924,  0.44730042, 0.44728627, 0.90080244, 0.19973533, 1.1,  0.22706104]))
-    outward.secs[2].curve[1] = curve(r0=np.array([0,     -3.030,23.307]), r1=np.array([-1.573,-2.910,23.307]), nn=125)
-    outward.secs[2].curve[2] = curve(r0=np.array([-1.573,-2.910,23.307]), r1=np.array([-1.573,-1.620,23.307]), nn=125)
-    outward.secs[2].curve[3] = curve(r0=np.array([-1.573,-1.620,23.307]), r1=np.array([0,     -1.50, 23.307]), nn=125)
-    outward.secs[2].join_curve()
+    outward.sections[2].curve[1] = curve(r0=np.array([0,     -3.030,23.307]), r1=np.array([-1.573,-2.910,23.307]), nn=125)
+    outward.sections[2].curve[2] = curve(r0=np.array([-1.573,-2.910,23.307]), r1=np.array([-1.573,-1.620,23.307]), nn=125)
+    outward.sections[2].curve[3] = curve(r0=np.array([-1.573,-1.620,23.307]), r1=np.array([0,     -1.50, 23.307]), nn=125)
+    outward.sections[2].join_curve()
 
-    outward.secs[3] = Section(n_curve = 4)
-    outward.secs[3].curve[0] = curve(r0=np.array([0,-1.50,26.197]), r1=np.array([0,-3.030,26.197]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5, 
+    outward.sections[3] = Section(n_curve = 4)
+    outward.sections[3].curve[0] = curve(r0=np.array([0,-1.50,26.197]), r1=np.array([0,-3.030,26.197]), normal=np.array([0,0,1]), nn=125, xn1=0.5, xn2=0.5, 
                                      coef=0.8*np.array([0.22706027, 1.1, 0.19973993, 0.9007924,  0.44730042, 0.44728627, 0.90080244, 0.19973533, 1.1,  0.22706104]))
-    outward.secs[3].curve[1] = curve(r0=np.array([0,     -3.030,26.197]), r1=np.array([-1.474,-2.789,26.197]), nn=125)
-    outward.secs[3].curve[2] = curve(r0=np.array([-1.474,-2.789,26.197]), r1=np.array([-1.474,-1.732,26.197]), nn=125)
-    outward.secs[3].curve[3] = curve(r0=np.array([-1.474,-1.732,26.197]), r1=np.array([0,     -1.50, 26.197]), nn=125)
-    outward.secs[3].join_curve()
+    outward.sections[3].curve[1] = curve(r0=np.array([0,     -3.030,26.197]), r1=np.array([-1.474,-2.789,26.197]), nn=125)
+    outward.sections[3].curve[2] = curve(r0=np.array([-1.474,-2.789,26.197]), r1=np.array([-1.474,-1.732,26.197]), nn=125)
+    outward.sections[3].curve[3] = curve(r0=np.array([-1.474,-1.732,26.197]), r1=np.array([0,     -1.50, 26.197]), nn=125)
+    outward.sections[3].join_curve()
 
     outward.geo(update_sec = False)
 
-    outward.smooth(0,n_sec-1,smooth0=True,ratio_end=-1)
+    outward.smooth(0,n_section-1,smooth0=True,ratio_end=-1)
 
-    outward.translate(dX=0, dY=4.53)
+    outward.translate(dx=0, dy=4.53)
 
     outward.flip(axis = '+Y')
     outward.flip(axis = '+X')
@@ -259,81 +259,81 @@ if __name__== "__main__":
 
 
     #create inward
-    n_sec = 9
+    n_section = 9
 
-    inward = BasicSurface(n_sec=9, name='out', nn=201, ns=51, projection = False)
+    inward = BasicSurface(n_section=9, name='out', nn=201, ns=51, projection = False)
 
-    inward.secs[0] = Section(n_curve = 4)
-    inward.secs[0].curve[0] = curve(r0=np.array([0,     -1.505+4.53,15    ]), r1=np.array([0,     -3.030+4.53,15    ]), nn=125)
-    inward.secs[0].curve[1] = curve(r0=np.array([0,     -3.030+4.53,15    ]), r1=np.array([-1.395,-3.025+4.53,18.532]), nn=125)
-    inward.secs[0].curve[2] = curve(r0=np.array([-1.395,-3.025+4.53,18.532]), r1=np.array([-1.395,-1.505+4.53,18.532]), nn=125)
-    inward.secs[0].curve[3] = curve(r0=np.array([-1.395,-1.505+4.53,18.532]), r1=np.array([0,     -1.505+4.53,15    ]), nn=125)
-    inward.secs[0].join_curve()
+    inward.sections[0] = Section(n_curve = 4)
+    inward.sections[0].curve[0] = curve(r0=np.array([0,     -1.505+4.53,15    ]), r1=np.array([0,     -3.030+4.53,15    ]), nn=125)
+    inward.sections[0].curve[1] = curve(r0=np.array([0,     -3.030+4.53,15    ]), r1=np.array([-1.395,-3.025+4.53,18.532]), nn=125)
+    inward.sections[0].curve[2] = curve(r0=np.array([-1.395,-3.025+4.53,18.532]), r1=np.array([-1.395,-1.505+4.53,18.532]), nn=125)
+    inward.sections[0].curve[3] = curve(r0=np.array([-1.395,-1.505+4.53,18.532]), r1=np.array([0,     -1.505+4.53,15    ]), nn=125)
+    inward.sections[0].join_curve()
 
-    inward.secs[1] = Section(n_curve = 4)
-    inward.secs[1].curve[0] = curve(r0=np.array([-0.314,3.025,17.006]), r1=np.array([-0.314,1.505,17.006]), nn=125)
-    inward.secs[1].curve[1] = curve(r0=np.array([-0.314,1.505,17.006]), r1=np.array([-1.549,1.505,19.502]), nn=125)
-    inward.secs[1].curve[2] = curve(r0=np.array([-1.549,1.505,19.502]), r1=np.array([-1.549,3.025,19.502]), nn=125)
-    inward.secs[1].curve[3] = curve(r0=np.array([-1.549,3.025,19.502]), r1=np.array([-0.314,3.025,17.006]), nn=125)
-    inward.secs[1].join_curve()
+    inward.sections[1] = Section(n_curve = 4)
+    inward.sections[1].curve[0] = curve(r0=np.array([-0.314,3.025,17.006]), r1=np.array([-0.314,1.505,17.006]), nn=125)
+    inward.sections[1].curve[1] = curve(r0=np.array([-0.314,1.505,17.006]), r1=np.array([-1.549,1.505,19.502]), nn=125)
+    inward.sections[1].curve[2] = curve(r0=np.array([-1.549,1.505,19.502]), r1=np.array([-1.549,3.025,19.502]), nn=125)
+    inward.sections[1].curve[3] = curve(r0=np.array([-1.549,3.025,19.502]), r1=np.array([-0.314,3.025,17.006]), nn=125)
+    inward.sections[1].join_curve()
 
-    inward.secs[2] = Section(n_curve = 4)
-    inward.secs[2].curve[0] = curve(r0=np.array([-1.174,3.025,19.368]), r1=np.array([-1.174,1.505,19.368]), nn=125)
-    inward.secs[2].curve[1] = curve(r0=np.array([-1.174,1.505,19.368]), r1=np.array([-1.580,1.505,19.904]), nn=125)
-    inward.secs[2].curve[2] = curve(r0=np.array([-1.580,1.505,19.904]), r1=np.array([-1.580,3.025,19.904]), nn=125)
-    inward.secs[2].curve[3] = curve(r0=np.array([-1.580,3.025,19.904]), r1=np.array([-1.174,3.025,19.368]), nn=125)
-    inward.secs[2].join_curve()
+    inward.sections[2] = Section(n_curve = 4)
+    inward.sections[2].curve[0] = curve(r0=np.array([-1.174,3.025,19.368]), r1=np.array([-1.174,1.505,19.368]), nn=125)
+    inward.sections[2].curve[1] = curve(r0=np.array([-1.174,1.505,19.368]), r1=np.array([-1.580,1.505,19.904]), nn=125)
+    inward.sections[2].curve[2] = curve(r0=np.array([-1.580,1.505,19.904]), r1=np.array([-1.580,3.025,19.904]), nn=125)
+    inward.sections[2].curve[3] = curve(r0=np.array([-1.580,3.025,19.904]), r1=np.array([-1.174,3.025,19.368]), nn=125)
+    inward.sections[2].join_curve()
 
-    inward.secs[3] = Section(n_curve = 4)
-    inward.secs[3].curve[0] = curve(r0=np.array([-1.340,3.025,20.307]), r1=np.array([-1.340,1.505,20.307]), nn=125)
-    inward.secs[3].curve[1] = curve(r0=np.array([-1.340,1.505,20.307]), r1=np.array([-1.591,1.505,20.307]), nn=125)
-    inward.secs[3].curve[2] = curve(r0=np.array([-1.591,1.505,20.307]), r1=np.array([-1.591,3.025,20.307]), nn=125)
-    inward.secs[3].curve[3] = curve(r0=np.array([-1.591,3.025,20.307]), r1=np.array([-1.340,3.025,20.307]), nn=125)
-    inward.secs[3].join_curve()
+    inward.sections[3] = Section(n_curve = 4)
+    inward.sections[3].curve[0] = curve(r0=np.array([-1.340,3.025,20.307]), r1=np.array([-1.340,1.505,20.307]), nn=125)
+    inward.sections[3].curve[1] = curve(r0=np.array([-1.340,1.505,20.307]), r1=np.array([-1.591,1.505,20.307]), nn=125)
+    inward.sections[3].curve[2] = curve(r0=np.array([-1.591,1.505,20.307]), r1=np.array([-1.591,3.025,20.307]), nn=125)
+    inward.sections[3].curve[3] = curve(r0=np.array([-1.591,3.025,20.307]), r1=np.array([-1.340,3.025,20.307]), nn=125)
+    inward.sections[3].join_curve()
 
-    inward.secs[4] = Section(n_curve = 4)
-    inward.secs[4].circle(np.array([-1.025,2.507]),np.array([-1.025,2.023]),np.array([-1.305,2.023]), nn=500)
-    inward.secs[4].z = 23.000 * np.ones_like(inward.secs[4].x)
+    inward.sections[4] = Section(n_curve = 4)
+    inward.sections[4].circle(np.array([-1.025,2.507]),np.array([-1.025,2.023]),np.array([-1.305,2.023]), nn=500)
+    inward.sections[4].z = 23.000 * np.ones_like(inward.sections[4].x)
     #将曲线排序
-    inward.secs[4].x,inward.secs[4].y,inward.secs[4].z = order_curve3d(inward.secs[4].x,inward.secs[4].y,inward.secs[4].z)
+    inward.sections[4].x,inward.sections[4].y,inward.sections[4].z = order_curve3d(inward.sections[4].x,inward.sections[4].y,inward.sections[4].z)
     #让曲线封闭
-    inward.secs[4].x[0] = inward.secs[4].x[-1]
-    inward.secs[4].y[0] = inward.secs[4].y[-1]
-    inward.secs[4].z[0] = inward.secs[4].z[-1]
+    inward.sections[4].x[0] = inward.sections[4].x[-1]
+    inward.sections[4].y[0] = inward.sections[4].y[-1]
+    inward.sections[4].z[0] = inward.sections[4].z[-1]
 
-    inward.secs[5] = Section(n_curve = 4)
-    inward.secs[5].circle(np.array([-1.025,2.507]),np.array([-1.025,2.023]),np.array([-1.305,2.023]), nn=500)
-    inward.secs[5].z = 24.907 * np.ones_like(inward.secs[5].x)
+    inward.sections[5] = Section(n_curve = 4)
+    inward.sections[5].circle(np.array([-1.025,2.507]),np.array([-1.025,2.023]),np.array([-1.305,2.023]), nn=500)
+    inward.sections[5].z = 24.907 * np.ones_like(inward.sections[5].x)
     #将曲线排序
-    inward.secs[5].x,inward.secs[5].y,inward.secs[5].z = order_curve3d(inward.secs[5].x,inward.secs[5].y,inward.secs[5].z)
+    inward.sections[5].x,inward.sections[5].y,inward.sections[5].z = order_curve3d(inward.sections[5].x,inward.sections[5].y,inward.sections[5].z)
     #让曲线封闭
-    inward.secs[5].x[0] = inward.secs[5].x[-1]
-    inward.secs[5].y[0] = inward.secs[5].y[-1]
-    inward.secs[5].z[0] = inward.secs[5].z[-1]
+    inward.sections[5].x[0] = inward.sections[5].x[-1]
+    inward.sections[5].y[0] = inward.sections[5].y[-1]
+    inward.sections[5].z[0] = inward.sections[5].z[-1]
 
     #sec_x, sec_y, sec_z = read_sec_file('inward-sec4.xlsx',0.001)
-    inward.secs[6] = Section(n_curve = 4)
-    inward.secs[6].curve[0] = curve(r0=np.array([-1.045,2.765,25.670]), r1=np.array([-1.045,1.765,25.670]), nn=125)
-    inward.secs[6].curve[1] = curve(r0=np.array([-1.045,1.765,25.670]), r1=np.array([-1.323,1.765,25.670]), nn=125)
-    inward.secs[6].curve[2] = curve(r0=np.array([-1.323,1.765,25.670]), r1=np.array([-1.323,2.765,25.670]), nn=125)
-    inward.secs[6].curve[3] = curve(r0=np.array([-1.323,2.765,25.670]), r1=np.array([-1.045,2.765,25.670]), nn=125)
-    inward.secs[6].join_curve()
+    inward.sections[6] = Section(n_curve = 4)
+    inward.sections[6].curve[0] = curve(r0=np.array([-1.045,2.765,25.670]), r1=np.array([-1.045,1.765,25.670]), nn=125)
+    inward.sections[6].curve[1] = curve(r0=np.array([-1.045,1.765,25.670]), r1=np.array([-1.323,1.765,25.670]), nn=125)
+    inward.sections[6].curve[2] = curve(r0=np.array([-1.323,1.765,25.670]), r1=np.array([-1.323,2.765,25.670]), nn=125)
+    inward.sections[6].curve[3] = curve(r0=np.array([-1.323,2.765,25.670]), r1=np.array([-1.045,2.765,25.670]), nn=125)
+    inward.sections[6].join_curve()
 
     #inlet_x,inlet_y,inlet_z = read_sec_file('inward-outlet1.xlsx',0.001)
-    inward.secs[7] = Section(n_curve = 4)
-    inward.secs[7].curve[0] = curve(r0=np.array([-0.361,2.765,27.984]), r1=np.array([-0.361,1.765,27.984]), nn=125)
-    inward.secs[7].curve[1] = curve(r0=np.array([-0.361,1.765,27.984]), r1=np.array([-1.372,1.765,26.234]), nn=125)
-    inward.secs[7].curve[2] = curve(r0=np.array([-1.372,1.765,26.234]), r1=np.array([-1.372,2.765,26.234]), nn=125)
-    inward.secs[7].curve[3] = curve(r0=np.array([-1.372,2.765,26.234]), r1=np.array([-0.361,2.765,27.984]), nn=125)
-    inward.secs[7].join_curve()
+    inward.sections[7] = Section(n_curve = 4)
+    inward.sections[7].curve[0] = curve(r0=np.array([-0.361,2.765,27.984]), r1=np.array([-0.361,1.765,27.984]), nn=125)
+    inward.sections[7].curve[1] = curve(r0=np.array([-0.361,1.765,27.984]), r1=np.array([-1.372,1.765,26.234]), nn=125)
+    inward.sections[7].curve[2] = curve(r0=np.array([-1.372,1.765,26.234]), r1=np.array([-1.372,2.765,26.234]), nn=125)
+    inward.sections[7].curve[3] = curve(r0=np.array([-1.372,2.765,26.234]), r1=np.array([-0.361,2.765,27.984]), nn=125)
+    inward.sections[7].join_curve()
 
     #sec_x, sec_y, sec_z = read_sec_file('inward-outlet2.xlsx',0.001)
-    inward.secs[8] = Section(n_curve = 4)
-    inward.secs[8].curve[0] = curve(r0=np.array([0,     -1.765+4.53,29.570]), r1=np.array([0,     -2.765+4.53,29.570]), nn=125)
-    inward.secs[8].curve[1] = curve(r0=np.array([0,     -2.765+4.53,29.570]), r1=np.array([-1.445,-2.765+4.53,27.068]), nn=125)
-    inward.secs[8].curve[2] = curve(r0=np.array([-1.445,-2.765+4.53,27.068]), r1=np.array([-1.445,-1.765+4.53,27.068]), nn=125)
-    inward.secs[8].curve[3] = curve(r0=np.array([-1.445,-1.765+4.53,27.068]), r1=np.array([0,     -1.765+4.53,29.570]), nn=125)
-    inward.secs[8].join_curve()
+    inward.sections[8] = Section(n_curve = 4)
+    inward.sections[8].curve[0] = curve(r0=np.array([0,     -1.765+4.53,29.570]), r1=np.array([0,     -2.765+4.53,29.570]), nn=125)
+    inward.sections[8].curve[1] = curve(r0=np.array([0,     -2.765+4.53,29.570]), r1=np.array([-1.445,-2.765+4.53,27.068]), nn=125)
+    inward.sections[8].curve[2] = curve(r0=np.array([-1.445,-2.765+4.53,27.068]), r1=np.array([-1.445,-1.765+4.53,27.068]), nn=125)
+    inward.sections[8].curve[3] = curve(r0=np.array([-1.445,-1.765+4.53,27.068]), r1=np.array([0,     -1.765+4.53,29.570]), nn=125)
+    inward.sections[8].join_curve()
 
     inward.geo(update_sec = False)
 
